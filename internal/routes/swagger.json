@@ -1,0 +1,713 @@
+{
+    "schemes": [
+        "http"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "Backend API for Cultour Project",
+        "title": "Cultour API",
+        "contact": {
+            "name": "Cultour Development Team"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8181",
+    "paths": {
+        "/cities": {
+            "get": {
+                "description": "Mengambil daftar kota dengan pagination",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cities"
+                ],
+                "summary": "Mendapatkan daftar kota",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Jumlah data yang dikembalikan",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset untuk pagination",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar kota berhasil diambil",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Menambahkan lokasi baru ke dalam sistem",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cities"
+                ],
+                "summary": "Membuat lokasi baru",
+                "parameters": [
+                    {
+                        "description": "Informasi Lokasi",
+                        "name": "city",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.City"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Lokasi berhasil dibuat",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cities/search": {
+            "get": {
+                "description": "Mencari lokasi berdasarkan ID atau nama",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cities"
+                ],
+                "summary": "Mencari lokasi",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Lokasi",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nama Lokasi",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Jumlah data yang dikembalikan",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset untuk pagination",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar lokasi yang ditemukan",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Lokasi tidak ditemukan",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cities/{id}": {
+            "put": {
+                "description": "Memperbarui informasi kota yang sudah ada berdasarkan ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cities"
+                ],
+                "summary": "Memperbarui kota",
+                "parameters": [
+                    {
+                        "description": "Informasi Kota yang Diperbarui",
+                        "name": "city",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.City"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Kota berhasil diperbarui",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Kota tidak ditemukan",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Menghapus lokasi berdasarkan ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cities"
+                ],
+                "summary": "Menghapus lokasi",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Lokasi",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Lokasi berhasil dihapus",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/locations": {
+            "get": {
+                "description": "Mengambil daftar lokasi dengan pagination",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "locations"
+                ],
+                "summary": "Mendapatkan daftar lokasi",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Jumlah data yang dikembalikan",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset untuk pagination",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar kota berhasil diambil",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Menambahkan lokasi baru ke dalam sistem",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "locations"
+                ],
+                "summary": "Membuat lokasi baru",
+                "parameters": [
+                    {
+                        "description": "Informasi Lokasi",
+                        "name": "location",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Lokasi berhasil dibuat",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/locations/search": {
+            "get": {
+                "description": "Mencari lokasi berdasarkan ID atau nama",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "locations"
+                ],
+                "summary": "Mencari lokasi",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Lokasi",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Nama Lokasi",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Jumlah data yang dikembalikan",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset untuk pagination",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar lokasi yang ditemukan",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Lokasi tidak ditemukan",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/locations/{id}": {
+            "put": {
+                "description": "Memperbarui informasi lokasi yang sudah ada berdasarkan ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "locations"
+                ],
+                "summary": "Memperbarui lokasi",
+                "parameters": [
+                    {
+                        "description": "Informasi Lokasi yang Diperbarui",
+                        "name": "location",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lokasi berhasil diperbarui",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Lokasi tidak ditemukan",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Menghapus lokasi berdasarkan ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "locations"
+                ],
+                "summary": "Menghapus lokasi",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID Lokasi",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Lokasi berhasil dihapus",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Kesalahan validasi input",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Kesalahan server internal",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "configs.Config": {
+            "type": "object",
+            "properties": {
+                "environment": {
+                    "type": "string"
+                },
+                "logging": {
+                    "$ref": "#/definitions/configs.LoggingConfig"
+                },
+                "server": {
+                    "$ref": "#/definitions/configs.ServerConfig"
+                },
+                "supabase": {
+                    "$ref": "#/definitions/configs.SupabaseConfig"
+                }
+            }
+        },
+        "configs.LoggingConfig": {
+            "type": "object",
+            "properties": {
+                "compress": {
+                    "type": "boolean"
+                },
+                "filePath": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "maxAge": {
+                    "type": "integer"
+                },
+                "maxBackups": {
+                    "type": "integer"
+                },
+                "maxSize": {
+                    "type": "integer"
+                }
+            }
+        },
+        "configs.ServerConfig": {
+            "type": "object",
+            "properties": {
+                "host": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "productionDomain": {
+                    "type": "string"
+                },
+                "readTimeout": {
+                    "type": "integer"
+                },
+                "shutdownTimeout": {
+                    "type": "integer"
+                },
+                "writeTimeout": {
+                    "type": "integer"
+                }
+            }
+        },
+        "configs.SupabaseConfig": {
+            "type": "object",
+            "properties": {
+                "apiPublicKey": {
+                    "type": "string"
+                },
+                "apiSecretKey": {
+                    "type": "string"
+                },
+                "jwtApiKeySecret": {
+                    "type": "string"
+                },
+                "projectID": {
+                    "type": "string"
+                },
+                "storageBucketID": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_place_models.City": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "ID unik untuk kota, contoh: \"city_12345\"",
+                    "type": "string",
+                    "example": "city_12345"
+                },
+                "name": {
+                    "description": "Nama kota, contoh: \"Jakarta\"",
+                    "type": "string",
+                    "example": "Jakarta"
+                },
+                "province": {
+                    "description": "Nama provinsi tempat kota berada, contoh: \"DKI Jakarta\"",
+                    "type": "string",
+                    "example": "DKI Jakarta"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_place_models.Location": {
+            "type": "object",
+            "properties": {
+                "city_id": {
+                    "description": "Reference to the city ID",
+                    "type": "string",
+                    "example": "city_67890"
+                },
+                "id": {
+                    "description": "Unique identifier for the location",
+                    "type": "string",
+                    "example": "loc_12345"
+                },
+                "latitude": {
+                    "description": "Latitude in decimal degrees",
+                    "type": "number",
+                    "example": -6.175392
+                },
+                "longitude": {
+                    "description": "Longitude in decimal degrees",
+                    "type": "number",
+                    "example": 106.827153
+                },
+                "name": {
+                    "description": "Name of the location",
+                    "type": "string",
+                    "example": "Monas"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_response.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "details": {
+                    "description": "Detailed error information"
+                },
+                "error": {
+                    "description": "The primary error message",
+                    "type": "string"
+                },
+                "success": {
+                    "description": "Indicates whether the request was successful (always false for errors)",
+                    "type": "boolean"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_response.Response": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "The actual data payload (can be an object, array, or null)"
+                },
+                "message": {
+                    "description": "A human-readable message describing the result",
+                    "type": "string"
+                },
+                "metadata": {
+                    "description": "Metadata or additional information about the response",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "success": {
+                    "description": "Indicates whether the request was successful",
+                    "type": "boolean"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "description": "Insert Your JWT Token. Example: Bearer \u003ctoken\u003e",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

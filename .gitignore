@@ -1,0 +1,78 @@
+# Golang specific ignores
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.txt
+
+# Dependency directories
+vendor/
+go.sum
+
+# IDE and Editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+log/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Temporary files
+tmp/
+temp/
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Compiled Object files
+*.o
+*.a
+
+# Project-specific build outputs
+build/
+dist/
+bin/
+
+# Profiling data
+*.prof
+*.pprof
+
+# Local development configurations
+*.local.yaml
+*.local.json
+
+# Backup files
+*.bak
+*.backup
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Go workspace file
+go.work
+go.work.sum
