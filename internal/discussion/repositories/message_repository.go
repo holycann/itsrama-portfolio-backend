@@ -1,5 +1,5 @@
-// Package repositories menyediakan implementasi repository untuk manajemen data pesan (message)
-// menggunakan Supabase sebagai backend penyimpanan data.
+// Package repositories provides an implementation of repository for message data management
+// using Supabase as the data storage backend.
 package repositories
 
 import (
@@ -9,35 +9,35 @@ import (
 	"github.com/supabase-community/supabase-go"
 )
 
-// messageRepository adalah implementasi konkret dari interface MessageRepository
-// yang mengelola operasi CRUD untuk entitas message pada database Supabase.
+// messageRepository is a concrete implementation of the MessageRepository interface
+// that manages CRUD operations for message entities in the Supabase database.
 type messageRepository struct {
-	supabaseClient *supabase.Client // Supabase client untuk berinteraksi dengan database
-	table          string           // Nama tabel tempat data message disimpan
-	column         string           // Kolom-kolom yang dipilih dalam query
-	returning      string           // Tipe data yang dikembalikan setelah operasi
+	supabaseClient *supabase.Client // Supabase client for interacting with the database
+	table          string           // Name of the table where message data is stored
+	column         string           // Columns to be selected in the query
+	returning      string           // Type of data returned after an operation
 }
 
-// MessageRepositoryConfig berisi konfigurasi kustom untuk repository message
-// memungkinkan fleksibilitas dalam pengaturan parameter repository.
+// MessageRepositoryConfig contains custom configuration for the message repository
+// allowing flexibility in setting repository parameters.
 type MessageRepositoryConfig struct {
-	Table     string // Nama tabel yang digunakan
-	Column    string // Kolom-kolom yang dipilih dalam query
-	Returning string // Tipe data yang dikembalikan
+	Table     string // Name of the table to be used
+	Column    string // Columns to be selected in the query
+	Returning string // Type of data to be returned
 }
 
-// DefaultMessageConfig mengembalikan konfigurasi default untuk repository message
-// Berguna untuk memberikan pengaturan standar jika tidak ada konfigurasi kustom yang diberikan.
+// DefaultMessageConfig returns the default configuration for the message repository
+// Useful for providing standard settings if no custom configuration is provided.
 func DefaultMessageConfig() *MessageRepositoryConfig {
 	return &MessageRepositoryConfig{
-		Table:     "messages", // Tabel default untuk message
-		Column:    "*",        // Pilih semua kolom
-		Returning: "minimal",  // Kembalikan data minimal
+		Table:     "messages", // Default table for messages
+		Column:    "*",        // Select all columns
+		Returning: "minimal",  // Return minimal data
 	}
 }
 
-// NewMessageRepository membuat instance baru dari repository message
-// dengan konfigurasi dan Supabase client yang diberikan.
+// NewMessageRepository creates a new instance of the message repository
+// with the given configuration and Supabase client.
 func NewMessageRepository(supabaseClient *supabase.Client, cfg MessageRepositoryConfig) MessageRepository {
 	return &messageRepository{
 		supabaseClient: supabaseClient,
@@ -47,8 +47,8 @@ func NewMessageRepository(supabaseClient *supabase.Client, cfg MessageRepository
 	}
 }
 
-// Create menambahkan message baru ke database
-// Menerima context dan objek message, mengembalikan error jika proses gagal.
+// Create adds a new message to the database
+// Accepts context and message object, returns an error if the process fails.
 func (r *messageRepository) Create(ctx context.Context, message *models.Message) error {
 	_, err := r.supabaseClient.
 		From(r.table).
@@ -61,8 +61,8 @@ func (r *messageRepository) Create(ctx context.Context, message *models.Message)
 	return nil
 }
 
-// FindByID mencari dan mengembalikan message berdasarkan ID uniknya
-// Mengembalikan objek message atau error jika message tidak ditemukan.
+// FindByID searches and returns a message based on its unique ID
+// Returns a message object or an error if the message is not found.
 func (r *messageRepository) FindByID(ctx context.Context, id string) (*models.Message, error) {
 	var message *models.Message
 
@@ -79,8 +79,8 @@ func (r *messageRepository) FindByID(ctx context.Context, id string) (*models.Me
 	return message, nil
 }
 
-// Update memodifikasi message yang sudah ada di database
-// Menerima objek message yang sudah dimodifikasi, mengembalikan error jika proses gagal.
+// Update modifies an existing message in the database
+// Accepts a modified message object, returns an error if the process fails.
 func (r *messageRepository) Update(ctx context.Context, message *models.Message) error {
 	_, _, err := r.supabaseClient.
 		From(r.table).
@@ -94,8 +94,8 @@ func (r *messageRepository) Update(ctx context.Context, message *models.Message)
 	return nil
 }
 
-// Delete menghapus message dari database berdasarkan ID-nya
-// Mengembalikan error jika proses penghapusan gagal.
+// Delete removes a message from the database based on its ID
+// Returns an error if the deletion process fails.
 func (r *messageRepository) Delete(ctx context.Context, id string) error {
 	_, _, err := r.supabaseClient.
 		From(r.table).
@@ -109,8 +109,8 @@ func (r *messageRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// List mengambil daftar message dengan limit dan offset
-// Berguna untuk implementasi paginasi atau membatasi jumlah data yang diambil.
+// List retrieves a list of messages with limit and offset
+// Useful for implementing pagination or limiting the number of data retrieved.
 func (r *messageRepository) List(ctx context.Context, limit, offset int) ([]models.Message, error) {
 	var messages []models.Message
 
@@ -126,10 +126,10 @@ func (r *messageRepository) List(ctx context.Context, limit, offset int) ([]mode
 	return messages, nil
 }
 
-// Count menghitung total jumlah message yang tersimpan di database
-// Berguna untuk mengetahui ukuran dataset atau untuk keperluan paginasi.
+// Count calculates the total number of messages stored in the database
+// Useful for determining dataset size or for pagination purposes.
 func (r *messageRepository) Count(ctx context.Context) (int, error) {
-	// Query untuk menghitung jumlah record pada tabel message
+	// Query to count the number of records in the message table
 	_, count, err := r.supabaseClient.
 		From(r.table).
 		Select("id", "exact", false).
@@ -138,7 +138,7 @@ func (r *messageRepository) Count(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
-	// Cek apakah response berisi count
+	// Check if the response contains a count
 	if count <= 0 {
 		return 0, nil
 	}
@@ -146,10 +146,10 @@ func (r *messageRepository) Count(ctx context.Context) (int, error) {
 	return int(count), nil
 }
 
-// CountByThreadID menghitung jumlah pesan dalam suatu thread
-// Menerima ID thread dan mengembalikan jumlah pesan yang terkait dengan thread tersebut.
+// CountByThreadID counts the number of messages in a thread
+// Accepts a thread ID and returns the count of messages associated with that thread.
 func (r *messageRepository) CountByThreadID(ctx context.Context, threadID string) (int, error) {
-	// Query untuk menghitung jumlah pesan berdasarkan thread ID
+	// Query to count messages by thread ID
 	_, count, err := r.supabaseClient.
 		From(r.table).
 		Select("id", "exact", false).
@@ -159,7 +159,7 @@ func (r *messageRepository) CountByThreadID(ctx context.Context, threadID string
 		return 0, err
 	}
 
-	// Cek apakah response berisi count
+	// Check if the response contains a count
 	if count <= 0 {
 		return 0, nil
 	}
@@ -167,8 +167,8 @@ func (r *messageRepository) CountByThreadID(ctx context.Context, threadID string
 	return int(count), nil
 }
 
-// ListByThreadID mengambil daftar pesan berdasarkan ID thread dengan limit dan offset
-// Berguna untuk mendapatkan pesan-pesan dalam suatu thread dengan paginasi.
+// ListByThreadID retrieves a list of messages by thread ID with limit and offset
+// Useful for getting paginated messages within a thread.
 func (r *messageRepository) ListByThreadID(ctx context.Context, threadID string, limit, offset int) ([]models.Message, error) {
 	var messages []models.Message
 

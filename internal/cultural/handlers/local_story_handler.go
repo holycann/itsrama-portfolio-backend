@@ -11,13 +11,13 @@ import (
 	"github.com/holycann/cultour-backend/internal/response"
 )
 
-// LocalStoryHandler menangani permintaan HTTP terkait cerita lokal
+// LocalStoryHandler handles HTTP requests related to local stories
 type LocalStoryHandler struct {
 	localStoryService services.LocalStoryService
 	logger            *logger.Logger
 }
 
-// NewLocalStoryHandler membuat instance baru dari local story handler
+// NewLocalStoryHandler creates a new instance of local story handler
 func NewLocalStoryHandler(localStoryService services.LocalStoryService, logger *logger.Logger) *LocalStoryHandler {
 	return &LocalStoryHandler{
 		localStoryService: localStoryService,
@@ -26,15 +26,17 @@ func NewLocalStoryHandler(localStoryService services.LocalStoryService, logger *
 }
 
 // CreateLocalStory godoc
-// @Summary Membuat cerita lokal baru
-// @Description Menambahkan cerita lokal baru ke dalam sistem
-// @Tags local_stories
+// @Summary Create a new local story
+// @Description Add a new local cultural story to the system
+// @Tags Local Stories
 // @Accept json
 // @Produce json
-// @Param local_story body models.LocalStory true "Informasi Cerita Lokal"
-// @Success 201 {object} response.Response "Cerita lokal berhasil dibuat"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param local_story body models.LocalStory true "Local Story Information"
+// @Success 201 {object} response.Response{data=models.LocalStory} "Local story created successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid local story creation details"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /local-stories [post]
 func (h *LocalStoryHandler) CreateLocalStory(c *gin.Context) {
 	var localStory models.LocalStory
@@ -54,28 +56,28 @@ func (h *LocalStoryHandler) CreateLocalStory(c *gin.Context) {
 }
 
 // SearchLocalStories godoc
-// @Summary Mencari cerita lokal
-// @Description Mencari cerita lokal berdasarkan ID atau judul
-// @Tags local_stories
-// @Accept json
+// @Summary Search local stories
+// @Description Search local cultural stories by various criteria
+// @Tags Local Stories
 // @Produce json
-// @Param id query string false "ID Cerita Lokal"
-// @Param title query string false "Judul Cerita Lokal"
-// @Param limit query int false "Jumlah data yang dikembalikan" default(10)
-// @Param offset query int false "Offset untuk pagination" default(0)
-// @Success 200 {object} response.Response "Daftar cerita lokal yang ditemukan"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 404 {object} response.ErrorResponse "Cerita lokal tidak ditemukan"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id query string false "Local Story ID"
+// @Param title query string false "Local Story Title"
+// @Param limit query int false "Number of results to retrieve" default(10)
+// @Param offset query int false "Number of results to skip" default(0)
+// @Success 200 {object} response.Response{data=[]models.LocalStory} "Local stories found successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid search parameters"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /local-stories/search [get]
 func (h *LocalStoryHandler) SearchLocalStories(c *gin.Context) {
-	// Ambil parameter query
+	// Get query parameters
 	id := c.Query("id")
 	title := c.Query("title")
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
-	// Parsing limit dan offset
+	// Parse limit and offset
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		response.BadRequest(c, "Invalid limit parameter", err.Error())
@@ -88,7 +90,7 @@ func (h *LocalStoryHandler) SearchLocalStories(c *gin.Context) {
 		return
 	}
 
-	// Jika ID diberikan, cari berdasarkan ID
+	// If ID is provided, search by ID
 	if id != "" {
 		localStory, err := h.localStoryService.GetLocalStoryByID(c.Request.Context(), id)
 		if err != nil {
@@ -100,7 +102,7 @@ func (h *LocalStoryHandler) SearchLocalStories(c *gin.Context) {
 		return
 	}
 
-	// Jika judul diberikan, cari berdasarkan judul
+	// If title is provided, search by title
 	if title != "" {
 		localStory, err := h.localStoryService.GetLocalStoryByTitle(c.Request.Context(), title)
 		if err != nil {
@@ -112,7 +114,7 @@ func (h *LocalStoryHandler) SearchLocalStories(c *gin.Context) {
 		return
 	}
 
-	// Jika tidak ada parameter spesifik, kembalikan daftar cerita lokal
+	// If no specific parameters are provided, return a list of local stories
 	localStories, err := h.localStoryService.GetLocalStories(c.Request.Context(), limit, offset)
 	if err != nil {
 		h.logger.Error("Error retrieving local stories: %v", err)
@@ -120,7 +122,7 @@ func (h *LocalStoryHandler) SearchLocalStories(c *gin.Context) {
 		return
 	}
 
-	// Hitung total cerita lokal untuk pagination
+	// Count total local stories for pagination
 	total, err := h.localStoryService.Count(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Error counting local stories: %v", err)
@@ -128,21 +130,25 @@ func (h *LocalStoryHandler) SearchLocalStories(c *gin.Context) {
 		return
 	}
 
-	// Gunakan WithPagination untuk menambahkan metadata pagination
+	// Use WithPagination to add pagination metadata
 	response.WithPagination(c, localStories, total, offset/limit+1, limit)
 }
 
 // UpdateLocalStory godoc
-// @Summary Memperbarui cerita lokal
-// @Description Memperbarui informasi cerita lokal yang sudah ada
-// @Tags local_stories
+// @Summary Update a local story
+// @Description Update an existing local cultural story's details
+// @Tags Local Stories
 // @Accept json
 // @Produce json
-// @Param local_story body models.LocalStory true "Informasi Cerita Lokal yang Diperbarui"
-// @Success 200 {object} response.Response "Cerita lokal berhasil diperbarui"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
-// @Router /local-stories [put]
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Local Story ID"
+// @Param local_story body models.LocalStory true "Local Story Update Details"
+// @Success 200 {object} response.Response{data=models.LocalStory} "Local story updated successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid local story update details"
+// @Failure 404 {object} response.ErrorResponse "Local story not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /local-stories/{id} [put]
 func (h *LocalStoryHandler) UpdateLocalStory(c *gin.Context) {
 	var localStory models.LocalStory
 	if err := c.ShouldBindJSON(&localStory); err != nil {
@@ -161,15 +167,17 @@ func (h *LocalStoryHandler) UpdateLocalStory(c *gin.Context) {
 }
 
 // DeleteLocalStory godoc
-// @Summary Menghapus cerita lokal
-// @Description Menghapus cerita lokal berdasarkan ID
-// @Tags local_stories
-// @Accept json
+// @Summary Delete a local story
+// @Description Remove a local cultural story from the system by its unique identifier
+// @Tags Local Stories
 // @Produce json
-// @Param id path string true "ID Cerita Lokal"
-// @Success 204 {object} response.Response "Cerita lokal berhasil dihapus"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Local Story ID"
+// @Success 200 {object} response.Response "Local story deleted successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid local story ID"
+// @Failure 404 {object} response.ErrorResponse "Local story not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /local-stories/{id} [delete]
 func (h *LocalStoryHandler) DeleteLocalStory(c *gin.Context) {
 	id := c.Param("id")
@@ -188,23 +196,23 @@ func (h *LocalStoryHandler) DeleteLocalStory(c *gin.Context) {
 }
 
 // ListLocalStories godoc
-// @Summary Mendapatkan daftar cerita lokal
-// @Description Mengambil daftar cerita lokal dengan pagination
-// @Tags local_stories
-// @Accept json
+// @Summary List local stories
+// @Description Retrieve a list of local cultural stories with pagination
+// @Tags Local Stories
 // @Produce json
-// @Param limit query int false "Jumlah data yang dikembalikan" default(10)
-// @Param offset query int false "Offset untuk pagination" default(0)
-// @Success 200 {object} response.Response "Daftar cerita lokal berhasil diambil"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param limit query int false "Number of local stories to retrieve" default(10)
+// @Param offset query int false "Number of local stories to skip" default(0)
+// @Success 200 {object} response.Response{data=[]models.LocalStory} "Local stories retrieved successfully"
+// @Failure 500 {object} response.ErrorResponse "Failed to list local stories"
 // @Router /local-stories [get]
 func (h *LocalStoryHandler) ListLocalStories(c *gin.Context) {
-	// Ambil parameter query untuk pagination
+	// Get query parameters for pagination
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
-	// Parsing limit dan offset
+	// Parse limit and offset
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		response.BadRequest(c, "Invalid limit parameter", err.Error())
@@ -217,7 +225,7 @@ func (h *LocalStoryHandler) ListLocalStories(c *gin.Context) {
 		return
 	}
 
-	// Ambil daftar cerita lokal
+	// Get list of local stories
 	localStories, err := h.localStoryService.GetLocalStories(c.Request.Context(), limit, offset)
 	if err != nil {
 		h.logger.Error("Error retrieving local stories: %v", err)
@@ -225,7 +233,7 @@ func (h *LocalStoryHandler) ListLocalStories(c *gin.Context) {
 		return
 	}
 
-	// Hitung total cerita lokal untuk pagination
+	// Count total local stories for pagination
 	total, err := h.localStoryService.Count(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Error counting local stories: %v", err)
@@ -233,6 +241,6 @@ func (h *LocalStoryHandler) ListLocalStories(c *gin.Context) {
 		return
 	}
 
-	// Gunakan WithPagination untuk menambahkan metadata pagination
+	// Use WithPagination to add pagination metadata
 	response.WithPagination(c, localStories, total, offset/limit+1, limit)
 }

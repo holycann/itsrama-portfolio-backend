@@ -30,7 +30,7 @@ type CityRepositoryConfig struct {
 // Useful for providing standard settings if no custom configuration is provided.
 func DefaultCityConfig() *CityRepositoryConfig {
 	return &CityRepositoryConfig{
-		Table:     "cities",  // Default table for citys
+		Table:     "cities",  // Default table for cities
 		Column:    "*",       // Select all columns
 		Returning: "minimal", // Return minimal data
 	}
@@ -125,7 +125,7 @@ func (r *cityRepository) List(ctx context.Context, limit, offset int) ([]models.
 	return cities, nil
 }
 
-// Count calculates the total number of citys stored in the database
+// Count calculates the total number of cities stored in the database
 // Useful for determining dataset size or for pagination purposes.
 func (r *cityRepository) Count(ctx context.Context) (int, error) {
 	// Query to count the number of records in the city table

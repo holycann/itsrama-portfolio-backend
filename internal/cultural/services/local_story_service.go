@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/cultural/models"
 	"github.com/holycann/cultour-backend/internal/cultural/repositories"
+	"github.com/holycann/cultour-backend/pkg/utils"
 )
 
 type localStoryService struct {
@@ -36,9 +36,7 @@ func (s *localStoryService) CreateLocalStory(ctx context.Context, localStory *mo
 	}
 
 	// Generate UUID if not provided
-	if localStory.ID == "" {
-		localStory.ID = uuid.NewString()
-	}
+	localStory.ID = utils.GenerateUUIDIfEmpty(localStory.ID)
 
 	// Set timestamps
 	localStory.CreatedAt = time.Now()
@@ -140,7 +138,7 @@ func (s *localStoryService) DeleteLocalStory(ctx context.Context, id string) err
 	return s.localStoryRepo.Delete(ctx, id)
 }
 
-// Count menghitung jumlah total local story yang tersimpan
+// Count calculates the total number of local stories stored
 func (s *localStoryService) Count(ctx context.Context) (int, error) {
 	return s.localStoryRepo.Count(ctx)
 }

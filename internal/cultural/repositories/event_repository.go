@@ -4,8 +4,10 @@ package repositories
 
 import (
 	"context"
+	"strings"
 
 	"github.com/holycann/cultour-backend/internal/cultural/models"
+	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
 
@@ -144,4 +146,65 @@ func (r *eventRepository) Count(ctx context.Context) (int, error) {
 	}
 
 	return int(count), nil
+}
+
+// GetTrendingEvent retrieves a list of trending events based on the highest views
+func (r *eventRepository) ListTrendingEvent(ctx context.Context, limit int) ([]models.Event, error) {
+	var events []models.Event
+
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select(r.column, "", false).
+		Order("views", &postgrest.OrderOpts{Ascending: false}).
+		Limit(limit, "").
+		ExecuteTo(&events)
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
+}
+
+// Search searches for events based on a query string in the name or description
+func (r *eventRepository) Search(ctx context.Context, query string, limit, offset int) ([]models.Event, error) {
+	var events []models.Event
+
+	// Escape % and _ in query to prevent wildcard injection
+	escapedQuery := strings.ReplaceAll(strings.ReplaceAll(query, "%", "\\%"), "_", "\\_")
+	likeQuery := "%" + escapedQuery + "%"
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select(r.column, "", false).
+		Or("name.ilike."+likeQuery+",description.ilike."+likeQuery, "").
+		Range(offset, offset+limit-1, "").
+		ExecuteTo(&events)
+	if err != nil {
+		return nil, err
+	}
+	return events, nil
+}
+
+func (r *eventRepository) UpdateViews(ctx context.Context, id string) string {
+	err := r.supabaseClient.
+		Rpc("increment_or_create_event_views", "", map[string]interface{}{
+			"event_id": id,
+		})
+	return err
+}
+
+// ListRelatedEvents retrieves a list of events related to a specific event
+func (r *eventRepository) ListRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.Event, error) {
+	var events []models.Event
+
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select(r.column, "", false).
+		Neq("id", eventID). // Exclude the current event
+		Limit(limit, "").
+		ExecuteTo(&events)
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
 }

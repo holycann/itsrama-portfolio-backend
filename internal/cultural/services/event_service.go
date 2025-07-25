@@ -65,7 +65,57 @@ func (s *eventService) GetEvents(ctx context.Context, limit, offset int) ([]*mod
 	return eventPtrs, nil
 }
 
+// GetTrendingEvents retrieves a list of trending events based on the highest views
+func (s *eventService) GetTrendingEvents(ctx context.Context, limit int) ([]*models.Event, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	events, err := s.eventRepo.ListTrendingEvent(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	eventPtrs := make([]*models.Event, len(events))
+	for i := range events {
+		eventPtrs[i] = &events[i]
+	}
+	return eventPtrs, nil
+}
+
+// ListRelatedEvents retrieves a list of events related to a specific event
+func (s *eventService) ListRelatedEvents(ctx context.Context, eventID string, limit int) ([]*models.Event, error) {
+	// Validate input parameters
+	if eventID == "" {
+		return nil, fmt.Errorf("event ID cannot be empty")
+	}
+	if limit <= 0 {
+		limit = 3 // Default limit
+	}
+
+	// Retrieve related events from repository
+	events, err := s.eventRepo.ListRelatedEvents(ctx, eventID, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert []models.Event to []*models.Event
+	eventPtrs := make([]*models.Event, len(events))
+	for i := range events {
+		eventPtrs[i] = &events[i]
+	}
+
+	return eventPtrs, nil
+}
+
+// UpdateEventViews increases the view count for an event by its ID
+func (s *eventService) UpdateEventViews(ctx context.Context, id string) string {
+	if id == "" {
+		return "event ID cannot be empty"
+	}
+	return s.eventRepo.UpdateViews(ctx, id)
+}
+
 // GetEventByID retrieves a single event by its unique identifier
+// and updates its view count
 func (s *eventService) GetEventByID(ctx context.Context, id string) (*models.Event, error) {
 	// Validate ID
 	if id == "" {
@@ -73,7 +123,15 @@ func (s *eventService) GetEventByID(ctx context.Context, id string) (*models.Eve
 	}
 
 	// Retrieve event from repository
-	return s.eventRepo.FindByID(ctx, id)
+	event, err := s.eventRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update views count
+	_ = s.UpdateEventViews(ctx, id)
+
+	return event, nil
 }
 
 // GetEventByName retrieves a event by its name
@@ -129,7 +187,26 @@ func (s *eventService) DeleteEvent(ctx context.Context, id string) error {
 	return s.eventRepo.Delete(ctx, id)
 }
 
-// Count menghitung jumlah total lokasi yang tersimpan
+// Count calculates the total number of stored locations
 func (s *eventService) Count(ctx context.Context) (int, error) {
 	return s.eventRepo.Count(ctx)
+}
+
+// SearchEvents searches for events based on a query string in the name or description
+func (s *eventService) SearchEvents(ctx context.Context, query string, limit, offset int) ([]*models.Event, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	events, err := s.eventRepo.Search(ctx, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	eventPtrs := make([]*models.Event, len(events))
+	for i := range events {
+		eventPtrs[i] = &events[i]
+	}
+	return eventPtrs, nil
 }

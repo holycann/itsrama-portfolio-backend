@@ -25,17 +25,17 @@ func NewUserHandler(userService services.UserService) *UserHandler {
 
 // CreateUser godoc
 // @Summary Create a new user
-// @Description Register a new user in the system with provided details
+// @Description Register a new user in the system
 // @Tags Users
 // @Accept json
 // @Produce json
-// @Param Authorization header string false "Bearer token"
-// @Param user body models.UserCreate true "User creation details"
-// @Success 201 {object} models.User "User created successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid input"
-// @Failure 409 {object} response.ErrorResponse "User already exists"
-// @Router /users [post]
 // @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param user body models.UserCreate true "User Registration Details"
+// @Success 201 {object} response.Response{data=models.User} "User created successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid user creation details"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /users [post]
 func (h *UserHandler) CreateUser(c *gin.Context) {
 	// Create a user model to bind request body
 	var userCreate models.UserCreate
@@ -75,17 +75,16 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 // ListUsers godoc
 // @Summary List users
-// @Description Retrieve a paginated list of users
+// @Description Retrieve a list of users with pagination
 // @Tags Users
-// @Accept json
 // @Produce json
-// @Param Authorization header string false "Bearer token"
-// @Param limit query int false "Number of users to retrieve" default(10)
-// @Param offset query int false "Starting offset for pagination" default(0)
-// @Success 200 {object} models.User "Successfully retrieved users"
-// @Failure 500 {object} response.ErrorResponse "Failed to retrieve users"
-// @Router /users [get]
 // @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param limit query int false "Number of users to retrieve" default(10)
+// @Param offset query int false "Number of users to skip" default(0)
+// @Success 200 {object} response.Response{data=[]models.User} "Users retrieved successfully"
+// @Failure 500 {object} response.ErrorResponse "Failed to list users"
+// @Router /users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	// Parse pagination parameters with defaults
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
@@ -111,19 +110,20 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 }
 
 // SearchUser godoc
-// @Summary Search user by ID or email
-// @Description Retrieve a specific user's details by their unique identifier or email address
+// @Summary Search users
+// @Description Search users by various criteria
 // @Tags Users
-// @Accept json
 // @Produce json
-// @Param Authorization header string false "Bearer token"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param id query string false "User ID"
 // @Param email query string false "User Email"
-// @Success 200 {object} models.User "User details retrieved successfully"
+// @Param limit query int false "Number of results to retrieve" default(10)
+// @Param offset query int false "Number of results to skip" default(0)
+// @Success 200 {object} response.Response{data=[]models.User} "Users found successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid search parameters"
-// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /users/search [get]
-// @Security ApiKeyAuth
 func (h *UserHandler) SearchUser(c *gin.Context) {
 	// Get search parameters
 	userID := c.Query("id")
@@ -156,20 +156,20 @@ func (h *UserHandler) SearchUser(c *gin.Context) {
 }
 
 // UpdateUser godoc
-// @Summary Update user
+// @Summary Update a user
 // @Description Update an existing user's details
 // @Tags Users
 // @Accept json
 // @Produce json
-// @Param Authorization header string false "Bearer token"
-// @Param id path string true "User ID"
-// @Param user body models.UserUpdate true "User update details"
-// @Success 200 {object} map[string]string "User updated successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid input"
-// @Failure 404 {object} response.ErrorResponse "User not found"
-// @Failure 409 {object} response.ErrorResponse "Failed to update user"
-// @Router /users/{id} [put]
 // @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "User ID"
+// @Param user body models.UserUpdate true "User Update Details"
+// @Success 200 {object} response.Response{data=models.User} "User updated successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid user update details"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	// Get user ID from path parameter
 	userID := c.Param("id")
@@ -203,19 +203,18 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 }
 
 // DeleteUser godoc
-// @Summary Delete user
-// @Description Soft delete a user by their unique identifier
+// @Summary Delete a user
+// @Description Remove a user from the system by their unique identifier
 // @Tags Users
-// @Accept json
 // @Produce json
-// @Param Authorization header string false "Bearer token"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param id path string true "User ID"
-// @Success 200 {object} map[string]string "User deleted successfully"
+// @Success 200 {object} response.Response "User deleted successfully"
 // @Failure 400 {object} response.ErrorResponse "Invalid user ID"
 // @Failure 404 {object} response.ErrorResponse "User not found"
-// @Failure 409 {object} response.ErrorResponse "Failed to delete user"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /users/{id} [delete]
-// @Security ApiKeyAuth
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	// Get user ID from path parameter
 	userID := c.Param("id")
@@ -234,4 +233,30 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	response.SuccessOK(c, gin.H{
 		"id": userID,
 	}, "User deleted successfully")
+}
+
+// GetUserByID godoc
+// @Summary Get user by ID
+// @Description Retrieve a user's details by their unique identifier
+// @Tags Users
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "User ID"
+// @Success 200 {object} response.Response{data=models.User} "User retrieved successfully"
+// @Failure 404 {object} response.ErrorResponse "User not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /users/{id} [get]
+func (h *UserHandler) GetUserByID(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(400, gin.H{"error": "User ID is required"})
+		return
+	}
+	user, err := h.userService.GetUserByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(404, gin.H{"error": "User not found"})
+		return
+	}
+	c.JSON(200, user)
 }

@@ -11,13 +11,13 @@ import (
 	"github.com/holycann/cultour-backend/internal/response"
 )
 
-// LocationHandler menangani permintaan HTTP terkait lokasi
+// LocationHandler handles HTTP requests related to locations
 type LocationHandler struct {
 	locationService services.LocationService
 	logger          *logger.Logger
 }
 
-// NewLocationHandler membuat instance baru dari location handler
+// NewLocationHandler creates a new instance of location handler
 func NewLocationHandler(locationService services.LocationService, logger *logger.Logger) *LocationHandler {
 	return &LocationHandler{
 		locationService: locationService,
@@ -26,15 +26,17 @@ func NewLocationHandler(locationService services.LocationService, logger *logger
 }
 
 // CreateLocation godoc
-// @Summary Membuat lokasi baru
-// @Description Menambahkan lokasi baru ke dalam sistem
-// @Tags locations
+// @Summary Create a new location
+// @Description Add a new location to the system
+// @Tags Locations
 // @Accept json
 // @Produce json
-// @Param location body models.Location true "Informasi Lokasi"
-// @Success 201 {object} response.Response "Lokasi berhasil dibuat"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param location body models.Location true "Location Information"
+// @Success 201 {object} response.Response{data=models.Location} "Location created successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid location creation details"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /locations [post]
 func (h *LocationHandler) CreateLocation(c *gin.Context) {
 	var location models.Location
@@ -54,28 +56,28 @@ func (h *LocationHandler) CreateLocation(c *gin.Context) {
 }
 
 // SearchLocations godoc
-// @Summary Mencari lokasi
-// @Description Mencari lokasi berdasarkan ID atau nama
-// @Tags locations
-// @Accept json
+// @Summary Search locations
+// @Description Search locations by various criteria
+// @Tags Locations
 // @Produce json
-// @Param id query string false "ID Lokasi"
-// @Param name query string false "Nama Lokasi"
-// @Param limit query int false "Jumlah data yang dikembalikan" default(10)
-// @Param offset query int false "Offset untuk pagination" default(0)
-// @Success 200 {object} response.Response "Daftar lokasi yang ditemukan"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 404 {object} response.ErrorResponse "Lokasi tidak ditemukan"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id query string false "Location ID"
+// @Param name query string false "Location Name"
+// @Param limit query int false "Number of results to retrieve" default(10)
+// @Param offset query int false "Number of results to skip" default(0)
+// @Success 200 {object} response.Response{data=[]models.Location} "Locations found successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid search parameters"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /locations/search [get]
 func (h *LocationHandler) SearchLocations(c *gin.Context) {
-	// Ambil parameter query
+	// Get query parameters
 	id := c.Query("id")
 	name := c.Query("name")
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
-	// Parsing limit dan offset
+	// Parse limit and offset
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		response.BadRequest(c, "Invalid limit parameter", err.Error())
@@ -88,7 +90,7 @@ func (h *LocationHandler) SearchLocations(c *gin.Context) {
 		return
 	}
 
-	// Jika ID diberikan, cari berdasarkan ID
+	// If ID is provided, search by ID
 	if id != "" {
 		location, err := h.locationService.GetLocationByID(c.Request.Context(), id)
 		if err != nil {
@@ -100,7 +102,7 @@ func (h *LocationHandler) SearchLocations(c *gin.Context) {
 		return
 	}
 
-	// Jika nama diberikan, cari berdasarkan nama
+	// If name is provided, search by name
 	if name != "" {
 		location, err := h.locationService.GetLocationByName(c.Request.Context(), name)
 		if err != nil {
@@ -112,7 +114,7 @@ func (h *LocationHandler) SearchLocations(c *gin.Context) {
 		return
 	}
 
-	// Jika tidak ada parameter spesifik, kembalikan daftar lokasi
+	// If no specific parameters are provided, return a list of locations
 	locations, err := h.locationService.GetLocations(c.Request.Context(), limit, offset)
 	if err != nil {
 		h.logger.Error("Error retrieving locations: %v", err)
@@ -120,7 +122,7 @@ func (h *LocationHandler) SearchLocations(c *gin.Context) {
 		return
 	}
 
-	// Hitung total lokasi untuk pagination
+	// Count total locations for pagination
 	total, err := h.locationService.Count(c.Request.Context())
 	if err != nil {
 		h.logger.Error("Error counting locations: %v", err)
@@ -128,21 +130,24 @@ func (h *LocationHandler) SearchLocations(c *gin.Context) {
 		return
 	}
 
-	// Gunakan WithPagination untuk menambahkan metadata pagination
+	// Use WithPagination to add pagination metadata
 	response.WithPagination(c, locations, total, offset/limit+1, limit)
 }
 
 // UpdateLocation godoc
-// @Summary Memperbarui lokasi
-// @Description Memperbarui informasi lokasi yang sudah ada berdasarkan ID
-// @Tags locations
+// @Summary Update a location
+// @Description Update an existing location's details
+// @Tags Locations
 // @Accept json
 // @Produce json
-// @Param location body models.Location true "Informasi Lokasi yang Diperbarui"
-// @Success 200 {object} response.Response "Lokasi berhasil diperbarui"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 404 {object} response.ErrorResponse "Lokasi tidak ditemukan"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Location ID"
+// @Param location body models.Location true "Location Update Details"
+// @Success 200 {object} response.Response{data=models.Location} "Location updated successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid location update details"
+// @Failure 404 {object} response.ErrorResponse "Location not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /locations/{id} [put]
 func (h *LocationHandler) UpdateLocation(c *gin.Context) {
 	var location models.Location
@@ -162,15 +167,17 @@ func (h *LocationHandler) UpdateLocation(c *gin.Context) {
 }
 
 // DeleteLocation godoc
-// @Summary Menghapus lokasi
-// @Description Menghapus lokasi berdasarkan ID
-// @Tags locations
-// @Accept json
+// @Summary Delete a location
+// @Description Remove a location from the system by its unique identifier
+// @Tags Locations
 // @Produce json
-// @Param id path string true "ID Lokasi"
-// @Success 204 {object} response.Response "Lokasi berhasil dihapus"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Location ID"
+// @Success 200 {object} response.Response "Location deleted successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid location ID"
+// @Failure 404 {object} response.ErrorResponse "Location not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /locations/{id} [delete]
 func (h *LocationHandler) DeleteLocation(c *gin.Context) {
 	id := c.Param("id")
@@ -189,23 +196,23 @@ func (h *LocationHandler) DeleteLocation(c *gin.Context) {
 }
 
 // ListLocation godoc
-// @Summary Mendapatkan daftar lokasi
-// @Description Mengambil daftar lokasi dengan pagination
-// @Tags locations
-// @Accept json
+// @Summary List locations
+// @Description Retrieve a list of locations with pagination
+// @Tags Locations
 // @Produce json
-// @Param limit query int false "Jumlah data yang dikembalikan" default(10)
-// @Param offset query int false "Offset untuk pagination" default(0)
-// @Success 200 {object} response.Response "Daftar kota berhasil diambil"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param limit query int false "Number of locations to retrieve" default(10)
+// @Param offset query int false "Number of locations to skip" default(0)
+// @Success 200 {object} response.Response{data=[]models.Location} "Locations retrieved successfully"
+// @Failure 500 {object} response.ErrorResponse "Failed to list locations"
 // @Router /locations [get]
 func (h *LocationHandler) ListLocation(c *gin.Context) {
-	// Ambil parameter query untuk pagination
+	// Get query parameters for pagination
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
-	// Parsing limit dan offset
+	// Parse limit and offset
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		response.BadRequest(c, "Invalid limit parameter", err.Error())
@@ -218,22 +225,22 @@ func (h *LocationHandler) ListLocation(c *gin.Context) {
 		return
 	}
 
-	// Ambil daftar kota
-	cities, err := h.locationService.GetLocations(c.Request.Context(), limit, offset)
+	// Get list of locations
+	locations, err := h.locationService.GetLocations(c.Request.Context(), limit, offset)
 	if err != nil {
-		h.logger.Error("Error retrieving cities: %v", err)
-		response.InternalServerError(c, "Failed to retrieve cities", err.Error())
+		h.logger.Error("Error retrieving locations: %v", err)
+		response.InternalServerError(c, "Failed to retrieve locations", err.Error())
 		return
 	}
 
-	// Hitung total kota untuk pagination
+	// Count total locations for pagination
 	total, err := h.locationService.Count(c.Request.Context())
 	if err != nil {
-		h.logger.Error("Error counting cities: %v", err)
-		response.InternalServerError(c, "Failed to count cities", err.Error())
+		h.logger.Error("Error counting locations: %v", err)
+		response.InternalServerError(c, "Failed to count locations", err.Error())
 		return
 	}
 
-	// Gunakan WithPagination untuk menambahkan metadata pagination
-	response.WithPagination(c, cities, total, offset/limit+1, limit)
+	// Use WithPagination to add pagination metadata
+	response.WithPagination(c, locations, total, offset/limit+1, limit)
 }

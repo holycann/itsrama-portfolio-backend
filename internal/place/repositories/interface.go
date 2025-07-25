@@ -12,3 +12,7 @@ type CityRepository interface {
 type LocationRepository interface {
 	repository.BaseRepository[models.Location]
 }
+
+type ProvinceRepository interface {
+	repository.BaseRepository[models.Province]
+}

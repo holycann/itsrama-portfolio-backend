@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/place/models"
 	"github.com/holycann/cultour-backend/internal/place/repositories"
+	"github.com/holycann/cultour-backend/pkg/utils"
 )
 
 type locationService struct {
@@ -34,7 +34,7 @@ func (s *locationService) CreateLocation(ctx context.Context, location *models.L
 		return fmt.Errorf("location name is required")
 	}
 
-	location.ID = uuid.NewString()
+	location.ID = utils.GenerateUUID()
 
 	// Call repository to create location
 	return s.locationRepo.Create(ctx, location)
@@ -129,7 +129,7 @@ func (s *locationService) DeleteLocation(ctx context.Context, id string) error {
 	return s.locationRepo.Delete(ctx, id)
 }
 
-// Count menghitung jumlah total lokasi yang tersimpan
+// Count calculates the total number of stored locations
 func (s *locationService) Count(ctx context.Context) (int, error) {
 	return s.locationRepo.Count(ctx)
 }

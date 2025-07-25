@@ -36,7 +36,7 @@ import (
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
-// @description Insert Your JWT Token. Example: Bearer <token>
+// @description Insert Your JWT Token. Do NOT include "Bearer " prefix. Example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 // @bearerFormat JWT
 
 func main() {
@@ -76,6 +76,7 @@ func main() {
 			TopK:        cfg.GeminiAI.TopK,
 			TopP:        cfg.GeminiAI.TopP,
 		},
+		SupabaseClient: *supabaseClient,
 	})
 	if err != nil {
 		appLogger.Error("Failed to initialize Gemini AI client", slog.Any("error", err))
@@ -128,7 +129,7 @@ func initializeLogger(cfg *configs.Config) *logger.Logger {
 	return appLogger
 }
 
-// setMode configures
+// setMode configures Gin mode and Swagger info
 func setMode(cfg *configs.Config) {
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -180,14 +181,17 @@ func registerApplicationRoutes(
 	appLogger *logger.Logger,
 ) {
 	routes.SetupRouter(router, *geminiAiClient)
-	// router.Use(routeMiddleware.VerifyJWT())
-	routes.RegisterUserRoutes(router, supabaseAuth)
-	routes.RegisterCityRoutes(router, appLogger, supabaseClient.GetClient())
-	routes.RegisterLocationRoutes(router, appLogger, supabaseClient.GetClient())
-	routes.RegisterEventRoutes(router, appLogger, supabaseClient.GetClient())
-	routes.RegisterLocalRepositoryRoutes(router, appLogger, supabaseClient.GetClient())
-	routes.RegisterMessageRoutes(router, appLogger, supabaseClient.GetClient())
-	routes.RegisterThreadRoutes(router, appLogger, supabaseClient.GetClient())
+	routes.RegisterEventRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
+	routes.RegisterLocationRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
+	routes.RegisterUserRoutes(router, supabaseAuth, routeMiddleware)
+	routes.RegisterUserProfileRoutes(router, supabaseClient, "user_profiles", routeMiddleware)
+	routes.RegisterUserBadgeRoutes(router, supabaseClient, routeMiddleware, appLogger)
+	routes.RegisterBadgeRoutes(router, supabaseClient.GetClient(), routeMiddleware, appLogger)
+	routes.RegisterCityRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
+	routes.RegisterProvinceRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
+	routes.RegisterLocalStoryRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
+	routes.RegisterMessageRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
+	routes.RegisterThreadRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 }
 
 // startServer runs the HTTP server with graceful shutdown

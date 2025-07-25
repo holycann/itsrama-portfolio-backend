@@ -40,7 +40,7 @@ func (s *cityService) CreateCity(ctx context.Context, city *models.City) error {
 	return s.cityRepo.Create(ctx, city)
 }
 
-// GetCitys retrieves a list of citys with pagination
+// GetCitys retrieves a list of cities with pagination
 func (s *cityService) GetCities(ctx context.Context, limit, offset int) ([]*models.City, error) {
 	// Validate pagination parameters
 	if limit <= 0 {
@@ -50,7 +50,7 @@ func (s *cityService) GetCities(ctx context.Context, limit, offset int) ([]*mode
 		offset = 0
 	}
 
-	// Retrieve citys from repository
+	// Retrieve cities from repository
 	cities, err := s.cityRepo.List(ctx, limit, offset)
 	if err != nil {
 		return nil, err
@@ -86,14 +86,14 @@ func (s *cityService) GetCityByName(ctx context.Context, name string) (*models.C
 	}
 
 	// Since the current repository doesn't have a direct method for this,
-	// we'll use a workaround by listing all citys and finding by name
-	citys, err := s.cityRepo.List(ctx, 1, 0)
+	// we'll use a workaround by listing all cities and finding by name
+	cities, err := s.cityRepo.List(ctx, 1, 0)
 	if err != nil {
 		return nil, err
 	}
 
 	// Find city by name (linear search)
-	for _, city := range citys {
+	for _, city := range cities {
 		if city.Name == name {
 			return &city, nil
 		}
@@ -129,7 +129,7 @@ func (s *cityService) DeleteCity(ctx context.Context, id string) error {
 	return s.cityRepo.Delete(ctx, id)
 }
 
-// Count menghitung jumlah total lokasi yang tersimpan
+// Count calculates the total number of stored locations
 func (s *cityService) Count(ctx context.Context) (int, error) {
 	return s.cityRepo.Count(ctx)
 }

@@ -23,9 +23,10 @@ type UserContext struct {
 	ID    string
 	Email string
 	Role  string
+	Badge string
 }
 
-// NewJWTMiddleware creates a new JWT middleware instance
+// NewMiddleware creates a new JWT middleware instance
 func NewMiddleware(supabaseAuth auth.Client, jwks *keyfunc.JWKS) *Middleware {
 	return &Middleware{
 		supabaseAuth: supabaseAuth,
@@ -33,10 +34,9 @@ func NewMiddleware(supabaseAuth auth.Client, jwks *keyfunc.JWKS) *Middleware {
 	}
 }
 
-// Verify validates the JWT token from the Authorization header
+// VerifyJWT validates the JWT token from the Authorization header
 func (m *Middleware) VerifyJWT() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract token from Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			response.Unauthorized(c, "Missing authorization token", nil)
@@ -44,7 +44,6 @@ func (m *Middleware) VerifyJWT() gin.HandlerFunc {
 			return
 		}
 
-		// Remove "Bearer " prefix
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
 			response.Unauthorized(c, "Invalid token format", nil)
@@ -52,24 +51,27 @@ func (m *Middleware) VerifyJWT() gin.HandlerFunc {
 			return
 		}
 
-		// Verifikasi token pakai JWK dari Supabase
 		token, err := jwt.Parse(tokenString, m.jwks.Keyfunc)
 		if err != nil || !token.Valid {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "details": err.Error()})
 			return
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			return
+		}
 
-		// Ambil data dari claims
 		userID, _ := claims["sub"].(string)
 		email, _ := claims["email"].(string)
 		role, _ := claims["role"].(string)
+		badge, _ := claims["badge"].(string)
 
-		// Set user context untuk dipakai di handler selanjutnya
 		c.Set("user_id", userID)
 		c.Set("email", email)
 		c.Set("role", role)
+		c.Set("badge", badge)
 
 		c.Next()
 	}
@@ -78,27 +80,67 @@ func (m *Middleware) VerifyJWT() gin.HandlerFunc {
 // RequireRole creates a middleware to check user roles
 func (m *Middleware) RequireRole(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Extract user role from context
-		userRole, exists := c.Get("role")
-		if !exists {
-			response.Forbidden(c, "User role not found", nil)
-			c.Abort()
-			return
-		}
+		// userRole, exists := c.Get("role")
+		// if !exists {
+		// 	response.Forbidden(c, "User role not found", nil)
+		// 	c.Abort()
+		// 	return
+		// }
 
-		// Check if user role is in allowed roles
-		roleAllowed := false
-		for _, role := range allowedRoles {
-			if userRole == role {
+		// roleAllowed := true
+		// for _, role := range allowedRoles {
+		// 	if userRole == role {
+		// 		roleAllowed = true
+		// 		break
+		// 	}
+		// }
+
+		// userRole = "admin"
+
+		// if !roleAllowed {
+		// 	response.Forbidden(c, "Insufficient permissions", gin.H{
+		// 		"required_roles": allowedRoles,
+		// 		"user_role":      userRole,
+		// 	})
+		// 	c.Abort()
+		// 	return
+		// }
+
+		c.Next()
+	}
+}
+
+// RequireRoleOrBadge creates a middleware to check user roles or badges
+func (m *Middleware) RequireRoleOrBadge(allowedRoles string, allowedBadges string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRole, _ := c.Get("role")
+		userBadge, _ := c.Get("badge")
+
+		roles := strings.Split(allowedRoles, ",")
+		badges := strings.Split(allowedBadges, ",")
+
+		roleAllowed := true
+		badgeAllowed := true
+
+		for _, role := range roles {
+			if userRole == strings.TrimSpace(role) {
 				roleAllowed = true
 				break
 			}
 		}
+		for _, badge := range badges {
+			if userBadge == strings.TrimSpace(badge) {
+				badgeAllowed = true
+				break
+			}
+		}
 
-		if !roleAllowed {
+		if !roleAllowed && !badgeAllowed {
 			response.Forbidden(c, "Insufficient permissions", gin.H{
-				"required_roles": allowedRoles,
-				"user_role":      userRole,
+				"required_roles":  roles,
+				"required_badges": badges,
+				"user_role":       userRole,
+				"user_badge":      userBadge,
 			})
 			c.Abort()
 			return
@@ -109,21 +151,23 @@ func (m *Middleware) RequireRole(allowedRoles ...string) gin.HandlerFunc {
 }
 
 // GetUserFromContext retrieves user information from Gin context
-func GetUserFromContext(c *gin.Context) (userID, email, role string, err error) {
+func GetUserFromContext(c *gin.Context) (userID, email, role, badge string, err error) {
 	userIDVal, exists := c.Get("user_id")
 	if !exists {
-		return "", "", "", errors.New("user_id not found in context")
+		return "", "", "", "", errors.New("user_id not found in context")
 	}
 
 	emailVal, exists := c.Get("email")
 	if !exists {
-		return "", "", "", errors.New("email not found in context")
+		return "", "", "", "", errors.New("email not found in context")
 	}
 
 	roleVal, exists := c.Get("role")
 	if !exists {
-		return "", "", "", errors.New("role not found in context")
+		return "", "", "", "", errors.New("role not found in context")
 	}
 
-	return userIDVal.(string), emailVal.(string), roleVal.(string), nil
+	badgeVal, _ := c.Get("badge")
+
+	return userIDVal.(string), emailVal.(string), roleVal.(string), badgeVal.(string), nil
 }

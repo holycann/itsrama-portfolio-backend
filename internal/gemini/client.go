@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/holycann/cultour-backend/internal/supabase"
 	"google.golang.org/genai"
 )
 
@@ -19,17 +20,19 @@ type Config struct {
 
 	Tuning *genai.GenerateContentConfig
 
-	Logger *slog.Logger
+	Logger         *slog.Logger
+	SupabaseClient supabase.SupabaseClient
 }
 
 // geminiAiClient implements the GeminiAIClient interface
 type AIClient struct {
-	client *genai.Client
-	model  string
-	tuning *genai.GenerateContentConfig
-	logger *slog.Logger
+	client         *genai.Client
+	messageRepo    MessageRepo
+	model          string
+	tuning         *genai.GenerateContentConfig
+	logger         *slog.Logger
+	supabaseClient *supabase.SupabaseClient
 }
-
 
 // NewGeminiAiClient creates a new Gemini AI client
 func NewGeminiAIClient(cfg *Config) (*AIClient, error) {
@@ -47,9 +50,10 @@ func NewGeminiAIClient(cfg *Config) (*AIClient, error) {
 	}
 
 	return &AIClient{
-		client: client,
-		model:  cfg.AIModel,
-		tuning: cfg.Tuning,
-		logger: cfg.Logger,
+		client:         client,
+		model:          cfg.AIModel,
+		tuning:         cfg.Tuning,
+		logger:         cfg.Logger,
+		supabaseClient: &cfg.SupabaseClient,
 	}, nil
 }

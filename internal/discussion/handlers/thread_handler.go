@@ -11,13 +11,13 @@ import (
 	"github.com/holycann/cultour-backend/internal/response"
 )
 
-// ThreadHandler menangani permintaan HTTP terkait thread
+// ThreadHandler handles HTTP requests related to threads
 type ThreadHandler struct {
 	threadService services.ThreadService
 	logger        *logger.Logger
 }
 
-// NewThreadHandler membuat instance baru dari thread handler
+// NewThreadHandler creates a new instance of thread handler
 func NewThreadHandler(threadService services.ThreadService, logger *logger.Logger) *ThreadHandler {
 	return &ThreadHandler{
 		threadService: threadService,
@@ -26,15 +26,17 @@ func NewThreadHandler(threadService services.ThreadService, logger *logger.Logge
 }
 
 // CreateThread godoc
-// @Summary Membuat thread baru
-// @Description Menambahkan thread baru ke dalam sistem
-// @Tags threads
+// @Summary Create a new thread
+// @Description Add a new discussion thread to the system
+// @Tags Threads
 // @Accept json
 // @Produce json
-// @Param thread body models.Thread true "Informasi Thread"
-// @Success 201 {object} response.Response "Thread berhasil dibuat"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param thread body models.Thread true "Thread Information"
+// @Success 201 {object} response.Response{data=models.Thread} "Thread created successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid thread creation details"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /threads [post]
 func (h *ThreadHandler) CreateThread(c *gin.Context) {
 	var thread models.Thread
@@ -54,28 +56,28 @@ func (h *ThreadHandler) CreateThread(c *gin.Context) {
 }
 
 // SearchThreads godoc
-// @Summary Mencari thread
-// @Description Mencari thread berdasarkan ID atau judul
-// @Tags threads
-// @Accept json
+// @Summary Search threads
+// @Description Search discussion threads by various criteria
+// @Tags Threads
 // @Produce json
-// @Param id query string false "ID Thread"
-// @Param title query string false "Judul Thread"
-// @Param limit query int false "Jumlah data yang dikembalikan" default(10)
-// @Param offset query int false "Offset untuk pagination" default(0)
-// @Success 200 {object} response.Response "Daftar thread yang ditemukan"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 404 {object} response.ErrorResponse "Thread tidak ditemukan"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id query string false "Thread ID"
+// @Param title query string false "Thread Title"
+// @Param limit query int false "Number of results to retrieve" default(10)
+// @Param offset query int false "Number of results to skip" default(0)
+// @Success 200 {object} response.Response{data=[]models.Thread} "Threads found successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid search parameters"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /threads/search [get]
 func (h *ThreadHandler) SearchThread(c *gin.Context) {
-	// Ambil parameter query
+	// Get query parameters
 	id := c.Query("id")
 	// title := c.Query("title")
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
-	// Parsing limit dan offset
+	// Parse limit and offset
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		response.BadRequest(c, "Invalid limit parameter", err.Error())
@@ -88,7 +90,7 @@ func (h *ThreadHandler) SearchThread(c *gin.Context) {
 		return
 	}
 
-	// Jika ID diberikan, cari berdasarkan ID
+	// If ID is provided, search by ID
 	if id != "" {
 		thread, err := h.threadService.GetThreadByID(c.Request.Context(), id)
 		if err != nil {
@@ -100,7 +102,7 @@ func (h *ThreadHandler) SearchThread(c *gin.Context) {
 		return
 	}
 
-	// Jika tidak ada parameter spesifik, kembalikan daftar thread
+	// If no specific parameters are provided, return a list of threads
 	threads, err := h.threadService.GetThreads(c.Request.Context(), limit, offset)
 	if err != nil {
 		h.logger.Error("Error retrieving threads: %v", err)
@@ -108,24 +110,27 @@ func (h *ThreadHandler) SearchThread(c *gin.Context) {
 		return
 	}
 
-	// Hitung total thread untuk pagination
+	// Count total threads for pagination
 	total := len(threads)
 
-	// Gunakan WithPagination untuk menambahkan metadata pagination
+	// Use WithPagination to add pagination metadata
 	response.WithPagination(c, threads, total, offset/limit+1, limit)
 }
 
 // UpdateThread godoc
-// @Summary Memperbarui thread
-// @Description Memperbarui informasi thread yang sudah ada berdasarkan ID
-// @Tags threads
+// @Summary Update a thread
+// @Description Update an existing discussion thread's details
+// @Tags Threads
 // @Accept json
 // @Produce json
-// @Param thread body models.Thread true "Informasi Thread yang Diperbarui"
-// @Success 200 {object} response.Response "Thread berhasil diperbarui"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 404 {object} response.ErrorResponse "Thread tidak ditemukan"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Thread ID"
+// @Param thread body models.Thread true "Thread Update Details"
+// @Success 200 {object} response.Response{data=models.Thread} "Thread updated successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid thread update details"
+// @Failure 404 {object} response.ErrorResponse "Thread not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /threads/{id} [put]
 func (h *ThreadHandler) UpdateThread(c *gin.Context) {
 	var thread models.Thread
@@ -145,23 +150,23 @@ func (h *ThreadHandler) UpdateThread(c *gin.Context) {
 }
 
 // ListThreads godoc
-// @Summary Mendapatkan daftar thread
-// @Description Mengambil daftar thread dengan pagination
-// @Tags threads
-// @Accept json
+// @Summary List threads
+// @Description Retrieve a list of discussion threads with pagination
+// @Tags Threads
 // @Produce json
-// @Param limit query int false "Jumlah data yang dikembalikan" default(10)
-// @Param offset query int false "Offset untuk pagination" default(0)
-// @Success 200 {object} response.Response "Daftar thread berhasil diambil"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param limit query int false "Number of threads to retrieve" default(10)
+// @Param offset query int false "Number of threads to skip" default(0)
+// @Success 200 {object} response.Response{data=[]models.Thread} "Threads retrieved successfully"
+// @Failure 500 {object} response.ErrorResponse "Failed to list threads"
 // @Router /threads [get]
 func (h *ThreadHandler) ListThreads(c *gin.Context) {
-	// Ambil parameter query untuk pagination
+	// Get query parameters for pagination
 	limitStr := c.DefaultQuery("limit", "10")
 	offsetStr := c.DefaultQuery("offset", "0")
 
-	// Parsing limit dan offset
+	// Parse limit and offset
 	limit, err := strconv.Atoi(limitStr)
 	if err != nil {
 		response.BadRequest(c, "Invalid limit parameter", err.Error())
@@ -174,7 +179,7 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 		return
 	}
 
-	// Ambil daftar thread
+	// Get list of threads
 	threads, err := h.threadService.GetThreads(c.Request.Context(), limit, offset)
 	if err != nil {
 		h.logger.Error("Error retrieving threads: %v", err)
@@ -182,23 +187,25 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 		return
 	}
 
-	// Hitung total thread untuk pagination
+	// Count total threads for pagination
 	total := len(threads)
 
-	// Gunakan WithPagination untuk menambahkan metadata pagination
+	// Use WithPagination to add pagination metadata
 	response.WithPagination(c, threads, total, offset/limit+1, limit)
 }
 
 // DeleteThread godoc
-// @Summary Menghapus thread
-// @Description Menghapus thread berdasarkan ID
-// @Tags threads
-// @Accept json
+// @Summary Delete a thread
+// @Description Remove a discussion thread from the system by its unique identifier
+// @Tags Threads
 // @Produce json
-// @Param id path string true "ID Thread"
-// @Success 204 {object} response.Response "Thread berhasil dihapus"
-// @Failure 400 {object} response.ErrorResponse "Kesalahan validasi input"
-// @Failure 500 {object} response.ErrorResponse "Kesalahan server internal"
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Thread ID"
+// @Success 200 {object} response.Response "Thread deleted successfully"
+// @Failure 400 {object} response.ErrorResponse "Invalid thread ID"
+// @Failure 404 {object} response.ErrorResponse "Thread not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
 // @Router /threads/{id} [delete]
 func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 	id := c.Param("id")
@@ -214,4 +221,31 @@ func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusNoContent, nil, "Thread deleted successfully")
+}
+
+// GetThreadByID godoc
+// @Summary Get thread by ID
+// @Description Retrieve a discussion thread's details by its unique identifier
+// @Tags Threads
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Thread ID"
+// @Success 200 {object} response.Response{data=models.Thread} "Thread retrieved successfully"
+// @Failure 404 {object} response.ErrorResponse "Thread not found"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Router /threads/{id} [get]
+func (h *ThreadHandler) GetThreadByID(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		response.BadRequest(c, "Thread ID is required", nil)
+		return
+	}
+	thread, err := h.threadService.GetThreadByID(c.Request.Context(), id)
+	if err != nil {
+		h.logger.Error("Error finding thread by ID: %v", err)
+		response.NotFound(c, "Thread not found", err.Error())
+		return
+	}
+	response.SuccessOK(c, thread, "Thread detail retrieved successfully")
 }

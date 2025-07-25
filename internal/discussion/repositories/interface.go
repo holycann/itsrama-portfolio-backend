@@ -7,14 +7,14 @@ import (
 	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
-// ThreadRepository mendefinisikan antarmuka untuk operasi CRUD pada entitas Thread
+// ThreadRepository defines the interface for CRUD operations on Thread entities
 type ThreadRepository interface {
 	repository.BaseRepository[models.Thread]
 
 	FindByTitle(ctx context.Context, id string) (*models.Thread, error)
 }
 
-// MessageRepository mendefinisikan antarmuka untuk operasi CRUD pada entitas Message
+// MessageRepository defines the interface for CRUD operations on Message entities
 type MessageRepository interface {
 	repository.BaseRepository[models.Message]
 

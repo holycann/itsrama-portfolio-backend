@@ -73,35 +73,77 @@ definitions:
       storageBucketID:
         type: string
     type: object
-  github_com_holycann_cultour-backend_internal_cultural_models.Event:
+  github_com_holycann_cultour-backend_internal_achievement_models.Badge:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      icon_url:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_holycann_cultour-backend_internal_achievement_models.BadgeCreate:
     properties:
       description:
-        description: Deskripsi event
+        type: string
+      icon_url:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_holycann_cultour-backend_internal_cultural_models.Event:
+    properties:
+      city_id:
+        description: Reference to city ID
+        example: city_12345
+        type: string
+      description:
+        description: Event description
         example: Monas
         type: string
       end_date:
-        description: 'Tanggal selesai event (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
+        description: 'Event end date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
         example: "2024-06-01T09:00:00+07:00"
         type: string
       id:
-        description: Unique identifier untuk event
+        description: Unique identifier for the event
         example: loc_12345
         type: string
+      image_url:
+        description: Event image URL
+        example: https://example.com/image.jpg
+        type: string
       is_kid_friendly:
-        description: Apakah event ramah anak
+        description: Whether the event is kid-friendly
         example: true
         type: boolean
       location_id:
-        description: Referensi ke ID lokasi
+        description: Reference to location ID
         example: location_67890
         type: string
       name:
-        description: Nama event
+        description: Event name
         example: Monas
         type: string
+      province_id:
+        description: Reference to province ID
+        example: province_67890
+        type: string
       start_date:
-        description: 'Tanggal mulai event (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
+        description: 'Event start date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
         example: "2024-06-01T08:00:00+07:00"
+        type: string
+      user_id:
+        description: ID of the user who created the event
+        example: user_67890
         type: string
       views:
         example: 10
@@ -124,7 +166,7 @@ definitions:
         example: true
         type: boolean
       language:
-        example: ID
+        example: EN
         type: string
       location_id:
         type: string
@@ -134,109 +176,154 @@ definitions:
       story_text:
         type: string
       summary:
-        example: Cerita tentang asal-usul Tangkuban Perahu
+        example: Story about the origin of Tangkuban Perahu
         type: string
       tags:
         items:
           type: string
         type: array
       title:
-        example: Legenda Sangkuriang
+        example: Legend of Sangkuriang
         type: string
       updated_at:
         type: string
     type: object
+  github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent:
+    properties:
+      city_id:
+        description: Reference to city ID
+        example: city_12345
+        type: string
+      description:
+        description: Event description
+        example: Monas
+        type: string
+      end_date:
+        description: 'Event end date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
+        example: "2024-06-01T09:00:00+07:00"
+        type: string
+      id:
+        description: Unique identifier for the event
+        example: loc_12345
+        type: string
+      image_url:
+        description: Event image URL
+        example: https://example.com/image.jpg
+        type: string
+      is_kid_friendly:
+        description: Whether the event is kid-friendly
+        example: true
+        type: boolean
+      location_id:
+        description: Reference to location ID
+        example: location_67890
+        type: string
+      name:
+        description: Event name
+        example: Monas
+        type: string
+      province_id:
+        description: Reference to province ID
+        example: province_67890
+        type: string
+      start_date:
+        description: 'Event start date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
+        example: "2024-06-01T08:00:00+07:00"
+        type: string
+      user:
+        $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+      user_id:
+        description: ID of the user who created the event
+        example: user_67890
+        type: string
+      views:
+        example: 10
+        type: integer
+    type: object
   github_com_holycann_cultour-backend_internal_discussion_models.Message:
     properties:
       content:
-        description: Isi pesan
-        example: Ini isi pesan
+        description: Message content
+        example: This is the message content
         type: string
       created_at:
-        description: Waktu pembuatan pesan
+        description: Message creation time
         type: string
       id:
-        description: 'ID unik untuk pesan, contoh: "msg_12345"'
+        description: 'Unique ID for the message, example: "msg_12345"'
         example: msg_12345
         type: string
       thread_id:
-        description: ID thread tempat pesan berada
+        description: ID of the thread the message belongs to
         example: thread_12345
         type: string
-    type: object
-  github_com_holycann_cultour-backend_internal_discussion_models.RequestMessage:
-    properties:
-      content:
-        description: Isi pesan
-        example: Ini isi pesan
-        type: string
-      created_at:
-        description: Waktu pembuatan pesan
-        type: string
-      id:
-        description: 'ID unik untuk pesan, contoh: "msg_12345"'
-        example: msg_12345
-        type: string
-      thread_id:
-        description: ID thread tempat pesan berada
-        example: thread_12345
+      user_id:
+        description: ID of the user who sent the message
+        example: user_67890
         type: string
     type: object
   github_com_holycann_cultour-backend_internal_discussion_models.ResponseMessage:
     properties:
       content:
-        description: Isi pesan
-        example: Ini isi pesan
+        description: Message content
+        example: This is the message content
         type: string
       created_at:
-        description: Waktu pembuatan pesan
+        description: Message creation time
         type: string
       id:
-        description: 'ID unik untuk pesan, contoh: "msg_12345"'
+        description: 'Unique ID for the message, example: "msg_12345"'
         example: msg_12345
         type: string
       thread_id:
-        description: ID thread tempat pesan berada
+        description: ID of the thread the message belongs to
         example: thread_12345
+        type: string
+      user:
+        $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+      user_id:
+        description: ID of the user who sent the message
+        example: user_67890
         type: string
     type: object
   github_com_holycann_cultour-backend_internal_discussion_models.Thread:
     properties:
       created_at:
-        description: Waktu pembuatan thread
+        description: Thread creation time
         example: "2024-06-01T15:04:05Z"
         type: string
       event_id:
         description: |-
-          Content string `json:"content" db:"content" example:"Ayo diskusi tentang sejarah Monas!"` // Konten thread
-          UserID    string `json:"user_id" db:"user_id" example:"user_67890"`                         // ID pengguna yang membuat thread
+          Content string `json:"content" db:"content" example:"Let's discuss about Monas history!"` // Thread content
+          UserID    string `json:"user_id" db:"user_id" example:"user_67890"`                         // ID of the user who created the thread
         example: event-xx
         type: string
       id:
-        description: 'ID unik untuk thread, contoh: "thread_12345"'
+        description: 'Unique ID for the thread, example: "thread_12345"'
         example: thread_12345
         type: string
       status:
-        description: 'Status thread, contoh: "open"'
+        description: 'Thread status, example: "open"'
         example: open
         type: string
       title:
-        description: 'Judul thread, contoh: "Diskusi Sejarah Monas"'
-        example: Diskusi Sejarah Monas
+        description: 'Thread title, example: "Discussion about Monas History"'
+        example: Discussion about Monas History
         type: string
     type: object
   github_com_holycann_cultour-backend_internal_place_models.City:
     properties:
       id:
-        description: 'ID unik untuk kota, contoh: "city_12345"'
+        description: 'Unique ID for the city, example: "city_12345"'
         example: city_12345
         type: string
       name:
-        description: 'Nama kota, contoh: "Jakarta"'
+        description: 'City name, example: "Jakarta"'
         example: Jakarta
         type: string
       province:
-        description: 'Nama provinsi tempat kota berada, contoh: "DKI Jakarta"'
+        description: 'Name of the province where the city is located, example: "DKI
+          Jakarta"'
         example: DKI Jakarta
         type: string
     type: object
@@ -261,6 +348,17 @@ definitions:
       name:
         description: Name of the location
         example: Monas
+        type: string
+    type: object
+  github_com_holycann_cultour-backend_internal_place_models.Province:
+    properties:
+      id:
+        description: 'Unique ID for the province, example: "province_12345"'
+        example: province_12345
+        type: string
+      name:
+        description: 'Province name, example: "West Java"'
+        example: West Java
         type: string
     type: object
   github_com_holycann_cultour-backend_internal_response.ErrorResponse:
@@ -337,6 +435,71 @@ definitions:
     required:
     - email
     type: object
+  github_com_holycann_cultour-backend_internal_users_models.UserBadge:
+    description: Badge information associated with a user
+    properties:
+      badge_description:
+        description: |-
+          Badge description
+          @example "Explored multiple cultural events"
+        type: string
+      badge_icon_url:
+        description: |-
+          Badge icon URL
+          @example "https://example.com/badges/explorer.png"
+        format: uri
+        type: string
+      badge_id:
+        description: |-
+          Badge identifier
+          @example "explorer"
+        example: explorer
+        type: string
+      badge_name:
+        description: |-
+          Badge name
+          @example "Penjelajah"
+        example: Penjelajah
+        type: string
+      earned_at:
+        description: Timestamp when the badge was earned
+        type: string
+      id:
+        description: |-
+          Unique identifier for the user badge
+          @example "user_badge_123"
+        example: user_badge_123
+        type: string
+      user_id:
+        description: |-
+          Associated user ID
+          @example "user_123"
+        example: user_123
+        type: string
+    required:
+    - badge_id
+    - badge_name
+    - user_id
+    type: object
+  github_com_holycann_cultour-backend_internal_users_models.UserBadgeCreate:
+    description: Payload for assigning a badge to a user
+    properties:
+      badge_id:
+        description: |-
+          Badge identifier
+          @example "explorer"
+        example: explorer
+        type: string
+      user_id:
+        description: |-
+          Associated user ID
+          @example "user_123"
+        example: user_123
+        type: string
+    required:
+    - badge_id
+    - user_id
+    type: object
   github_com_holycann_cultour-backend_internal_users_models.UserCreate:
     description: Payload for user registration
     properties:
@@ -369,7 +532,8 @@ definitions:
     - password
     type: object
   github_com_holycann_cultour-backend_internal_users_models.UserProfile:
-    description: Detailed user profile with additional personal information
+    description: Detailed user profile with additional personal information, including
+      identity (KTP) data
     properties:
       avatar_url:
         description: |-
@@ -400,6 +564,12 @@ definitions:
           @example "profile_123"
         example: profile_123
         type: string
+      identity_image_url:
+        description: |-
+          URL to uploaded KTP image
+          @example "https://example.com/ktp.jpg"
+        format: uri
+        type: string
       updated_at:
         description: Timestamp of the last profile update
         type: string
@@ -414,7 +584,7 @@ definitions:
     - user_id
     type: object
   github_com_holycann_cultour-backend_internal_users_models.UserProfileCreate:
-    description: Payload for creating a user profile
+    description: Payload for creating a user profile, including identity (KTP) data
     properties:
       avatar_url:
         description: |-
@@ -432,6 +602,12 @@ definitions:
           User's full name
           @example "John Doe"
         example: John Doe
+        type: string
+      identity_image_url:
+        description: |-
+          URL to uploaded KTP image
+          @example "https://example.com/ktp.jpg"
+        format: uri
         type: string
       user_id:
         description: |-
@@ -468,7 +644,7 @@ definitions:
     properties:
       prompt:
         description: |-
-          Prompt is the user's input text for the AI
+          Prompt is the text input from the user for the AI
           Example: "Explain quantum computing in simple terms"
           Required: true
           Min length: 1
@@ -483,14 +659,14 @@ definitions:
   internal_gemini.AIResponse:
     properties:
       metadata:
-        description: Metadata about the AI-generated content
+        description: Metadata about the generated AI content
         properties:
           length:
             description: Length of the generated text
             example: 250
             type: integer
           tokens_used:
-            description: Tokens used in the generation
+            description: Tokens used in the generation process
             example: 60
             type: integer
         type: object
@@ -538,19 +714,289 @@ paths:
       summary: Generate AI text response
       tags:
       - AI
+  /ask/event/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Generate text using Gemini AI with event context and chat history
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Thread ID for chat history
+        in: query
+        name: thread_id
+        type: string
+      - description: AI Text Generation Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_gemini.AIRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful AI text generated
+          schema:
+            $ref: '#/definitions/internal_gemini.AIResponse'
+        "400":
+          description: Invalid request parameters
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Event not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error during AI generation
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      summary: Generate AI text response for a specific event
+      tags:
+      - AI
+  /badges:
+    get:
+      description: Retrieve a list of badges with pagination
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - default: 10
+        description: Number of badges to retrieve
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Number of badges to skip
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Badges retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge'
+                  type: array
+              type: object
+        "500":
+          description: Failed to list badges
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List badges
+      tags:
+      - badges
+    post:
+      consumes:
+      - application/json
+      description: Add a new badge to the system
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Badge Information
+        in: body
+        name: badge
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.BadgeCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Badge created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge'
+              type: object
+        "400":
+          description: Invalid badge creation details
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new badge
+      tags:
+      - badges
+  /badges/{id}:
+    delete:
+      description: Remove a badge from the system by its ID
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Badge ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Badge deleted successfully
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+        "400":
+          description: Badge ID is required
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Failed to delete badge
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a badge
+      tags:
+      - badges
+    get:
+      description: Retrieve a badge by its unique identifier
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Badge ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Badge retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge'
+              type: object
+        "400":
+          description: Badge ID is required
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Badge not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get a specific badge
+      tags:
+      - badges
+    put:
+      consumes:
+      - application/json
+      description: Update an existing badge by its ID
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Badge ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Badge Update Information
+        in: body
+        name: badge
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.BadgeCreate'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Badge updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge'
+              type: object
+        "400":
+          description: Invalid badge update details or missing ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Failed to update badge
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update a badge
+      tags:
+      - badges
+  /badges/count:
+    get:
+      description: Retrieve the total number of badges in the system
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Badge count retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  type: integer
+              type: object
+        "500":
+          description: Failed to count badges
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Count badges
+      tags:
+      - badges
   /cities:
     get:
-      consumes:
-      - application/json
-      description: Mengambil daftar kota dengan pagination
+      description: Retrieve a list of cities with pagination
       parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of cities to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of cities to skip
         in: query
         name: offset
         type: integer
@@ -558,26 +1004,35 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar kota berhasil diambil
+          description: Cities retrieved successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
-        "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.City'
+                  type: array
+              type: object
         "500":
-          description: Kesalahan server internal
+          description: Failed to list cities
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mendapatkan daftar kota
+      security:
+      - ApiKeyAuth: []
+      summary: List cities
       tags:
-      - cities
+      - Cities
     post:
       consumes:
       - application/json
-      description: Menambahkan lokasi baru ke dalam sistem
+      description: Add a new city to the system
       parameters:
-      - description: Informasi Lokasi
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: City Information
         in: body
         name: city
         required: true
@@ -587,27 +1042,36 @@ paths:
       - application/json
       responses:
         "201":
-          description: Lokasi berhasil dibuat
+          description: City created successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.City'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid city creation details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Membuat lokasi baru
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new city
       tags:
-      - cities
+      - Cities
   /cities/{id}:
     delete:
-      consumes:
-      - application/json
-      description: Menghapus lokasi berdasarkan ID
+      description: Remove a city from the system by its unique identifier
       parameters:
-      - description: ID Lokasi
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: City ID
         in: path
         name: id
         required: true
@@ -615,27 +1079,79 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: Lokasi berhasil dihapus
+        "200":
+          description: City deleted successfully
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
         "400":
-          description: Kesalahan validasi input
+          description: Invalid city ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: City not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Menghapus lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a city
       tags:
-      - cities
+      - Cities
+    get:
+      description: Retrieve a city's details by its unique identifier
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: City ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: City retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.City'
+              type: object
+        "404":
+          description: City not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get city by ID
+      tags:
+      - Cities
     put:
       consumes:
       - application/json
-      description: Memperbarui informasi kota yang sudah ada berdasarkan ID
+      description: Update an existing city's details
       parameters:
-      - description: Informasi Kota yang Diperbarui
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: City ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: City Update Details
         in: body
         name: city
         required: true
@@ -645,45 +1161,54 @@ paths:
       - application/json
       responses:
         "200":
-          description: Kota berhasil diperbarui
+          description: City updated successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.City'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid city update details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "404":
-          description: Kota tidak ditemukan
+          description: City not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Memperbarui kota
+      security:
+      - ApiKeyAuth: []
+      summary: Update a city
       tags:
-      - cities
+      - Cities
   /cities/search:
     get:
-      consumes:
-      - application/json
-      description: Mencari lokasi berdasarkan ID atau nama
+      description: Search cities by various criteria
       parameters:
-      - description: ID Lokasi
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: City ID
         in: query
         name: id
         type: string
-      - description: Nama Lokasi
+      - description: City Name
         in: query
         name: name
         type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of results to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of results to skip
         in: query
         name: offset
         type: integer
@@ -691,37 +1216,44 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar lokasi yang ditemukan
+          description: Cities found successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.City'
+                  type: array
+              type: object
         "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "404":
-          description: Lokasi tidak ditemukan
+          description: Invalid search parameters
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mencari lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: Search cities
       tags:
-      - cities
+      - Cities
   /events:
     get:
-      consumes:
-      - application/json
-      description: Mengambil daftar lokasi dengan pagination
+      description: Retrieve a list of cultural events with pagination
       parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of events to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of events to skip
         in: query
         name: offset
         type: integer
@@ -729,26 +1261,35 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar kota berhasil diambil
+          description: Events retrieved successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
-        "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent'
+                  type: array
+              type: object
         "500":
-          description: Kesalahan server internal
+          description: Failed to list events
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mendapatkan daftar lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: List events
       tags:
-      - events
+      - Events
     post:
       consumes:
       - application/json
-      description: Menambahkan lokasi baru ke dalam sistem
+      description: Add a new cultural event to the system
       parameters:
-      - description: Informasi Lokasi
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Event Information
         in: body
         name: event
         required: true
@@ -758,27 +1299,36 @@ paths:
       - application/json
       responses:
         "201":
-          description: Lokasi berhasil dibuat
+          description: Event created successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid event creation details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Membuat lokasi baru
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new event
       tags:
-      - events
+      - Events
   /events/{id}:
     delete:
-      consumes:
-      - application/json
-      description: Menghapus lokasi berdasarkan ID
+      description: Remove a cultural event from the system by its unique identifier
       parameters:
-      - description: ID Lokasi
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Event ID
         in: path
         name: id
         required: true
@@ -786,27 +1336,79 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: Lokasi berhasil dihapus
+        "200":
+          description: Event deleted successfully
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
         "400":
-          description: Kesalahan validasi input
+          description: Invalid event ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Event not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Menghapus lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: Delete an event
       tags:
-      - events
+      - Events
+    get:
+      description: Retrieve a cultural event's details by its unique identifier
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Event retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent'
+              type: object
+        "404":
+          description: Event not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get event by ID
+      tags:
+      - Events
     put:
       consumes:
       - application/json
-      description: Memperbarui informasi lokasi yang sudah ada berdasarkan ID
+      description: Update an existing cultural event's details
       parameters:
-      - description: Informasi Lokasi yang Diperbarui
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Event Update Details
         in: body
         name: event
         required: true
@@ -816,45 +1418,58 @@ paths:
       - application/json
       responses:
         "200":
-          description: Lokasi berhasil diperbarui
+          description: Event updated successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid event update details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "404":
-          description: Lokasi tidak ditemukan
+          description: Event not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Memperbarui lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: Update an event
       tags:
-      - events
+      - Events
   /events/search:
     get:
-      consumes:
-      - application/json
-      description: Mencari lokasi berdasarkan ID atau nama
+      description: Search cultural events by various criteria
       parameters:
-      - description: ID Lokasi
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Event ID
         in: query
         name: id
         type: string
-      - description: Nama Lokasi
+      - description: Event Name
         in: query
         name: name
         type: string
+      - description: Search query
+        in: query
+        name: query
+        type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of results to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of results to skip
         in: query
         name: offset
         type: integer
@@ -862,37 +1477,80 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar lokasi yang ditemukan
+          description: Events found successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent'
+                  type: array
+              type: object
         "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "404":
-          description: Lokasi tidak ditemukan
+          description: Invalid search parameters
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mencari lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: Search events
       tags:
-      - events
+      - Events
+  /events/trending:
+    get:
+      description: Retrieve a list of trending events based on views
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - default: 10
+        description: Number of trending events to retrieve
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Trending events retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent'
+                  type: array
+              type: object
+        "500":
+          description: Failed to retrieve trending events
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get trending events
+      tags:
+      - Events
   /local-stories:
     get:
-      consumes:
-      - application/json
-      description: Mengambil daftar cerita lokal dengan pagination
+      description: Retrieve a list of local cultural stories with pagination
       parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of local stories to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of local stories to skip
         in: query
         name: offset
         type: integer
@@ -900,26 +1558,35 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar cerita lokal berhasil diambil
+          description: Local stories retrieved successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
-        "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory'
+                  type: array
+              type: object
         "500":
-          description: Kesalahan server internal
+          description: Failed to list local stories
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mendapatkan daftar cerita lokal
+      security:
+      - ApiKeyAuth: []
+      summary: List local stories
       tags:
-      - local_stories
+      - Local Stories
     post:
       consumes:
       - application/json
-      description: Menambahkan cerita lokal baru ke dalam sistem
+      description: Add a new local cultural story to the system
       parameters:
-      - description: Informasi Cerita Lokal
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Local Story Information
         in: body
         name: local_story
         required: true
@@ -929,26 +1596,79 @@ paths:
       - application/json
       responses:
         "201":
-          description: Cerita lokal berhasil dibuat
+          description: Local story created successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid local story creation details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Membuat cerita lokal baru
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new local story
       tags:
-      - local_stories
+      - Local Stories
+  /local-stories/{id}:
+    delete:
+      description: Remove a local cultural story from the system by its unique identifier
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Local Story ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Local story deleted successfully
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+        "400":
+          description: Invalid local story ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Local story not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a local story
+      tags:
+      - Local Stories
     put:
       consumes:
       - application/json
-      description: Memperbarui informasi cerita lokal yang sudah ada
+      description: Update an existing local cultural story's details
       parameters:
-      - description: Informasi Cerita Lokal yang Diperbarui
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Local Story ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Local Story Update Details
         in: body
         name: local_story
         required: true
@@ -958,70 +1678,54 @@ paths:
       - application/json
       responses:
         "200":
-          description: Cerita lokal berhasil diperbarui
+          description: Local story updated successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid local story update details
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Local story not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Memperbarui cerita lokal
+      security:
+      - ApiKeyAuth: []
+      summary: Update a local story
       tags:
-      - local_stories
-  /local-stories/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Menghapus cerita lokal berdasarkan ID
-      parameters:
-      - description: ID Cerita Lokal
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: Cerita lokal berhasil dihapus
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
-        "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "500":
-          description: Kesalahan server internal
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Menghapus cerita lokal
-      tags:
-      - local_stories
+      - Local Stories
   /local-stories/search:
     get:
-      consumes:
-      - application/json
-      description: Mencari cerita lokal berdasarkan ID atau judul
+      description: Search local cultural stories by various criteria
       parameters:
-      - description: ID Cerita Lokal
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Local Story ID
         in: query
         name: id
         type: string
-      - description: Judul Cerita Lokal
+      - description: Local Story Title
         in: query
         name: title
         type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of results to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of results to skip
         in: query
         name: offset
         type: integer
@@ -1029,37 +1733,44 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar cerita lokal yang ditemukan
+          description: Local stories found successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory'
+                  type: array
+              type: object
         "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "404":
-          description: Cerita lokal tidak ditemukan
+          description: Invalid search parameters
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mencari cerita lokal
+      security:
+      - ApiKeyAuth: []
+      summary: Search local stories
       tags:
-      - local_stories
+      - Local Stories
   /locations:
     get:
-      consumes:
-      - application/json
-      description: Mengambil daftar lokasi dengan pagination
+      description: Retrieve a list of locations with pagination
       parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of locations to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of locations to skip
         in: query
         name: offset
         type: integer
@@ -1067,26 +1778,35 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar kota berhasil diambil
+          description: Locations retrieved successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
-        "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location'
+                  type: array
+              type: object
         "500":
-          description: Kesalahan server internal
+          description: Failed to list locations
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mendapatkan daftar lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: List locations
       tags:
-      - locations
+      - Locations
     post:
       consumes:
       - application/json
-      description: Menambahkan lokasi baru ke dalam sistem
+      description: Add a new location to the system
       parameters:
-      - description: Informasi Lokasi
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Location Information
         in: body
         name: location
         required: true
@@ -1096,27 +1816,36 @@ paths:
       - application/json
       responses:
         "201":
-          description: Lokasi berhasil dibuat
+          description: Location created successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid location creation details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Membuat lokasi baru
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new location
       tags:
-      - locations
+      - Locations
   /locations/{id}:
     delete:
-      consumes:
-      - application/json
-      description: Menghapus lokasi berdasarkan ID
+      description: Remove a location from the system by its unique identifier
       parameters:
-      - description: ID Lokasi
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Location ID
         in: path
         name: id
         required: true
@@ -1124,27 +1853,42 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: Lokasi berhasil dihapus
+        "200":
+          description: Location deleted successfully
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
         "400":
-          description: Kesalahan validasi input
+          description: Invalid location ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Location not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Menghapus lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a location
       tags:
-      - locations
+      - Locations
     put:
       consumes:
       - application/json
-      description: Memperbarui informasi lokasi yang sudah ada berdasarkan ID
+      description: Update an existing location's details
       parameters:
-      - description: Informasi Lokasi yang Diperbarui
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Location ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Location Update Details
         in: body
         name: location
         required: true
@@ -1154,45 +1898,54 @@ paths:
       - application/json
       responses:
         "200":
-          description: Lokasi berhasil diperbarui
+          description: Location updated successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid location update details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "404":
-          description: Lokasi tidak ditemukan
+          description: Location not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Memperbarui lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: Update a location
       tags:
-      - locations
+      - Locations
   /locations/search:
     get:
-      consumes:
-      - application/json
-      description: Mencari lokasi berdasarkan ID atau nama
+      description: Search locations by various criteria
       parameters:
-      - description: ID Lokasi
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Location ID
         in: query
         name: id
         type: string
-      - description: Nama Lokasi
+      - description: Location Name
         in: query
         name: name
         type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of results to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of results to skip
         in: query
         name: offset
         type: integer
@@ -1200,37 +1953,44 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar lokasi yang ditemukan
+          description: Locations found successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location'
+                  type: array
+              type: object
         "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "404":
-          description: Lokasi tidak ditemukan
+          description: Invalid search parameters
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mencari lokasi
+      security:
+      - ApiKeyAuth: []
+      summary: Search locations
       tags:
-      - locations
+      - Locations
   /messages:
     get:
-      consumes:
-      - application/json
-      description: Mendapatkan daftar pesan dengan pagination
+      description: Retrieve a list of messages with pagination
       parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of messages to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of messages to skip
         in: query
         name: offset
         type: integer
@@ -1238,7 +1998,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar pesan berhasil didapatkan
+          description: Messages retrieved successfully
           schema:
             allOf:
             - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
@@ -1248,23 +2008,25 @@ paths:
                     $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.ResponseMessage'
                   type: array
               type: object
-        "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Failed to list messages
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Daftar pesan
+      security:
+      - ApiKeyAuth: []
+      summary: List messages
       tags:
-      - messages
+      - Messages
     post:
       consumes:
       - application/json
-      description: Menambahkan pesan baru ke dalam sistem
+      description: Add a new message to the system
       parameters:
-      - description: Informasi Pesan
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Message Information
         in: body
         name: message
         required: true
@@ -1274,7 +2036,7 @@ paths:
       - application/json
       responses:
         "201":
-          description: Pesan berhasil dibuat
+          description: Message created successfully
           schema:
             allOf:
             - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
@@ -1283,23 +2045,27 @@ paths:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.ResponseMessage'
               type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid message creation details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Membuat pesan baru
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new message
       tags:
-      - messages
+      - Messages
   /messages/{id}:
     delete:
-      consumes:
-      - application/json
-      description: Menghapus pesan berdasarkan ID
+      description: Remove a message from the system by its unique identifier
       parameters:
-      - description: ID Pesan
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Message ID
         in: path
         name: id
         required: true
@@ -1307,37 +2073,52 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: Pesan berhasil dihapus
+        "200":
+          description: Message deleted successfully
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
         "400":
-          description: Kesalahan validasi input
+          description: Invalid message ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Message not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Menghapus pesan
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a message
       tags:
-      - messages
+      - Messages
     put:
       consumes:
       - application/json
-      description: Memperbarui informasi pesan yang sudah ada berdasarkan ID
+      description: Update an existing message's details
       parameters:
-      - description: Informasi Pesan yang Diperbarui
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Message ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Message Update Details
         in: body
         name: message
         required: true
         schema:
-          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.RequestMessage'
+          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Message'
       produces:
       - application/json
       responses:
         "200":
-          description: Pesan berhasil diperbarui
+          description: Message updated successfully
           schema:
             allOf:
             - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
@@ -1346,41 +2127,45 @@ paths:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.ResponseMessage'
               type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid message update details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "404":
-          description: Pesan tidak ditemukan
+          description: Message not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Memperbarui pesan
+      security:
+      - ApiKeyAuth: []
+      summary: Update a message
       tags:
-      - messages
+      - Messages
   /messages/search:
     get:
-      consumes:
-      - application/json
-      description: Mencari pesan berdasarkan ID atau kriteria lainnya
+      description: Search messages by various criteria
       parameters:
-      - description: ID Pesan
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Message ID
         in: query
         name: id
         type: string
-      - description: ID Thread
+      - description: Thread ID
         in: query
         name: threadID
         type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of results to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of results to skip
         in: query
         name: offset
         type: integer
@@ -1388,7 +2173,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar pesan yang ditemukan
+          description: Messages found successfully
           schema:
             allOf:
             - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
@@ -1399,27 +2184,23 @@ paths:
                   type: array
               type: object
         "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "404":
-          description: Pesan tidak ditemukan
+          description: Invalid search parameters
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mencari pesan
+      security:
+      - ApiKeyAuth: []
+      summary: Search messages
       tags:
-      - messages
+      - Messages
   /profile:
     get:
-      consumes:
-      - application/json
-      description: Retrieve a paginated list of user profiles
+      description: Retrieve a list of user profiles with pagination
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
@@ -1429,7 +2210,7 @@ paths:
         name: limit
         type: integer
       - default: 0
-        description: Starting offset for pagination
+        description: Number of user profiles to skip
         in: query
         name: offset
         type: integer
@@ -1437,12 +2218,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: Successfully retrieved user profiles
+          description: User profiles retrieved successfully
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
+                  type: array
+              type: object
         "500":
-          description: Failed to retrieve user profiles
+          description: Failed to list user profiles
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
       security:
@@ -1453,18 +2240,13 @@ paths:
     post:
       consumes:
       - application/json
-      description: Register a new user profile in the system with provided details
+      description: Register a new user profile in the system
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
-      - description: User ID
-        in: header
-        name: UserID
-        required: true
-        type: string
-      - description: User profile creation details
+      - description: User Profile Creation Details
         in: body
         name: profile
         required: true
@@ -1476,13 +2258,18 @@ paths:
         "201":
           description: User profile created successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
+              type: object
         "400":
-          description: Invalid input
+          description: Invalid user profile creation details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "409":
-          description: User profile already exists
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
       security:
@@ -1492,11 +2279,9 @@ paths:
       - User Profiles
   /profile/{id}:
     delete:
-      consumes:
-      - application/json
-      description: Soft delete a user profile by its unique identifier
+      description: Remove a user profile from the system by its unique identifier
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
@@ -1511,9 +2296,7 @@ paths:
         "200":
           description: User profile deleted successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
         "400":
           description: Invalid user profile ID
           schema:
@@ -1522,13 +2305,13 @@ paths:
           description: User profile not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "409":
-          description: Failed to delete user profile
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
       security:
       - ApiKeyAuth: []
-      summary: Delete user profile
+      summary: Delete a user profile
       tags:
       - User Profiles
     put:
@@ -1536,7 +2319,7 @@ paths:
       - application/json
       description: Update an existing user profile's details
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
@@ -1545,7 +2328,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: User profile update details
+      - description: User Profile Update Details
         in: body
         name: profile
         required: true
@@ -1557,23 +2340,27 @@ paths:
         "200":
           description: User profile updated successfully
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
+              type: object
         "400":
-          description: Invalid input
+          description: Invalid user profile update details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "404":
           description: User profile not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "409":
-          description: Failed to update user profile
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
       security:
       - ApiKeyAuth: []
-      summary: Update user profile
+      summary: Update a user profile
       tags:
       - User Profiles
   /profile/search:
@@ -1619,19 +2406,21 @@ paths:
       summary: Search user profiles
       tags:
       - User Profiles
-  /threads:
+  /provinces:
     get:
-      consumes:
-      - application/json
-      description: Mengambil daftar thread dengan pagination
+      description: Retrieve a list of provinces with pagination
       parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of provinces to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of provinces to skip
         in: query
         name: offset
         type: integer
@@ -1639,26 +2428,292 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar thread berhasil diambil
+          description: Provinces retrieved successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
-        "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
+                  type: array
+              type: object
         "500":
-          description: Kesalahan server internal
+          description: Failed to list provinces
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mendapatkan daftar thread
+      security:
+      - ApiKeyAuth: []
+      summary: List provinces
       tags:
-      - threads
+      - Provinces
     post:
       consumes:
       - application/json
-      description: Menambahkan thread baru ke dalam sistem
+      description: Add a new province to the system
       parameters:
-      - description: Informasi Thread
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Province Information
+        in: body
+        name: province
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Province created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
+              type: object
+        "400":
+          description: Invalid province creation details
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new province
+      tags:
+      - Provinces
+  /provinces/{id}:
+    delete:
+      description: Remove a province from the system by its unique identifier
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Province ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Province deleted successfully
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+        "400":
+          description: Invalid province ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Province not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a province
+      tags:
+      - Provinces
+    get:
+      description: Retrieve a province's details by its unique identifier
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Province ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Province retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
+              type: object
+        "404":
+          description: Province not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get province by ID
+      tags:
+      - Provinces
+    put:
+      consumes:
+      - application/json
+      description: Update an existing province's details
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Province ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Province Update Details
+        in: body
+        name: province
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Province updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
+              type: object
+        "400":
+          description: Invalid province update details
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Province not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update a province
+      tags:
+      - Provinces
+  /provinces/search:
+    get:
+      description: Search provinces by various criteria
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Province ID
+        in: query
+        name: id
+        type: string
+      - description: Province Name
+        in: query
+        name: name
+        type: string
+      - default: 10
+        description: Number of results to retrieve
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Number of results to skip
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Provinces found successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
+                  type: array
+              type: object
+        "400":
+          description: Invalid search parameters
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Search provinces
+      tags:
+      - Provinces
+  /threads:
+    get:
+      description: Retrieve a list of discussion threads with pagination
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - default: 10
+        description: Number of threads to retrieve
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Number of threads to skip
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Threads retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread'
+                  type: array
+              type: object
+        "500":
+          description: Failed to list threads
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List threads
+      tags:
+      - Threads
+    post:
+      consumes:
+      - application/json
+      description: Add a new discussion thread to the system
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Thread Information
         in: body
         name: thread
         required: true
@@ -1668,27 +2723,36 @@ paths:
       - application/json
       responses:
         "201":
-          description: Thread berhasil dibuat
+          description: Thread created successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid thread creation details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Membuat thread baru
+      security:
+      - ApiKeyAuth: []
+      summary: Create a new thread
       tags:
-      - threads
+      - Threads
   /threads/{id}:
     delete:
-      consumes:
-      - application/json
-      description: Menghapus thread berdasarkan ID
+      description: Remove a discussion thread from the system by its unique identifier
       parameters:
-      - description: ID Thread
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Thread ID
         in: path
         name: id
         required: true
@@ -1696,27 +2760,79 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: Thread berhasil dihapus
+        "200":
+          description: Thread deleted successfully
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
         "400":
-          description: Kesalahan validasi input
+          description: Invalid thread ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "404":
+          description: Thread not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Menghapus thread
+      security:
+      - ApiKeyAuth: []
+      summary: Delete a thread
       tags:
-      - threads
+      - Threads
+    get:
+      description: Retrieve a discussion thread's details by its unique identifier
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Thread ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Thread retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread'
+              type: object
+        "404":
+          description: Thread not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get thread by ID
+      tags:
+      - Threads
     put:
       consumes:
       - application/json
-      description: Memperbarui informasi thread yang sudah ada berdasarkan ID
+      description: Update an existing discussion thread's details
       parameters:
-      - description: Informasi Thread yang Diperbarui
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Thread ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Thread Update Details
         in: body
         name: thread
         required: true
@@ -1726,45 +2842,54 @@ paths:
       - application/json
       responses:
         "200":
-          description: Thread berhasil diperbarui
+          description: Thread updated successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread'
+              type: object
         "400":
-          description: Kesalahan validasi input
+          description: Invalid thread update details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "404":
-          description: Thread tidak ditemukan
+          description: Thread not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Memperbarui thread
+      security:
+      - ApiKeyAuth: []
+      summary: Update a thread
       tags:
-      - threads
+      - Threads
   /threads/search:
     get:
-      consumes:
-      - application/json
-      description: Mencari thread berdasarkan ID atau judul
+      description: Search discussion threads by various criteria
       parameters:
-      - description: ID Thread
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Thread ID
         in: query
         name: id
         type: string
-      - description: Judul Thread
+      - description: Thread Title
         in: query
         name: title
         type: string
       - default: 10
-        description: Jumlah data yang dikembalikan
+        description: Number of results to retrieve
         in: query
         name: limit
         type: integer
       - default: 0
-        description: Offset untuk pagination
+        description: Number of results to skip
         in: query
         name: offset
         type: integer
@@ -1772,31 +2897,34 @@ paths:
       - application/json
       responses:
         "200":
-          description: Daftar thread yang ditemukan
+          description: Threads found successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread'
+                  type: array
+              type: object
         "400":
-          description: Kesalahan validasi input
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "404":
-          description: Thread tidak ditemukan
+          description: Invalid search parameters
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "500":
-          description: Kesalahan server internal
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-      summary: Mencari thread
+      security:
+      - ApiKeyAuth: []
+      summary: Search threads
       tags:
-      - threads
+      - Threads
   /users:
     get:
-      consumes:
-      - application/json
-      description: Retrieve a paginated list of users
+      description: Retrieve a list of users with pagination
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
@@ -1806,7 +2934,7 @@ paths:
         name: limit
         type: integer
       - default: 0
-        description: Starting offset for pagination
+        description: Number of users to skip
         in: query
         name: offset
         type: integer
@@ -1814,11 +2942,18 @@ paths:
       - application/json
       responses:
         "200":
-          description: Successfully retrieved users
+          description: Users retrieved successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+                  type: array
+              type: object
         "500":
-          description: Failed to retrieve users
+          description: Failed to list users
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
       security:
@@ -1829,13 +2964,13 @@ paths:
     post:
       consumes:
       - application/json
-      description: Register a new user in the system with provided details
+      description: Register a new user in the system
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
-      - description: User creation details
+      - description: User Registration Details
         in: body
         name: user
         required: true
@@ -1847,13 +2982,18 @@ paths:
         "201":
           description: User created successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+              type: object
         "400":
-          description: Invalid input
+          description: Invalid user creation details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "409":
-          description: User already exists
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
       security:
@@ -1863,11 +3003,9 @@ paths:
       - Users
   /users/{id}:
     delete:
-      consumes:
-      - application/json
-      description: Soft delete a user by their unique identifier
+      description: Remove a user from the system by their unique identifier
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
@@ -1882,9 +3020,7 @@ paths:
         "200":
           description: User deleted successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
         "400":
           description: Invalid user ID
           schema:
@@ -1893,21 +3029,19 @@ paths:
           description: User not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "409":
-          description: Failed to delete user
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
       security:
       - ApiKeyAuth: []
-      summary: Delete user
+      summary: Delete a user
       tags:
       - Users
-    put:
-      consumes:
-      - application/json
-      description: Update an existing user's details
+    get:
+      description: Retrieve a user's details by their unique identifier
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
@@ -1916,7 +3050,46 @@ paths:
         name: id
         required: true
         type: string
-      - description: User update details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+              type: object
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user by ID
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Update an existing user's details
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User Update Details
         in: body
         name: user
         required: true
@@ -1928,34 +3101,199 @@ paths:
         "200":
           description: User updated successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+              type: object
         "400":
-          description: Invalid input
+          description: Invalid user update details
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
         "404":
           description: User not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "409":
-          description: Failed to update user
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
       security:
       - ApiKeyAuth: []
-      summary: Update user
+      summary: Update a user
       tags:
       - Users
-  /users/search:
+  /users/badges:
+    delete:
+      description: Delete a specific badge from a user's profile
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: User ID
+        in: query
+        name: user_id
+        required: true
+        type: string
+      - description: Badge ID
+        in: query
+        name: badge_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Badge removed successfully
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+        "400":
+          description: Invalid user ID or badge ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Remove a badge from a user
+      tags:
+      - User Badges
     get:
+      description: Retrieve badges for a specific user
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: User ID
+        in: query
+        name: user_id
+        required: true
+        type: string
+      - default: 10
+        description: Number of badges to retrieve
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Number of badges to skip
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User badges retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserBadge'
+                  type: array
+              type: object
+        "400":
+          description: Invalid search parameters
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user badges
+      tags:
+      - User Badges
+    post:
       consumes:
       - application/json
-      description: Retrieve a specific user's details by their unique identifier or
-        email address
+      description: Add a new badge to a user's profile
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Badge Assignment Details
+        in: body
+        name: badge
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserBadgeCreate'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Badge assigned successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserBadge'
+              type: object
+        "400":
+          description: Invalid badge assignment details
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Assign a badge to a user
+      tags:
+      - User Badges
+  /users/badges/count:
+    get:
+      description: Retrieve the number of badges a user has
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: User ID
+        in: query
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User badge count retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  type: integer
+              type: object
+        "400":
+          description: Invalid user ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Count user badges
+      tags:
+      - User Badges
+  /users/search:
+    get:
+      description: Search users by various criteria
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
@@ -1967,31 +3305,49 @@ paths:
         in: query
         name: email
         type: string
+      - default: 10
+        description: Number of results to retrieve
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Number of results to skip
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: User details retrieved successfully
+          description: Users found successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
+                  type: array
+              type: object
         "400":
           description: Invalid search parameters
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "404":
-          description: User not found
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
       security:
       - ApiKeyAuth: []
-      summary: Search user by ID or email
+      summary: Search users
       tags:
       - Users
 schemes:
 - http
 securityDefinitions:
   ApiKeyAuth:
-    description: 'Insert Your JWT Token. Example: Bearer <token>'
+    description: 'Insert Your JWT Token. Do NOT include "Bearer " prefix. Example:
+      eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
     in: header
     name: Authorization
     type: apiKey

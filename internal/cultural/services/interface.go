@@ -14,6 +14,10 @@ type EventService interface {
 	UpdateEvent(ctx context.Context, user *models.Event) error
 	DeleteEvent(ctx context.Context, id string) error
 	Count(ctx context.Context) (int, error)
+	GetTrendingEvents(ctx context.Context, limit int) ([]*models.Event, error)
+	ListRelatedEvents(ctx context.Context, eventID string, limit int) ([]*models.Event, error)
+	SearchEvents(ctx context.Context, query string, limit, offset int) ([]*models.Event, error)
+	UpdateEventViews(ctx context.Context, id string) string // tambah update event view
 }
 
 type LocalStoryService interface {

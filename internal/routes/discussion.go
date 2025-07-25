@@ -6,6 +6,7 @@ import (
 	"github.com/holycann/cultour-backend/internal/discussion/repositories"
 	"github.com/holycann/cultour-backend/internal/discussion/services"
 	"github.com/holycann/cultour-backend/internal/logger"
+	"github.com/holycann/cultour-backend/internal/middleware"
 	"github.com/supabase-community/supabase-go"
 )
 
@@ -13,6 +14,7 @@ func RegisterThreadRoutes(
 	r *gin.Engine,
 	logger *logger.Logger,
 	supabaseClient *supabase.Client,
+	routeMiddleware *middleware.Middleware,
 ) {
 	threadRepository := repositories.NewThreadRepository(supabaseClient, *repositories.DefaultThreadConfig())
 	threadService := services.NewThreadService(threadRepository)
@@ -20,11 +22,12 @@ func RegisterThreadRoutes(
 
 	thread := r.Group("/threads")
 	{
-		thread.POST("/", threadHandler.CreateThread)
+		thread.POST("/", routeMiddleware.VerifyJWT(), threadHandler.CreateThread)
 		thread.GET("/", threadHandler.ListThreads)
-		thread.GET("/search", threadHandler.SearchThread)
-		thread.PUT("/:id", threadHandler.UpdateThread)
-		thread.DELETE("/:id", threadHandler.DeleteThread)
+		thread.GET("/search", routeMiddleware.VerifyJWT(), threadHandler.SearchThread)
+		thread.GET("/:id", routeMiddleware.VerifyJWT(), threadHandler.GetThreadByID)
+		thread.PUT("/:id", routeMiddleware.VerifyJWT(), threadHandler.UpdateThread)
+		thread.DELETE("/:id", routeMiddleware.VerifyJWT(), threadHandler.DeleteThread)
 	}
 }
 
@@ -32,6 +35,7 @@ func RegisterMessageRoutes(
 	r *gin.Engine,
 	logger *logger.Logger,
 	supabaseClient *supabase.Client,
+	routeMiddleware *middleware.Middleware,
 ) {
 	messageRepository := repositories.NewMessageRepository(supabaseClient, *repositories.DefaultMessageConfig())
 	messageService := services.NewMessageService(messageRepository)
@@ -39,10 +43,10 @@ func RegisterMessageRoutes(
 
 	message := r.Group("/messages")
 	{
-		message.POST("/", messageHandler.CreateMessage)
+		message.POST("/", routeMiddleware.VerifyJWT(), messageHandler.CreateMessage)
 		message.GET("/", messageHandler.ListMessages)
 		message.GET("/search", messageHandler.SearchMessages)
-		message.PUT("/:id", messageHandler.UpdateMessage)
-		message.DELETE("/:id", messageHandler.DeleteMessage)
+		message.PUT("/:id", routeMiddleware.VerifyJWT(), messageHandler.UpdateMessage)
+		message.DELETE("/:id", routeMiddleware.VerifyJWT(), messageHandler.DeleteMessage)
 	}
 }

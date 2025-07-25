@@ -25,3 +25,13 @@ type LocationService interface {
 	DeleteLocation(ctx context.Context, id string) error
 	Count(ctx context.Context) (int, error)
 }
+
+type ProvinceService interface {
+	CreateProvince(ctx context.Context, province *models.Province) error
+	GetProvinces(ctx context.Context, limit, offset int) ([]*models.Province, error)
+	GetProvinceByID(ctx context.Context, id string) (*models.Province, error)
+	GetProvinceByName(ctx context.Context, name string) (*models.Province, error)
+	UpdateProvince(ctx context.Context, province *models.Province) error
+	DeleteProvince(ctx context.Context, id string) error
+	Count(ctx context.Context) (int, error)
+}

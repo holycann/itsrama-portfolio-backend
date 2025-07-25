@@ -1,5 +1,5 @@
-// Package repositories menyediakan implementasi repository untuk manajemen data thread diskusi
-// menggunakan Supabase sebagai backend penyimpanan data.
+// Package repositories provides an implementation of repository for discussion thread data management
+// using Supabase as the data storage backend.
 package repositories
 
 import (
@@ -9,35 +9,35 @@ import (
 	"github.com/supabase-community/supabase-go"
 )
 
-// threadRepository adalah implementasi konkret dari interface ThreadRepository
-// yang mengelola operasi CRUD untuk entitas thread pada database Supabase.
+// threadRepository is a concrete implementation of the ThreadRepository interface
+// that manages CRUD operations for thread entities in the Supabase database.
 type threadRepository struct {
-	supabaseClient *supabase.Client // Supabase client untuk berinteraksi dengan database
-	table          string           // Nama tabel tempat data thread disimpan
-	column         string           // Kolom-kolom yang dipilih dalam query
-	returning      string           // Tipe data yang dikembalikan setelah operasi
+	supabaseClient *supabase.Client // Supabase client for interacting with the database
+	table          string           // Name of the table where thread data is stored
+	column         string           // Columns to be selected in the query
+	returning      string           // Type of data returned after an operation
 }
 
-// ThreadRepositoryConfig berisi konfigurasi kustom untuk repository thread
-// memungkinkan fleksibilitas dalam pengaturan parameter repository.
+// ThreadRepositoryConfig contains custom configuration for the thread repository
+// allowing flexibility in setting repository parameters.
 type ThreadRepositoryConfig struct {
-	Table     string // Nama tabel yang digunakan
-	Column    string // Kolom-kolom yang dipilih dalam query
-	Returning string // Tipe data yang dikembalikan
+	Table     string // Name of the table to be used
+	Column    string // Columns to be selected in the query
+	Returning string // Type of data to be returned
 }
 
-// DefaultThreadConfig mengembalikan konfigurasi default untuk repository thread
-// Berguna untuk memberikan pengaturan standar jika tidak ada konfigurasi kustom yang diberikan.
+// DefaultThreadConfig returns the default configuration for the thread repository
+// Useful for providing standard settings if no custom configuration is provided.
 func DefaultThreadConfig() *ThreadRepositoryConfig {
 	return &ThreadRepositoryConfig{
-		Table:     "threads", // Tabel default untuk thread
-		Column:    "*",       // Pilih semua kolom
-		Returning: "minimal", // Kembalikan data minimal
+		Table:     "threads", // Default table for threads
+		Column:    "*",       // Select all columns
+		Returning: "minimal", // Return minimal data
 	}
 }
 
-// NewThreadRepository membuat instance baru dari repository thread
-// dengan konfigurasi dan Supabase client yang diberikan.
+// NewThreadRepository creates a new instance of the thread repository
+// with the given configuration and Supabase client.
 func NewThreadRepository(supabaseClient *supabase.Client, cfg ThreadRepositoryConfig) ThreadRepository {
 	return &threadRepository{
 		supabaseClient: supabaseClient,
@@ -47,8 +47,8 @@ func NewThreadRepository(supabaseClient *supabase.Client, cfg ThreadRepositoryCo
 	}
 }
 
-// FindByTitle mencari dan mengembalikan thread berdasarkan judul
-// Mengembalikan objek thread atau error jika thread tidak ditemukan.
+// FindByTitle searches and returns a thread by title
+// Returns a thread object or an error if the thread is not found.
 func (r *threadRepository) FindByTitle(ctx context.Context, title string) (*models.Thread, error) {
 	var thread *models.Thread
 
@@ -65,8 +65,8 @@ func (r *threadRepository) FindByTitle(ctx context.Context, title string) (*mode
 	return thread, nil
 }
 
-// Create menambahkan thread baru ke database
-// Menerima context dan objek thread, mengembalikan error jika proses gagal.
+// Create adds a new thread to the database
+// Accepts context and thread object, returns an error if the process fails.
 func (r *threadRepository) Create(ctx context.Context, thread *models.Thread) error {
 	_, err := r.supabaseClient.
 		From(r.table).
@@ -79,8 +79,8 @@ func (r *threadRepository) Create(ctx context.Context, thread *models.Thread) er
 	return nil
 }
 
-// FindByID mencari dan mengembalikan thread berdasarkan ID uniknya
-// Mengembalikan objek thread atau error jika thread tidak ditemukan.
+// FindByID searches and returns a thread based on its unique ID
+// Returns a thread object or an error if the thread is not found.
 func (r *threadRepository) FindByID(ctx context.Context, id string) (*models.Thread, error) {
 	var thread *models.Thread
 
@@ -97,8 +97,8 @@ func (r *threadRepository) FindByID(ctx context.Context, id string) (*models.Thr
 	return thread, nil
 }
 
-// Update memodifikasi thread yang sudah ada di database
-// Menerima objek thread yang sudah dimodifikasi, mengembalikan error jika proses gagal.
+// Update modifies an existing thread in the database
+// Accepts a modified thread object, returns an error if the process fails.
 func (r *threadRepository) Update(ctx context.Context, thread *models.Thread) error {
 	_, _, err := r.supabaseClient.
 		From(r.table).
@@ -112,8 +112,8 @@ func (r *threadRepository) Update(ctx context.Context, thread *models.Thread) er
 	return nil
 }
 
-// Delete menghapus thread dari database berdasarkan ID-nya
-// Mengembalikan error jika proses penghapusan gagal.
+// Delete removes a thread from the database based on its ID
+// Returns an error if the deletion process fails.
 func (r *threadRepository) Delete(ctx context.Context, id string) error {
 	_, _, err := r.supabaseClient.
 		From(r.table).
@@ -127,8 +127,8 @@ func (r *threadRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// List mengambil daftar thread dengan limit dan offset
-// Berguna untuk implementasi paginasi atau membatasi jumlah data yang diambil.
+// List retrieves a list of threads with limit and offset
+// Useful for implementing pagination or limiting the number of data retrieved.
 func (r *threadRepository) List(ctx context.Context, limit, offset int) ([]models.Thread, error) {
 	var threads []models.Thread
 
@@ -144,10 +144,10 @@ func (r *threadRepository) List(ctx context.Context, limit, offset int) ([]model
 	return threads, nil
 }
 
-// Count menghitung total jumlah thread yang tersimpan di database
-// Berguna untuk mengetahui ukuran dataset atau untuk keperluan paginasi.
+// Count calculates the total number of threads stored in the database
+// Useful for determining dataset size or for pagination purposes.
 func (r *threadRepository) Count(ctx context.Context) (int, error) {
-	// Query untuk menghitung jumlah record pada tabel thread
+	// Query to count the number of records in the thread table
 	_, count, err := r.supabaseClient.
 		From(r.table).
 		Select("id", "exact", false).
@@ -156,7 +156,7 @@ func (r *threadRepository) Count(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
-	// Cek apakah response berisi count
+	// Check if the response contains a count
 	if count <= 0 {
 		return 0, nil
 	}
@@ -164,8 +164,8 @@ func (r *threadRepository) Count(ctx context.Context) (int, error) {
 	return int(count), nil
 }
 
-// ListByThreadID mengambil daftar thread berdasarkan ID thread dengan limit dan offset
-// Berguna untuk mendapatkan thread spesifik dengan paginasi.
+// ListByThreadID retrieves a list of threads by thread ID with limit and offset
+// Useful for getting specific threads with pagination.
 func (r *threadRepository) ListByThreadID(ctx context.Context, threadID string, limit, offset int) ([]models.Thread, error) {
 	var threads []models.Thread
 
@@ -182,10 +182,10 @@ func (r *threadRepository) ListByThreadID(ctx context.Context, threadID string, 
 	return threads, nil
 }
 
-// CountByThreadID menghitung total jumlah thread berdasarkan ID thread
-// Berguna untuk mengetahui jumlah thread dalam suatu thread atau untuk keperluan paginasi.
+// CountByThreadID calculates the total number of threads by thread ID
+// Useful for determining the number of threads within a specific thread or for pagination purposes.
 func (r *threadRepository) CountByThreadID(ctx context.Context, threadID string) (int, error) {
-	// Query untuk menghitung jumlah record pada tabel thread berdasarkan thread_id
+	// Query to count the number of records in the thread table by thread_id
 	_, count, err := r.supabaseClient.
 		From(r.table).
 		Select("id", "exact", false).
@@ -195,7 +195,7 @@ func (r *threadRepository) CountByThreadID(ctx context.Context, threadID string)
 		return 0, err
 	}
 
-	// Cek apakah response berisi count
+	// Check if the response contains a count
 	if count <= 0 {
 		return 0, nil
 	}

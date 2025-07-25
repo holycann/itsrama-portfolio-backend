@@ -63,9 +63,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/cities": {
-            "get": {
-                "description": "Mengambil daftar kota dengan pagination",
+        "/ask/event/{id}": {
+            "post": {
+                "description": "Generate text using Gemini AI with event context and chat history",
                 "consumes": [
                     "application/json"
                 ],
@@ -73,40 +73,122 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "cities"
+                    "AI"
                 ],
-                "summary": "Mendapatkan daftar kota",
+                "summary": "Generate AI text response for a specific event",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Thread ID for chat history",
+                        "name": "thread_id",
+                        "in": "query"
+                    },
+                    {
+                        "description": "AI Text Generation Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_gemini.AIRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful AI text generated",
+                        "schema": {
+                            "$ref": "#/definitions/internal_gemini.AIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Event not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during AI generation",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/badges": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of badges with pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "badges"
+                ],
+                "summary": "List badges",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of badges to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of badges to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar kota berhasil diambil",
+                        "description": "Badges retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Failed to list badges",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -114,7 +196,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Menambahkan lokasi baru ke dalam sistem",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a new badge to the system",
                 "consumes": [
                     "application/json"
                 ],
@@ -122,12 +209,392 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "cities"
+                    "badges"
                 ],
-                "summary": "Membuat lokasi baru",
+                "summary": "Create a new badge",
                 "parameters": [
                     {
-                        "description": "Informasi Lokasi",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Badge Information",
+                        "name": "badge",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.BadgeCreate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Badge created successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid badge creation details",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/badges/count": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve the total number of badges in the system",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "badges"
+                ],
+                "summary": "Count badges",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Badge count retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to count badges",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/badges/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a badge by its unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "badges"
+                ],
+                "summary": "Get a specific badge",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Badge ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Badge retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Badge ID is required",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Badge not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing badge by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "badges"
+                ],
+                "summary": "Update a badge",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Badge ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Badge Update Information",
+                        "name": "badge",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.BadgeCreate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Badge updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid badge update details or missing ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update badge",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Remove a badge from the system by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "badges"
+                ],
+                "summary": "Delete a badge",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Badge ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Badge deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Badge ID is required",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to delete badge",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cities": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of cities with pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cities"
+                ],
+                "summary": "List cities",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of cities to retrieve",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Number of cities to skip",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cities retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.City"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list cities",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a new city to the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cities"
+                ],
+                "summary": "Create a new city",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "description": "City Information",
                         "name": "city",
                         "in": "body",
                         "required": true,
@@ -138,19 +605,31 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Lokasi berhasil dibuat",
+                        "description": "City created successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.City"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid city creation details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -160,66 +639,83 @@ const docTemplate = `{
         },
         "/cities/search": {
             "get": {
-                "description": "Mencari lokasi berdasarkan ID atau nama",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Search cities by various criteria",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "cities"
+                    "Cities"
                 ],
-                "summary": "Mencari lokasi",
+                "summary": "Search cities",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Lokasi",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "City ID",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Nama Lokasi",
+                        "description": "City Name",
                         "name": "name",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of results to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar lokasi yang ditemukan",
+                        "description": "Cities found successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.City"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Lokasi tidak ditemukan",
+                        "description": "Invalid search parameters",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -228,8 +724,75 @@ const docTemplate = `{
             }
         },
         "/cities/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a city's details by its unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cities"
+                ],
+                "summary": "Get city by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "City ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "City retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.City"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "City not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "put": {
-                "description": "Memperbarui informasi kota yang sudah ada berdasarkan ID",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing city's details",
                 "consumes": [
                     "application/json"
                 ],
@@ -237,12 +800,25 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "cities"
+                    "Cities"
                 ],
-                "summary": "Memperbarui kota",
+                "summary": "Update a city",
                 "parameters": [
                     {
-                        "description": "Informasi Kota yang Diperbarui",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "City ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "City Update Details",
                         "name": "city",
                         "in": "body",
                         "required": true,
@@ -253,25 +829,37 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Kota berhasil diperbarui",
+                        "description": "City updated successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.City"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid city update details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Kota tidak ditemukan",
+                        "description": "City not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -279,41 +867,55 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Menghapus lokasi berdasarkan ID",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Remove a city from the system by its unique identifier",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "cities"
+                    "Cities"
                 ],
-                "summary": "Menghapus lokasi",
+                "summary": "Delete a city",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Lokasi",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "City ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "Lokasi berhasil dihapus",
+                    "200": {
+                        "description": "City deleted successfully",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid city ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "City not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -323,48 +925,65 @@ const docTemplate = `{
         },
         "/events": {
             "get": {
-                "description": "Mengambil daftar lokasi dengan pagination",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Retrieve a list of cultural events with pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "events"
+                    "Events"
                 ],
-                "summary": "Mendapatkan daftar lokasi",
+                "summary": "List events",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of events to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of events to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar kota berhasil diambil",
+                        "description": "Events retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Failed to list events",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -372,7 +991,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Menambahkan lokasi baru ke dalam sistem",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a new cultural event to the system",
                 "consumes": [
                     "application/json"
                 ],
@@ -380,12 +1004,18 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "events"
+                    "Events"
                 ],
-                "summary": "Membuat lokasi baru",
+                "summary": "Create a new event",
                 "parameters": [
                     {
-                        "description": "Informasi Lokasi",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Event Information",
                         "name": "event",
                         "in": "body",
                         "required": true,
@@ -396,19 +1026,31 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Lokasi berhasil dibuat",
+                        "description": "Event created successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid event creation details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -418,66 +1060,150 @@ const docTemplate = `{
         },
         "/events/search": {
             "get": {
-                "description": "Mencari lokasi berdasarkan ID atau nama",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Search cultural events by various criteria",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "events"
+                    "Events"
                 ],
-                "summary": "Mencari lokasi",
+                "summary": "Search events",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Lokasi",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Event ID",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Nama Lokasi",
+                        "description": "Event Name",
                         "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "query",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of results to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar lokasi yang ditemukan",
+                        "description": "Events found successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Lokasi tidak ditemukan",
+                        "description": "Invalid search parameters",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/events/trending": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of trending events based on views",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Get trending events",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of trending events to retrieve",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Trending events retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to retrieve trending events",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -486,8 +1212,75 @@ const docTemplate = `{
             }
         },
         "/events/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a cultural event's details by its unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Get event by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Event retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Event not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "put": {
-                "description": "Memperbarui informasi lokasi yang sudah ada berdasarkan ID",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing cultural event's details",
                 "consumes": [
                     "application/json"
                 ],
@@ -495,12 +1288,25 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "events"
+                    "Events"
                 ],
-                "summary": "Memperbarui lokasi",
+                "summary": "Update an event",
                 "parameters": [
                     {
-                        "description": "Informasi Lokasi yang Diperbarui",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Event Update Details",
                         "name": "event",
                         "in": "body",
                         "required": true,
@@ -511,25 +1317,37 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Lokasi berhasil diperbarui",
+                        "description": "Event updated successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid event update details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Lokasi tidak ditemukan",
+                        "description": "Event not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -537,41 +1355,55 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Menghapus lokasi berdasarkan ID",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Remove a cultural event from the system by its unique identifier",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "events"
+                    "Events"
                 ],
-                "summary": "Menghapus lokasi",
+                "summary": "Delete an event",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Lokasi",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Event ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "Lokasi berhasil dihapus",
+                    "200": {
+                        "description": "Event deleted successfully",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid event ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Event not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -581,92 +1413,65 @@ const docTemplate = `{
         },
         "/local-stories": {
             "get": {
-                "description": "Mengambil daftar cerita lokal dengan pagination",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Retrieve a list of local cultural stories with pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "local_stories"
+                    "Local Stories"
                 ],
-                "summary": "Mendapatkan daftar cerita lokal",
+                "summary": "List local stories",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of local stories to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of local stories to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar cerita lokal berhasil diambil",
+                        "description": "Local stories retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Kesalahan server internal",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "description": "Memperbarui informasi cerita lokal yang sudah ada",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "local_stories"
-                ],
-                "summary": "Memperbarui cerita lokal",
-                "parameters": [
-                    {
-                        "description": "Informasi Cerita Lokal yang Diperbarui",
-                        "name": "local_story",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Cerita lokal berhasil diperbarui",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Failed to list local stories",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -674,7 +1479,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Menambahkan cerita lokal baru ke dalam sistem",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a new local cultural story to the system",
                 "consumes": [
                     "application/json"
                 ],
@@ -682,12 +1492,18 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "local_stories"
+                    "Local Stories"
                 ],
-                "summary": "Membuat cerita lokal baru",
+                "summary": "Create a new local story",
                 "parameters": [
                     {
-                        "description": "Informasi Cerita Lokal",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Local Story Information",
                         "name": "local_story",
                         "in": "body",
                         "required": true,
@@ -698,19 +1514,31 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Cerita lokal berhasil dibuat",
+                        "description": "Local story created successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid local story creation details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -720,66 +1548,83 @@ const docTemplate = `{
         },
         "/local-stories/search": {
             "get": {
-                "description": "Mencari cerita lokal berdasarkan ID atau judul",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Search local cultural stories by various criteria",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "local_stories"
+                    "Local Stories"
                 ],
-                "summary": "Mencari cerita lokal",
+                "summary": "Search local stories",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Cerita Lokal",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Local Story ID",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Judul Cerita Lokal",
+                        "description": "Local Story Title",
                         "name": "title",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of results to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar cerita lokal yang ditemukan",
+                        "description": "Local stories found successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Cerita lokal tidak ditemukan",
+                        "description": "Invalid search parameters",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -788,8 +1633,13 @@ const docTemplate = `{
             }
         },
         "/local-stories/{id}": {
-            "delete": {
-                "description": "Menghapus cerita lokal berdasarkan ID",
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing local cultural story's details",
                 "consumes": [
                     "application/json"
                 ],
@@ -797,33 +1647,122 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "local_stories"
+                    "Local Stories"
                 ],
-                "summary": "Menghapus cerita lokal",
+                "summary": "Update a local story",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Cerita Lokal",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Local Story ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Local Story Update Details",
+                        "name": "local_story",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Local story updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid local story update details",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Local story not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Remove a local cultural story from the system by its unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Local Stories"
+                ],
+                "summary": "Delete a local story",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Local Story ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "Cerita lokal berhasil dihapus",
+                    "200": {
+                        "description": "Local story deleted successfully",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid local story ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Local story not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -833,48 +1772,65 @@ const docTemplate = `{
         },
         "/locations": {
             "get": {
-                "description": "Mengambil daftar lokasi dengan pagination",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Retrieve a list of locations with pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "locations"
+                    "Locations"
                 ],
-                "summary": "Mendapatkan daftar lokasi",
+                "summary": "List locations",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of locations to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of locations to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar kota berhasil diambil",
+                        "description": "Locations retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Failed to list locations",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -882,7 +1838,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Menambahkan lokasi baru ke dalam sistem",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a new location to the system",
                 "consumes": [
                     "application/json"
                 ],
@@ -890,12 +1851,18 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "locations"
+                    "Locations"
                 ],
-                "summary": "Membuat lokasi baru",
+                "summary": "Create a new location",
                 "parameters": [
                     {
-                        "description": "Informasi Lokasi",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Location Information",
                         "name": "location",
                         "in": "body",
                         "required": true,
@@ -906,19 +1873,31 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Lokasi berhasil dibuat",
+                        "description": "Location created successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid location creation details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -928,66 +1907,83 @@ const docTemplate = `{
         },
         "/locations/search": {
             "get": {
-                "description": "Mencari lokasi berdasarkan ID atau nama",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Search locations by various criteria",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "locations"
+                    "Locations"
                 ],
-                "summary": "Mencari lokasi",
+                "summary": "Search locations",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Lokasi",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Location ID",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Nama Lokasi",
+                        "description": "Location Name",
                         "name": "name",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of results to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar lokasi yang ditemukan",
+                        "description": "Locations found successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Lokasi tidak ditemukan",
+                        "description": "Invalid search parameters",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -997,7 +1993,12 @@ const docTemplate = `{
         },
         "/locations/{id}": {
             "put": {
-                "description": "Memperbarui informasi lokasi yang sudah ada berdasarkan ID",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing location's details",
                 "consumes": [
                     "application/json"
                 ],
@@ -1005,12 +2006,25 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "locations"
+                    "Locations"
                 ],
-                "summary": "Memperbarui lokasi",
+                "summary": "Update a location",
                 "parameters": [
                     {
-                        "description": "Informasi Lokasi yang Diperbarui",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Location ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Location Update Details",
                         "name": "location",
                         "in": "body",
                         "required": true,
@@ -1021,25 +2035,37 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Lokasi berhasil diperbarui",
+                        "description": "Location updated successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid location update details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Lokasi tidak ditemukan",
+                        "description": "Location not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1047,41 +2073,55 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Menghapus lokasi berdasarkan ID",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Remove a location from the system by its unique identifier",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "locations"
+                    "Locations"
                 ],
-                "summary": "Menghapus lokasi",
+                "summary": "Delete a location",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Lokasi",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Location ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "Lokasi berhasil dihapus",
+                    "200": {
+                        "description": "Location deleted successfully",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid location ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Location not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1091,36 +2131,44 @@ const docTemplate = `{
         },
         "/messages": {
             "get": {
-                "description": "Mendapatkan daftar pesan dengan pagination",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Retrieve a list of messages with pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "messages"
+                    "Messages"
                 ],
-                "summary": "Daftar pesan",
+                "summary": "List messages",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of messages to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of messages to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar pesan berhasil didapatkan",
+                        "description": "Messages retrieved successfully",
                         "schema": {
                             "allOf": [
                                 {
@@ -1140,14 +2188,8 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Failed to list messages",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1155,7 +2197,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Menambahkan pesan baru ke dalam sistem",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a new message to the system",
                 "consumes": [
                     "application/json"
                 ],
@@ -1163,12 +2210,18 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "messages"
+                    "Messages"
                 ],
-                "summary": "Membuat pesan baru",
+                "summary": "Create a new message",
                 "parameters": [
                     {
-                        "description": "Informasi Pesan",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Message Information",
                         "name": "message",
                         "in": "body",
                         "required": true,
@@ -1179,7 +2232,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Pesan berhasil dibuat",
+                        "description": "Message created successfully",
                         "schema": {
                             "allOf": [
                                 {
@@ -1197,13 +2250,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid message creation details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1213,48 +2266,56 @@ const docTemplate = `{
         },
         "/messages/search": {
             "get": {
-                "description": "Mencari pesan berdasarkan ID atau kriteria lainnya",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Search messages by various criteria",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "messages"
+                    "Messages"
                 ],
-                "summary": "Mencari pesan",
+                "summary": "Search messages",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Pesan",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message ID",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "ID Thread",
+                        "description": "Thread ID",
                         "name": "threadID",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of results to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar pesan yang ditemukan",
+                        "description": "Messages found successfully",
                         "schema": {
                             "allOf": [
                                 {
@@ -1275,19 +2336,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Pesan tidak ditemukan",
+                        "description": "Invalid search parameters",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1297,7 +2352,12 @@ const docTemplate = `{
         },
         "/messages/{id}": {
             "put": {
-                "description": "Memperbarui informasi pesan yang sudah ada berdasarkan ID",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing message's details",
                 "consumes": [
                     "application/json"
                 ],
@@ -1305,23 +2365,36 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "messages"
+                    "Messages"
                 ],
-                "summary": "Memperbarui pesan",
+                "summary": "Update a message",
                 "parameters": [
                     {
-                        "description": "Informasi Pesan yang Diperbarui",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Message Update Details",
                         "name": "message",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.RequestMessage"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Message"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Pesan berhasil diperbarui",
+                        "description": "Message updated successfully",
                         "schema": {
                             "allOf": [
                                 {
@@ -1339,19 +2412,19 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid message update details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Pesan tidak ditemukan",
+                        "description": "Message not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1359,41 +2432,55 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Menghapus pesan berdasarkan ID",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Remove a message from the system by its unique identifier",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "messages"
+                    "Messages"
                 ],
-                "summary": "Menghapus pesan",
+                "summary": "Delete a message",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Pesan",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "Pesan berhasil dihapus",
+                    "200": {
+                        "description": "Message deleted successfully",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid message ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Message not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1408,10 +2495,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a paginated list of user profiles",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Retrieve a list of user profiles with pagination",
                 "produces": [
                     "application/json"
                 ],
@@ -1422,7 +2506,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
@@ -1436,21 +2520,35 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Starting offset for pagination",
+                        "description": "Number of user profiles to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successfully retrieved user profiles",
+                        "description": "User profiles retrieved successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
-                        "description": "Failed to retrieve user profiles",
+                        "description": "Failed to list user profiles",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1463,7 +2561,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Register a new user profile in the system with provided details",
+                "description": "Register a new user profile in the system",
                 "consumes": [
                     "application/json"
                 ],
@@ -1477,19 +2575,12 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
                     {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "UserID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "User profile creation details",
+                        "description": "User Profile Creation Details",
                         "name": "profile",
                         "in": "body",
                         "required": true,
@@ -1502,17 +2593,29 @@ const docTemplate = `{
                     "201": {
                         "description": "User profile created successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Invalid input",
+                        "description": "Invalid user profile creation details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
-                    "409": {
-                        "description": "User profile already exists",
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1604,11 +2707,11 @@ const docTemplate = `{
                 "tags": [
                     "User Profiles"
                 ],
-                "summary": "Update user profile",
+                "summary": "Update a user profile",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
@@ -1620,7 +2723,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "User profile update details",
+                        "description": "User Profile Update Details",
                         "name": "profile",
                         "in": "body",
                         "required": true,
@@ -1633,12 +2736,23 @@ const docTemplate = `{
                     "200": {
                         "description": "User profile updated successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Invalid input",
+                        "description": "Invalid user profile update details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1649,8 +2763,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
-                    "409": {
-                        "description": "Failed to update user profile",
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1663,21 +2777,18 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Soft delete a user profile by its unique identifier",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Remove a user profile from the system by its unique identifier",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "User Profiles"
                 ],
-                "summary": "Delete user profile",
+                "summary": "Delete a user profile",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
@@ -1693,10 +2804,7 @@ const docTemplate = `{
                     "200": {
                         "description": "User profile deleted successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
                         }
                     },
                     "400": {
@@ -1711,8 +2819,429 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
-                    "409": {
-                        "description": "Failed to delete user profile",
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/provinces": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a list of provinces with pagination",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provinces"
+                ],
+                "summary": "List provinces",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of provinces to retrieve",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Number of provinces to skip",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Provinces retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list provinces",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a new province to the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provinces"
+                ],
+                "summary": "Create a new province",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Province Information",
+                        "name": "province",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Province created successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid province creation details",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/provinces/search": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Search provinces by various criteria",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provinces"
+                ],
+                "summary": "Search provinces",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Province ID",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Province Name",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of results to retrieve",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Number of results to skip",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Provinces found successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid search parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/provinces/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a province's details by its unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provinces"
+                ],
+                "summary": "Get province by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Province ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Province retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Province not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing province's details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provinces"
+                ],
+                "summary": "Update a province",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Province ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Province Update Details",
+                        "name": "province",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Province updated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid province update details",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Province not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Remove a province from the system by its unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provinces"
+                ],
+                "summary": "Delete a province",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Province ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Province deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid province ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Province not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1722,48 +3251,65 @@ const docTemplate = `{
         },
         "/threads": {
             "get": {
-                "description": "Mengambil daftar thread dengan pagination",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Retrieve a list of discussion threads with pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "threads"
+                    "Threads"
                 ],
-                "summary": "Mendapatkan daftar thread",
+                "summary": "List threads",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of threads to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of threads to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar thread berhasil diambil",
+                        "description": "Threads retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Failed to list threads",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1771,7 +3317,12 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Menambahkan thread baru ke dalam sistem",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a new discussion thread to the system",
                 "consumes": [
                     "application/json"
                 ],
@@ -1779,12 +3330,18 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "threads"
+                    "Threads"
                 ],
-                "summary": "Membuat thread baru",
+                "summary": "Create a new thread",
                 "parameters": [
                     {
-                        "description": "Informasi Thread",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Thread Information",
                         "name": "thread",
                         "in": "body",
                         "required": true,
@@ -1795,19 +3352,31 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Thread berhasil dibuat",
+                        "description": "Thread created successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid thread creation details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1817,66 +3386,83 @@ const docTemplate = `{
         },
         "/threads/search": {
             "get": {
-                "description": "Mencari thread berdasarkan ID atau judul",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Search discussion threads by various criteria",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "threads"
+                    "Threads"
                 ],
-                "summary": "Mencari thread",
+                "summary": "Search threads",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Thread",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
                         "name": "id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Judul Thread",
+                        "description": "Thread Title",
                         "name": "title",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 10,
-                        "description": "Jumlah data yang dikembalikan",
+                        "description": "Number of results to retrieve",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Offset untuk pagination",
+                        "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Daftar thread yang ditemukan",
+                        "description": "Threads found successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Thread tidak ditemukan",
+                        "description": "Invalid search parameters",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1885,8 +3471,75 @@ const docTemplate = `{
             }
         },
         "/threads/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a discussion thread's details by its unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Get thread by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Thread retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Thread not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "put": {
-                "description": "Memperbarui informasi thread yang sudah ada berdasarkan ID",
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Update an existing discussion thread's details",
                 "consumes": [
                     "application/json"
                 ],
@@ -1894,12 +3547,25 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "threads"
+                    "Threads"
                 ],
-                "summary": "Memperbarui thread",
+                "summary": "Update a thread",
                 "parameters": [
                     {
-                        "description": "Informasi Thread yang Diperbarui",
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Thread Update Details",
                         "name": "thread",
                         "in": "body",
                         "required": true,
@@ -1910,25 +3576,37 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Thread berhasil diperbarui",
+                        "description": "Thread updated successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid thread update details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Thread tidak ditemukan",
+                        "description": "Thread not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1936,41 +3614,55 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Menghapus thread berdasarkan ID",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
                 ],
+                "description": "Remove a discussion thread from the system by its unique identifier",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "threads"
+                    "Threads"
                 ],
-                "summary": "Menghapus thread",
+                "summary": "Delete a thread",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ID Thread",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "Thread berhasil dihapus",
+                    "200": {
+                        "description": "Thread deleted successfully",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
                         }
                     },
                     "400": {
-                        "description": "Kesalahan validasi input",
+                        "description": "Invalid thread ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Thread not found",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Kesalahan server internal",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -1985,10 +3677,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a paginated list of users",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Retrieve a list of users with pagination",
                 "produces": [
                     "application/json"
                 ],
@@ -1999,7 +3688,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
@@ -2013,20 +3702,35 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "default": 0,
-                        "description": "Starting offset for pagination",
+                        "description": "Number of users to skip",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successfully retrieved users",
+                        "description": "Users retrieved successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
-                        "description": "Failed to retrieve users",
+                        "description": "Failed to list users",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -2039,7 +3743,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Register a new user in the system with provided details",
+                "description": "Register a new user in the system",
                 "consumes": [
                     "application/json"
                 ],
@@ -2053,12 +3757,12 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
                     {
-                        "description": "User creation details",
+                        "description": "User Registration Details",
                         "name": "user",
                         "in": "body",
                         "required": true,
@@ -2071,17 +3775,298 @@ const docTemplate = `{
                     "201": {
                         "description": "User created successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Invalid input",
+                        "description": "Invalid user creation details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
-                    "409": {
-                        "description": "User already exists",
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/badges": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve badges for a specific user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Badges"
+                ],
+                "summary": "Get user badges",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of badges to retrieve",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Number of badges to skip",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User badges retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserBadge"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid search parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Add a new badge to a user's profile",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Badges"
+                ],
+                "summary": "Assign a badge to a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Badge Assignment Details",
+                        "name": "badge",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserBadgeCreate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Badge assigned successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserBadge"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid badge assignment details",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Delete a specific badge from a user's profile",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Badges"
+                ],
+                "summary": "Remove a badge from a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Badge ID",
+                        "name": "badge_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Badge removed successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID or badge ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/badges/count": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve the number of badges a user has",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Badges"
+                ],
+                "summary": "Count user badges",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User badge count retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -2096,21 +4081,18 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a specific user's details by their unique identifier or email address",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Search users by various criteria",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Users"
                 ],
-                "summary": "Search user by ID or email",
+                "summary": "Search users",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
@@ -2125,13 +4107,42 @@ const docTemplate = `{
                         "description": "User Email",
                         "name": "email",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of results to retrieve",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Number of results to skip",
+                        "name": "offset",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "User details retrieved successfully",
+                        "description": "Users found successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -2140,8 +4151,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "User not found",
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -2150,6 +4161,68 @@ const docTemplate = `{
             }
         },
         "/users/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a user's details by their unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get user by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "put": {
                 "security": [
                     {
@@ -2166,11 +4239,11 @@ const docTemplate = `{
                 "tags": [
                     "Users"
                 ],
-                "summary": "Update user",
+                "summary": "Update a user",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
@@ -2182,7 +4255,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "User update details",
+                        "description": "User Update Details",
                         "name": "user",
                         "in": "body",
                         "required": true,
@@ -2195,14 +4268,23 @@ const docTemplate = `{
                     "200": {
                         "description": "User updated successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Invalid input",
+                        "description": "Invalid user update details",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -2213,8 +4295,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
-                    "409": {
-                        "description": "Failed to update user",
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -2227,21 +4309,18 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Soft delete a user by their unique identifier",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Remove a user from the system by their unique identifier",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Users"
                 ],
-                "summary": "Delete user",
+                "summary": "Delete a user",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
@@ -2257,10 +4336,7 @@ const docTemplate = `{
                     "200": {
                         "description": "User deleted successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
                         }
                     },
                     "400": {
@@ -2275,8 +4351,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
                     },
-                    "409": {
-                        "description": "Failed to delete user",
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
                         }
@@ -2398,43 +4474,103 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_holycann_cultour-backend_internal_achievement_models.Badge": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "icon_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_achievement_models.BadgeCreate": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "icon_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_holycann_cultour-backend_internal_cultural_models.Event": {
             "type": "object",
             "properties": {
+                "city_id": {
+                    "description": "Reference to city ID",
+                    "type": "string",
+                    "example": "city_12345"
+                },
                 "description": {
-                    "description": "Deskripsi event",
+                    "description": "Event description",
                     "type": "string",
                     "example": "Monas"
                 },
                 "end_date": {
-                    "description": "Tanggal selesai event (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
+                    "description": "Event end date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
                     "type": "string",
                     "example": "2024-06-01T09:00:00+07:00"
                 },
                 "id": {
-                    "description": "Unique identifier untuk event",
+                    "description": "Unique identifier for the event",
                     "type": "string",
                     "example": "loc_12345"
                 },
+                "image_url": {
+                    "description": "Event image URL",
+                    "type": "string",
+                    "example": "https://example.com/image.jpg"
+                },
                 "is_kid_friendly": {
-                    "description": "Apakah event ramah anak",
+                    "description": "Whether the event is kid-friendly",
                     "type": "boolean",
                     "example": true
                 },
                 "location_id": {
-                    "description": "Referensi ke ID lokasi",
+                    "description": "Reference to location ID",
                     "type": "string",
                     "example": "location_67890"
                 },
                 "name": {
-                    "description": "Nama event",
+                    "description": "Event name",
                     "type": "string",
                     "example": "Monas"
                 },
+                "province_id": {
+                    "description": "Reference to province ID",
+                    "type": "string",
+                    "example": "province_67890"
+                },
                 "start_date": {
-                    "description": "Tanggal mulai event (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
+                    "description": "Event start date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
                     "type": "string",
                     "example": "2024-06-01T08:00:00+07:00"
+                },
+                "user_id": {
+                    "description": "ID of the user who created the event",
+                    "type": "string",
+                    "example": "user_67890"
                 },
                 "views": {
                     "type": "integer",
@@ -2467,7 +4603,7 @@ const docTemplate = `{
                 },
                 "language": {
                     "type": "string",
-                    "example": "ID"
+                    "example": "EN"
                 },
                 "location_id": {
                     "type": "string"
@@ -2481,7 +4617,7 @@ const docTemplate = `{
                 },
                 "summary": {
                     "type": "string",
-                    "example": "Cerita tentang asal-usul Tangkuban Perahu"
+                    "example": "Story about the origin of Tangkuban Perahu"
                 },
                 "tags": {
                     "type": "array",
@@ -2491,10 +4627,77 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string",
-                    "example": "Legenda Sangkuriang"
+                    "example": "Legend of Sangkuriang"
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent": {
+            "type": "object",
+            "properties": {
+                "city_id": {
+                    "description": "Reference to city ID",
+                    "type": "string",
+                    "example": "city_12345"
+                },
+                "description": {
+                    "description": "Event description",
+                    "type": "string",
+                    "example": "Monas"
+                },
+                "end_date": {
+                    "description": "Event end date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
+                    "type": "string",
+                    "example": "2024-06-01T09:00:00+07:00"
+                },
+                "id": {
+                    "description": "Unique identifier for the event",
+                    "type": "string",
+                    "example": "loc_12345"
+                },
+                "image_url": {
+                    "description": "Event image URL",
+                    "type": "string",
+                    "example": "https://example.com/image.jpg"
+                },
+                "is_kid_friendly": {
+                    "description": "Whether the event is kid-friendly",
+                    "type": "boolean",
+                    "example": true
+                },
+                "location_id": {
+                    "description": "Reference to location ID",
+                    "type": "string",
+                    "example": "location_67890"
+                },
+                "name": {
+                    "description": "Event name",
+                    "type": "string",
+                    "example": "Monas"
+                },
+                "province_id": {
+                    "description": "Reference to province ID",
+                    "type": "string",
+                    "example": "province_67890"
+                },
+                "start_date": {
+                    "description": "Event start date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
+                    "type": "string",
+                    "example": "2024-06-01T08:00:00+07:00"
+                },
+                "user": {
+                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                },
+                "user_id": {
+                    "description": "ID of the user who created the event",
+                    "type": "string",
+                    "example": "user_67890"
+                },
+                "views": {
+                    "type": "integer",
+                    "example": 10
                 }
             }
         },
@@ -2502,47 +4705,28 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "content": {
-                    "description": "Isi pesan",
+                    "description": "Message content",
                     "type": "string",
-                    "example": "Ini isi pesan"
+                    "example": "This is the message content"
                 },
                 "created_at": {
-                    "description": "Waktu pembuatan pesan",
+                    "description": "Message creation time",
                     "type": "string"
                 },
                 "id": {
-                    "description": "ID unik untuk pesan, contoh: \"msg_12345\"",
+                    "description": "Unique ID for the message, example: \"msg_12345\"",
                     "type": "string",
                     "example": "msg_12345"
                 },
                 "thread_id": {
-                    "description": "ID thread tempat pesan berada",
+                    "description": "ID of the thread the message belongs to",
                     "type": "string",
                     "example": "thread_12345"
-                }
-            }
-        },
-        "github_com_holycann_cultour-backend_internal_discussion_models.RequestMessage": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "description": "Isi pesan",
-                    "type": "string",
-                    "example": "Ini isi pesan"
                 },
-                "created_at": {
-                    "description": "Waktu pembuatan pesan",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "ID unik untuk pesan, contoh: \"msg_12345\"",
+                "user_id": {
+                    "description": "ID of the user who sent the message",
                     "type": "string",
-                    "example": "msg_12345"
-                },
-                "thread_id": {
-                    "description": "ID thread tempat pesan berada",
-                    "type": "string",
-                    "example": "thread_12345"
+                    "example": "user_67890"
                 }
             }
         },
@@ -2550,23 +4734,31 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "content": {
-                    "description": "Isi pesan",
+                    "description": "Message content",
                     "type": "string",
-                    "example": "Ini isi pesan"
+                    "example": "This is the message content"
                 },
                 "created_at": {
-                    "description": "Waktu pembuatan pesan",
+                    "description": "Message creation time",
                     "type": "string"
                 },
                 "id": {
-                    "description": "ID unik untuk pesan, contoh: \"msg_12345\"",
+                    "description": "Unique ID for the message, example: \"msg_12345\"",
                     "type": "string",
                     "example": "msg_12345"
                 },
                 "thread_id": {
-                    "description": "ID thread tempat pesan berada",
+                    "description": "ID of the thread the message belongs to",
                     "type": "string",
                     "example": "thread_12345"
+                },
+                "user": {
+                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
+                },
+                "user_id": {
+                    "description": "ID of the user who sent the message",
+                    "type": "string",
+                    "example": "user_67890"
                 }
             }
         },
@@ -2574,29 +4766,29 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
-                    "description": "Waktu pembuatan thread",
+                    "description": "Thread creation time",
                     "type": "string",
                     "example": "2024-06-01T15:04:05Z"
                 },
                 "event_id": {
-                    "description": "Content string ` + "`" + `json:\"content\" db:\"content\" example:\"Ayo diskusi tentang sejarah Monas!\"` + "`" + ` // Konten thread\nUserID    string ` + "`" + `json:\"user_id\" db:\"user_id\" example:\"user_67890\"` + "`" + `                         // ID pengguna yang membuat thread",
+                    "description": "Content string ` + "`" + `json:\"content\" db:\"content\" example:\"Let's discuss about Monas history!\"` + "`" + ` // Thread content\nUserID    string ` + "`" + `json:\"user_id\" db:\"user_id\" example:\"user_67890\"` + "`" + `                         // ID of the user who created the thread",
                     "type": "string",
                     "example": "event-xx"
                 },
                 "id": {
-                    "description": "ID unik untuk thread, contoh: \"thread_12345\"",
+                    "description": "Unique ID for the thread, example: \"thread_12345\"",
                     "type": "string",
                     "example": "thread_12345"
                 },
                 "status": {
-                    "description": "Status thread, contoh: \"open\"",
+                    "description": "Thread status, example: \"open\"",
                     "type": "string",
                     "example": "open"
                 },
                 "title": {
-                    "description": "Judul thread, contoh: \"Diskusi Sejarah Monas\"",
+                    "description": "Thread title, example: \"Discussion about Monas History\"",
                     "type": "string",
-                    "example": "Diskusi Sejarah Monas"
+                    "example": "Discussion about Monas History"
                 }
             }
         },
@@ -2604,17 +4796,17 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "id": {
-                    "description": "ID unik untuk kota, contoh: \"city_12345\"",
+                    "description": "Unique ID for the city, example: \"city_12345\"",
                     "type": "string",
                     "example": "city_12345"
                 },
                 "name": {
-                    "description": "Nama kota, contoh: \"Jakarta\"",
+                    "description": "City name, example: \"Jakarta\"",
                     "type": "string",
                     "example": "Jakarta"
                 },
                 "province": {
-                    "description": "Nama provinsi tempat kota berada, contoh: \"DKI Jakarta\"",
+                    "description": "Name of the province where the city is located, example: \"DKI Jakarta\"",
                     "type": "string",
                     "example": "DKI Jakarta"
                 }
@@ -2647,6 +4839,21 @@ const docTemplate = `{
                     "description": "Name of the location",
                     "type": "string",
                     "example": "Monas"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_place_models.Province": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Unique ID for the province, example: \"province_12345\"",
+                    "type": "string",
+                    "example": "province_12345"
+                },
+                "name": {
+                    "description": "Province name, example: \"West Java\"",
+                    "type": "string",
+                    "example": "West Java"
                 }
             }
         },
@@ -2737,6 +4944,70 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_holycann_cultour-backend_internal_users_models.UserBadge": {
+            "description": "Badge information associated with a user",
+            "type": "object",
+            "required": [
+                "badge_id",
+                "badge_name",
+                "user_id"
+            ],
+            "properties": {
+                "badge_description": {
+                    "description": "Badge description\n@example \"Explored multiple cultural events\"",
+                    "type": "string"
+                },
+                "badge_icon_url": {
+                    "description": "Badge icon URL\n@example \"https://example.com/badges/explorer.png\"",
+                    "type": "string",
+                    "format": "uri"
+                },
+                "badge_id": {
+                    "description": "Badge identifier\n@example \"explorer\"",
+                    "type": "string",
+                    "example": "explorer"
+                },
+                "badge_name": {
+                    "description": "Badge name\n@example \"Penjelajah\"",
+                    "type": "string",
+                    "example": "Penjelajah"
+                },
+                "earned_at": {
+                    "description": "Timestamp when the badge was earned",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Unique identifier for the user badge\n@example \"user_badge_123\"",
+                    "type": "string",
+                    "example": "user_badge_123"
+                },
+                "user_id": {
+                    "description": "Associated user ID\n@example \"user_123\"",
+                    "type": "string",
+                    "example": "user_123"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_users_models.UserBadgeCreate": {
+            "description": "Payload for assigning a badge to a user",
+            "type": "object",
+            "required": [
+                "badge_id",
+                "user_id"
+            ],
+            "properties": {
+                "badge_id": {
+                    "description": "Badge identifier\n@example \"explorer\"",
+                    "type": "string",
+                    "example": "explorer"
+                },
+                "user_id": {
+                    "description": "Associated user ID\n@example \"user_123\"",
+                    "type": "string",
+                    "example": "user_123"
+                }
+            }
+        },
         "github_com_holycann_cultour-backend_internal_users_models.UserCreate": {
             "description": "Payload for user registration",
             "type": "object",
@@ -2769,7 +5040,7 @@ const docTemplate = `{
             }
         },
         "github_com_holycann_cultour-backend_internal_users_models.UserProfile": {
-            "description": "Detailed user profile with additional personal information",
+            "description": "Detailed user profile with additional personal information, including identity (KTP) data",
             "type": "object",
             "required": [
                 "fullname",
@@ -2803,6 +5074,11 @@ const docTemplate = `{
                     "type": "string",
                     "example": "profile_123"
                 },
+                "identity_image_url": {
+                    "description": "URL to uploaded KTP image\n@example \"https://example.com/ktp.jpg\"",
+                    "type": "string",
+                    "format": "uri"
+                },
                 "updated_at": {
                     "description": "Timestamp of the last profile update",
                     "type": "string"
@@ -2815,7 +5091,7 @@ const docTemplate = `{
             }
         },
         "github_com_holycann_cultour-backend_internal_users_models.UserProfileCreate": {
-            "description": "Payload for creating a user profile",
+            "description": "Payload for creating a user profile, including identity (KTP) data",
             "type": "object",
             "required": [
                 "fullname",
@@ -2835,6 +5111,11 @@ const docTemplate = `{
                     "description": "User's full name\n@example \"John Doe\"",
                     "type": "string",
                     "example": "John Doe"
+                },
+                "identity_image_url": {
+                    "description": "URL to uploaded KTP image\n@example \"https://example.com/ktp.jpg\"",
+                    "type": "string",
+                    "format": "uri"
                 },
                 "user_id": {
                     "description": "Associated user ID\n@example \"user_123\"",
@@ -2871,7 +5152,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "prompt": {
-                    "description": "Prompt is the user's input text for the AI\nExample: \"Explain quantum computing in simple terms\"\nRequired: true\nMin length: 1\nMax length: 2000",
+                    "description": "Prompt is the text input from the user for the AI\nExample: \"Explain quantum computing in simple terms\"\nRequired: true\nMin length: 1\nMax length: 2000",
                     "type": "string",
                     "maxLength": 2000,
                     "minLength": 1,
@@ -2883,7 +5164,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "metadata": {
-                    "description": "Metadata about the AI-generated content",
+                    "description": "Metadata about the generated AI content",
                     "type": "object",
                     "properties": {
                         "length": {
@@ -2892,7 +5173,7 @@ const docTemplate = `{
                             "example": 250
                         },
                         "tokens_used": {
-                            "description": "Tokens used in the generation",
+                            "description": "Tokens used in the generation process",
                             "type": "integer",
                             "example": 60
                         }
@@ -2908,7 +5189,7 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "ApiKeyAuth": {
-            "description": "Insert Your JWT Token. Example: Bearer \u003ctoken\u003e",
+            "description": "Insert Your JWT Token. Do NOT include \"Bearer \" prefix. Example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
