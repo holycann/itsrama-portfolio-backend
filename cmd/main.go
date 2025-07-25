@@ -180,7 +180,7 @@ func registerApplicationRoutes(
 	appLogger *logger.Logger,
 ) {
 	routes.SetupRouter(router, *geminiAiClient)
-	router.Use(routeMiddleware.VerifyJWT())
+	// router.Use(routeMiddleware.VerifyJWT())
 	routes.RegisterUserRoutes(router, supabaseAuth)
 	routes.RegisterCityRoutes(router, appLogger, supabaseClient.GetClient())
 	routes.RegisterLocationRoutes(router, appLogger, supabaseClient.GetClient())
