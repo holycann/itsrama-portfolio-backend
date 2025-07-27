@@ -3,68 +3,48 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/discussion/models"
 	"github.com/holycann/cultour-backend/internal/discussion/repositories"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 type threadService struct {
 	threadRepo repositories.ThreadRepository
 }
 
-// NewThreadService membuat instance baru dari thread service
 func NewThreadService(threadRepo repositories.ThreadRepository) ThreadService {
 	return &threadService{
 		threadRepo: threadRepo,
 	}
 }
 
-// CreateThread menambahkan thread baru ke database
-// Melakukan validasi objek thread sebelum membuat
 func (s *threadService) CreateThread(ctx context.Context, thread *models.Thread) error {
 	// Validasi objek thread
 	if thread == nil {
 		return fmt.Errorf("thread tidak boleh nil")
 	}
 
-	// Validasi field yang wajib diisi (contoh: Title)
+	// Validasi field yang wajib diisi
 	if thread.Title == "" {
 		return fmt.Errorf("judul thread wajib diisi")
 	}
 
-	thread.ID = uuid.NewString()
+	// Set default values
+	thread.ID = uuid.New()
+	thread.CreatedAt = time.Now()
+
+	// Set default status if not provided
+	if thread.Status == "" {
+		thread.Status = "active"
+	}
 
 	// Panggil repository untuk membuat thread
 	return s.threadRepo.Create(ctx, thread)
 }
 
-// GetThreads mengambil daftar thread dengan paginasi
-func (s *threadService) GetThreads(ctx context.Context, limit, offset int) ([]*models.Thread, error) {
-	// Validasi parameter paginasi
-	if limit <= 0 {
-		limit = 10 // Limit default
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Ambil thread dari repository
-	threads, err := s.threadRepo.List(ctx, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-
-	// Konversi []models.Thread ke []*models.Thread
-	threadPtrs := make([]*models.Thread, len(threads))
-	for i := range threads {
-		threadPtrs[i] = &threads[i]
-	}
-
-	return threadPtrs, nil
-}
-
-// GetThreadByID mengambil satu thread berdasarkan ID uniknya
 func (s *threadService) GetThreadByID(ctx context.Context, id string) (*models.Thread, error) {
 	// Validasi ID
 	if id == "" {
@@ -75,18 +55,18 @@ func (s *threadService) GetThreadByID(ctx context.Context, id string) (*models.T
 	return s.threadRepo.FindByID(ctx, id)
 }
 
-// GetThreadByTitle mengambil satu thread berdasarkan judul uniknya
-func (s *threadService) GetThreadByTitle(ctx context.Context, title string) (*models.Thread, error) {
-	// Validasi title
-	if title == "" {
-		return nil, fmt.Errorf("judul thread tidak boleh kosong")
+func (s *threadService) ListThreads(ctx context.Context, opts repository.ListOptions) ([]models.Thread, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
 	}
 
-	// Ambil thread dari repository
-	return s.threadRepo.FindByTitle(ctx, title)
+	return s.threadRepo.List(ctx, opts)
 }
 
-// UpdateThread memperbarui thread yang sudah ada di database
 func (s *threadService) UpdateThread(ctx context.Context, thread *models.Thread) error {
 	// Validasi objek thread
 	if thread == nil {
@@ -94,15 +74,17 @@ func (s *threadService) UpdateThread(ctx context.Context, thread *models.Thread)
 	}
 
 	// Validasi field yang wajib diisi
-	if thread.ID == "" {
+	if thread.ID == uuid.Nil {
 		return fmt.Errorf("thread ID wajib diisi untuk update")
 	}
+
+	// Update timestamp
+	thread.UpdatedAt = time.Now()
 
 	// Panggil repository untuk update thread
 	return s.threadRepo.Update(ctx, thread)
 }
 
-// DeleteThread menghapus thread dari database berdasarkan ID-nya
 func (s *threadService) DeleteThread(ctx context.Context, id string) error {
 	// Validasi ID
 	if id == "" {
@@ -113,7 +95,48 @@ func (s *threadService) DeleteThread(ctx context.Context, id string) error {
 	return s.threadRepo.Delete(ctx, id)
 }
 
-// Count menghitung jumlah total thread yang tersimpan
-func (s *threadService) Count(ctx context.Context) (int, error) {
-	return s.threadRepo.Count(ctx)
+func (s *threadService) CountThreads(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	return s.threadRepo.Count(ctx, filters)
+}
+
+func (s *threadService) GetThreadByTitle(ctx context.Context, title string) (*models.Thread, error) {
+	// Validasi title
+	if title == "" {
+		return nil, fmt.Errorf("judul thread tidak boleh kosong")
+	}
+
+	// Ambil thread dari repository
+	return s.threadRepo.FindByTitle(ctx, title)
+}
+
+func (s *threadService) GetThreadsByEvent(ctx context.Context, eventID string) ([]models.Thread, error) {
+	return s.threadRepo.FindThreadsByEvent(ctx, eventID)
+}
+
+func (s *threadService) GetActiveThreads(ctx context.Context, limit int) ([]models.Thread, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	return s.threadRepo.FindActiveThreads(ctx, limit)
+}
+
+func (s *threadService) SearchThreads(ctx context.Context, query string, opts repository.ListOptions) ([]models.Thread, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+
+	// Add search query to filters
+	opts.Filters = append(opts.Filters,
+		repository.FilterOption{
+			Field:    "title",
+			Operator: "like",
+			Value:    query,
+		},
+	)
+
+	return s.threadRepo.List(ctx, opts)
 }

@@ -16,7 +16,7 @@ func RegisterCityRoutes(
 	supabaseClient *supabase.Client,
 	routeMiddleware ...*middleware.Middleware,
 ) {
-	cityRepository := repositories.NewCityRepository(supabaseClient, *repositories.DefaultCityConfig())
+	cityRepository := repositories.NewCityRepository(supabaseClient)
 	cityService := services.NewCityService(cityRepository)
 	cityHandler := handlers.NewCityHandler(cityService, logger)
 
@@ -28,7 +28,7 @@ func RegisterCityRoutes(
 	city := r.Group("/cities")
 	{
 		if mw != nil {
-			city.POST("/",
+			city.POST("",
 				mw.VerifyJWT(),
 				mw.RequireRoleOrBadge("admin", "warlok"),
 				cityHandler.CreateCity,
@@ -44,12 +44,12 @@ func RegisterCityRoutes(
 				cityHandler.DeleteCity,
 			)
 		} else {
-			city.POST("/", cityHandler.CreateCity)
+			city.POST("", cityHandler.CreateCity)
 			city.PUT("/:id", cityHandler.UpdateCity)
 			city.DELETE("/:id", cityHandler.DeleteCity)
 		}
-		city.GET("/", cityHandler.ListCities)
-		city.GET("/search", cityHandler.SearchCity)
+		city.GET("", cityHandler.ListCities)
+		city.GET("/search", cityHandler.SearchCities)
 		city.GET("/:id", cityHandler.GetCityByID)
 	}
 }
@@ -60,7 +60,7 @@ func RegisterProvinceRoutes(
 	supabaseClient *supabase.Client,
 	routeMiddleware ...*middleware.Middleware,
 ) {
-	provinceRepository := repositories.NewProvinceRepository(supabaseClient, *repositories.DefaultProvinceConfig())
+	provinceRepository := repositories.NewProvinceRepository(supabaseClient)
 	provinceService := services.NewProvinceService(provinceRepository)
 	provinceHandler := handlers.NewProvinceHandler(provinceService, logger)
 
@@ -72,7 +72,7 @@ func RegisterProvinceRoutes(
 	province := r.Group("/provinces")
 	{
 		if mw != nil {
-			province.POST("/",
+			province.POST("",
 				mw.VerifyJWT(),
 				mw.RequireRoleOrBadge("admin", "warlok"),
 				provinceHandler.CreateProvince,
@@ -88,11 +88,11 @@ func RegisterProvinceRoutes(
 				provinceHandler.DeleteProvince,
 			)
 		} else {
-			province.POST("/", provinceHandler.CreateProvince)
+			province.POST("", provinceHandler.CreateProvince)
 			province.PUT("/:id", provinceHandler.UpdateProvince)
 			province.DELETE("/:id", provinceHandler.DeleteProvince)
 		}
-		province.GET("/", provinceHandler.ListProvinces)
+		province.GET("", provinceHandler.ListProvinces)
 		province.GET("/search", provinceHandler.SearchProvinces)
 		province.GET("/:id", provinceHandler.GetProvinceByID)
 	}
@@ -104,19 +104,20 @@ func RegisterLocationRoutes(
 	supabaseClient *supabase.Client,
 	routeMiddleware *middleware.Middleware,
 ) {
-	locationRepository := repositories.NewLocationRepository(supabaseClient, *repositories.DefaultLocationConfig())
+	locationRepository := repositories.NewLocationRepository(supabaseClient)
 	locationService := services.NewLocationService(locationRepository)
 	locationHandler := handlers.NewLocationHandler(locationService, logger)
 
 	location := r.Group("/locations")
 	{
-		location.POST("/",
+		location.POST("",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
 			locationHandler.CreateLocation,
 		)
-		location.GET("/", locationHandler.ListLocation)
+		location.GET("", locationHandler.ListLocations)
 		location.GET("/search", locationHandler.SearchLocations)
+		location.GET("/:id", locationHandler.GetLocationByID)
 		location.PUT("/:id",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),

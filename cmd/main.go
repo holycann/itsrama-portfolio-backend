@@ -22,7 +22,6 @@ import (
 	"github.com/holycann/cultour-backend/internal/middleware"
 	"github.com/holycann/cultour-backend/internal/routes"
 	"github.com/holycann/cultour-backend/internal/supabase"
-	"google.golang.org/genai"
 )
 
 // @title           Cultour API
@@ -68,15 +67,26 @@ func main() {
 		ProjectID: cfg.Supabase.ProjectID,
 	})
 
+	// Convert logger to slog
+	slogLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
 	geminiAI, err := gemini.NewGeminiAIClient(&gemini.Config{
-		ApiKey:  cfg.GeminiAI.ApiKey,
-		AIModel: cfg.GeminiAI.AIModel,
-		Tuning: &genai.GenerateContentConfig{
-			Temperature: cfg.GeminiAI.Temperature,
-			TopK:        cfg.GeminiAI.TopK,
-			TopP:        cfg.GeminiAI.TopP,
+		ApiKey:          cfg.GeminiAI.ApiKey,
+		AIModel:         cfg.GeminiAI.AIModel,
+		Temperature:     *cfg.GeminiAI.Temperature,
+		TopK:            int32(*cfg.GeminiAI.TopK),
+		TopP:            *cfg.GeminiAI.TopP,
+		MaxOutputTokens: int32(cfg.GeminiAI.MaxTokens),
+		CacheConfig: gemini.CacheConfig{
+			Enabled:    true,
+			MaxSize:    100,
+			Expiration: 1 * time.Hour,
 		},
-		SupabaseClient: *supabaseClient,
+		SystemInstruction: gemini.GetFullSystemPolicy(),
+		SupabaseClient:    supabaseClient,
+		Logger:            slogLogger,
 	})
 	if err != nil {
 		appLogger.Error("Failed to initialize Gemini AI client", slog.Any("error", err))
@@ -145,13 +155,25 @@ func setMode(cfg *configs.Config) {
 func createRouter(appLogger *logger.Logger) *gin.Engine {
 	router := gin.New()
 
+	// Disable automatic redirects
+	router.RedirectTrailingSlash = false
+	router.RedirectFixedPath = false
+
 	// Global middleware
 	router.Use(gin.Recovery())
 	router.Use(cors.New(cors.Config{
-		AllowAllOrigins:  true,
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		AllowOrigins: []string{"*"}, // Allow all origins during development
+		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Length",
+			"Content-Type",
+			"Authorization",
+			"Accept",
+			"X-Requested-With",
+		},
 		AllowCredentials: true,
+		MaxAge:           12 * time.Hour, // Cache preflight requests
 	}))
 
 	// Custom logging middleware
@@ -165,7 +187,21 @@ func createRouter(appLogger *logger.Logger) *gin.Engine {
 			slog.String("method", c.Request.Method),
 			slog.String("path", c.Request.URL.Path),
 			slog.Duration("latency", duration),
+			slog.String("origin", c.GetHeader("Origin")),
 		)
+	})
+
+	// Add a catch-all route for debugging
+	router.NoRoute(func(c *gin.Context) {
+		appLogger.Error("No Route Found",
+			slog.String("method", c.Request.Method),
+			slog.String("path", c.Request.URL.Path),
+		)
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":  "Route not found",
+			"path":   c.Request.URL.Path,
+			"method": c.Request.Method,
+		})
 	})
 
 	return router
@@ -184,7 +220,7 @@ func registerApplicationRoutes(
 	routes.RegisterEventRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 	routes.RegisterLocationRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 	routes.RegisterUserRoutes(router, supabaseAuth, routeMiddleware)
-	routes.RegisterUserProfileRoutes(router, supabaseClient, "user_profiles", routeMiddleware)
+	routes.RegisterUserProfileRoutes(router, supabaseClient, supabaseAuth, "user_profiles", routeMiddleware)
 	routes.RegisterUserBadgeRoutes(router, supabaseClient, routeMiddleware, appLogger)
 	routes.RegisterBadgeRoutes(router, supabaseClient.GetClient(), routeMiddleware, appLogger)
 	routes.RegisterCityRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)

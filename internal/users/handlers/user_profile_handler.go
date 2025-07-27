@@ -1,12 +1,16 @@
 package handlers
 
 import (
+	"encoding/json"
+	"math"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/response"
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/internal/users/services"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 // UserProfileHandler handles user profile-related HTTP requests
@@ -32,9 +36,9 @@ func NewUserProfileHandler(userProfileService services.UserProfileService) *User
 // @Security ApiKeyAuth
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param profile body models.UserProfileCreate true "User Profile Creation Details"
-// @Success 201 {object} response.Response{data=models.UserProfile} "User profile created successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid user profile creation details"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 201 {object} response.APIResponse{data=models.UserProfile} "User profile created successfully"
+// @Failure 400 {object} response.APIResponse "Invalid user profile creation details"
+// @Failure 500 {object} response.APIResponse "Internal server error"
 // @Router /profile [post]
 func (h *UserProfileHandler) CreateUserProfile(c *gin.Context) {
 	// Create a user model to bind request body
@@ -42,46 +46,132 @@ func (h *UserProfileHandler) CreateUserProfile(c *gin.Context) {
 
 	// Bind and validate input
 	if err := c.ShouldBindJSON(&userProfile); err != nil {
-		response.BadRequest(c, "Invalid request body", err.Error())
+		response.BadRequest(c, "Invalid request body", err.Error(), "")
 		return
 	}
 
 	// Validate required fields
-	if userProfile.UserID == "" || userProfile.Fullname == "" {
-		response.BadRequest(c, "Missing required fields", map[string]interface{}{
-			"user_id":  userProfile.UserID == "",
+	if userProfile.UserID.String() == "" || userProfile.Fullname == "" {
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"user_id":  userProfile.UserID.String() == "",
 			"fullname": userProfile.Fullname == "",
 		})
+		response.BadRequest(c, "Missing required fields", string(details), "")
 		return
 	}
 
 	// Create user through service
 	if err := h.userProfileService.CreateProfile(c.Request.Context(), &userProfile); err != nil {
-		response.Conflict(c, "Failed to create user profile", err.Error())
+		response.Conflict(c, "Failed to create user profile", err.Error(), "")
 		return
 	}
 
 	// Respond with created user profile
-	response.SuccessCreated(c, gin.H{
-		"id":       userProfile.ID,
-		"fullname": userProfile.Fullname,
-	}, "User Profile created successfully")
+	response.SuccessCreated(c, userProfile, "User Profile created successfully")
 }
 
 // ListUsersProfile godoc
 // @Summary List user profiles
-// @Description Retrieve a list of user profiles with pagination
+// @Description Retrieve a list of user profiles with pagination and filtering
 // @Tags User Profiles
 // @Produce json
 // @Security ApiKeyAuth
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param limit query int false "Number of user profiles to retrieve" default(10)
 // @Param offset query int false "Number of user profiles to skip" default(0)
-// @Success 200 {object} response.Response{data=[]models.UserProfile} "User profiles retrieved successfully"
-// @Failure 500 {object} response.ErrorResponse "Failed to list user profiles"
+// @Param sort_by query string false "Field to sort by" default("created_at")
+// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
+// @Success 200 {object} response.APIResponse{data=[]models.UserProfile} "User profiles retrieved successfully"
+// @Failure 500 {object} response.APIResponse "Failed to list user profiles"
 // @Router /profile [get]
 func (h *UserProfileHandler) ListUsersProfile(c *gin.Context) {
 	// Parse pagination parameters with defaults
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	sortOrder := c.DefaultQuery("sort_order", "desc")
+
+	// Validate pagination parameters
+	if limit <= 0 {
+		limit = 10
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Prepare list options
+	listOptions := repository.ListOptions{
+		Limit:     limit,
+		Offset:    offset,
+		SortBy:    sortBy,
+		SortOrder: repository.SortDescending,
+	}
+	if sortOrder == "asc" {
+		listOptions.SortOrder = repository.SortAscending
+	}
+
+	// Optional filtering
+	filters := []repository.FilterOption{}
+	if fullname := c.Query("fullname"); fullname != "" {
+		filters = append(filters, repository.FilterOption{
+			Field:    "fullname",
+			Operator: "like",
+			Value:    fullname,
+		})
+	}
+	listOptions.Filters = filters
+
+	// Retrieve users
+	usersProfile, err := h.userProfileService.ListProfiles(c.Request.Context(), listOptions)
+	if err != nil {
+		response.InternalServerError(c, "Failed to retrieve users profile", err.Error(), "")
+		return
+	}
+
+	// Count total users for pagination
+	totalProfiles, err := h.userProfileService.CountProfiles(c.Request.Context(), filters)
+	if err != nil {
+		response.InternalServerError(c, "Failed to count user profiles", err.Error(), "")
+		return
+	}
+
+	// Create pagination struct
+	pagination := &response.Pagination{
+		Total:       totalProfiles,
+		Page:        offset/limit + 1,
+		PerPage:     limit,
+		TotalPages:  int(math.Ceil(float64(totalProfiles) / float64(limit))),
+		HasNextPage: offset+limit < totalProfiles,
+	}
+
+	// Respond with users and pagination
+	response.SuccessOK(c, usersProfile, "User Profiles retrieved successfully", pagination)
+}
+
+// SearchUserProfile godoc
+// @Summary Search user profiles
+// @Description Search user profiles by various criteria
+// @Tags User Profiles
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param query query string true "Search query (fullname, etc.)"
+// @Param limit query int false "Number of results to retrieve" default(10)
+// @Param offset query int false "Number of results to skip" default(0)
+// @Success 200 {object} response.APIResponse{data=[]models.UserProfile} "User profiles found successfully"
+// @Failure 400 {object} response.APIResponse "Invalid search parameters"
+// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Router /profile/search [get]
+func (h *UserProfileHandler) SearchUserProfile(c *gin.Context) {
+	// Get search query
+	query := c.Query("query")
+	if query == "" {
+		response.BadRequest(c, "Search query is required", "Empty search query", "")
+		return
+	}
+
+	// Parse pagination parameters
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
@@ -93,61 +183,44 @@ func (h *UserProfileHandler) ListUsersProfile(c *gin.Context) {
 		offset = 0
 	}
 
-	// Retrieve users
-	usersProfile, err := h.userProfileService.GetProfiles(c.Request.Context(), limit, offset)
+	// Prepare list options for search
+	listOptions := repository.ListOptions{
+		Limit:  limit,
+		Offset: offset,
+		Filters: []repository.FilterOption{
+			{
+				Field:    "fullname",
+				Operator: "like",
+				Value:    query,
+			},
+		},
+	}
+
+	// Search user profiles
+	userProfiles, err := h.userProfileService.SearchProfiles(c.Request.Context(), query, listOptions)
 	if err != nil {
-		response.InternalServerError(c, "Failed to retrieve users profile", err.Error())
+		response.InternalServerError(c, "Failed to search user profiles", err.Error(), "")
 		return
 	}
 
-	// Use WithPagination for consistent pagination response
-	response.WithPagination(c, usersProfile, len(usersProfile), offset/limit+1, limit)
-}
-
-// SearchUserProfile godoc
-// @Summary Search user profiles
-// @Description Retrieve user profiles by ID, User ID, or with pagination
-// @Tags User Profiles
-// @Accept json
-// @Produce json
-// @Param Authorization header string false "Bearer token"
-// @Param id path string false "User Profile ID"
-// @Param user_id query string false "User ID"
-// @Success 200 {object} map[string]interface{} "Successfully retrieved user profiles"
-// @Failure 400 {object} response.ErrorResponse "Invalid input parameters"
-// @Failure 404 {object} response.ErrorResponse "User profile not found"
-// @Failure 500 {object} response.ErrorResponse "Failed to retrieve user profiles"
-// @Router /profile/search [get]
-// @Security ApiKeyAuth
-func (h *UserProfileHandler) SearchUserProfile(c *gin.Context) {
-	// Check if specific ID is provided
-	userProfileID := c.Param("id")
-	userID := c.Query("user_id")
-
-	// Validate search parameters
-	if userProfileID == "" && userID == "" {
-		response.BadRequest(c, "Either User Profile ID or User ID is required", nil)
-		return
-	}
-
-	var userProfile *models.UserProfile
-	var err error
-
-	// Search by ID if provided
-	if userID != "" {
-		userProfile, err = h.userProfileService.GetProfileByID(c.Request.Context(), userID)
-	} else {
-		// Otherwise, search by email
-		userProfile, err = h.userProfileService.GetProfileByUserID(c.Request.Context(), userID)
-	}
-
-	// Handle search errors
+	// Count total search results
+	totalProfiles, err := h.userProfileService.CountProfiles(c.Request.Context(), listOptions.Filters)
 	if err != nil {
-		response.NotFound(c, "User Profile not found", err.Error())
+		response.InternalServerError(c, "Failed to count search results", err.Error(), "")
 		return
 	}
 
-	response.SuccessOK(c, userProfile, "User Profile retrieved successfully")
+	// Create pagination struct
+	pagination := &response.Pagination{
+		Total:       totalProfiles,
+		Page:        offset/limit + 1,
+		PerPage:     limit,
+		TotalPages:  int(math.Ceil(float64(totalProfiles) / float64(limit))),
+		HasNextPage: offset+limit < totalProfiles,
+	}
+
+	// Respond with users and pagination
+	response.SuccessOK(c, userProfiles, "User Profiles found successfully", pagination)
 }
 
 // UpdateUserProfile godoc
@@ -160,16 +233,16 @@ func (h *UserProfileHandler) SearchUserProfile(c *gin.Context) {
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param id path string true "User Profile ID"
 // @Param profile body models.UserProfile true "User Profile Update Details"
-// @Success 200 {object} response.Response{data=models.UserProfile} "User profile updated successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid user profile update details"
-// @Failure 404 {object} response.ErrorResponse "User profile not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.APIResponse{data=models.UserProfile} "User profile updated successfully"
+// @Failure 400 {object} response.APIResponse "Invalid user profile update details"
+// @Failure 404 {object} response.APIResponse "User profile not found"
+// @Failure 500 {object} response.APIResponse "Internal server error"
 // @Router /profile/{id} [put]
 func (h *UserProfileHandler) UpdateUserProfile(c *gin.Context) {
 	// Get user ID from path parameter
 	userID := c.Param("id")
 	if userID == "" {
-		response.BadRequest(c, "User Profile ID is required", nil)
+		response.BadRequest(c, "User Profile ID is required", "Missing user profile ID", "")
 		return
 	}
 
@@ -178,16 +251,21 @@ func (h *UserProfileHandler) UpdateUserProfile(c *gin.Context) {
 
 	// Bind input
 	if err := c.ShouldBindJSON(&updateUserProfile); err != nil {
-		response.BadRequest(c, "Invalid request body", err.Error())
+		response.BadRequest(c, "Invalid request body", err.Error(), "")
 		return
 	}
 
 	// Set the ID from path parameter
-	updateUserProfile.ID = userID
+	parsedID, err := uuid.Parse(userID)
+	if err != nil {
+		response.BadRequest(c, "Invalid User Profile ID", "Invalid UUID format", "")
+		return
+	}
+	updateUserProfile.ID = parsedID
 
 	// Update user
 	if err := h.userProfileService.UpdateProfile(c.Request.Context(), &updateUserProfile); err != nil {
-		response.Conflict(c, "Failed to update user profile", err.Error())
+		response.Conflict(c, "Failed to update user profile", err.Error(), "")
 		return
 	}
 
@@ -203,22 +281,22 @@ func (h *UserProfileHandler) UpdateUserProfile(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param id path string true "User Profile ID"
-// @Success 200 {object} response.Response "User profile deleted successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid user profile ID"
-// @Failure 404 {object} response.ErrorResponse "User profile not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.APIResponse "Deleted successfully"
+// @Failure 400 {object} response.APIResponse "Invalid user profile ID"
+// @Failure 404 {object} response.APIResponse "User profile not found"
+// @Failure 500 {object} response.APIResponse "Internal server error"
 // @Router /profile/{id} [delete]
 func (h *UserProfileHandler) DeleteUserProfile(c *gin.Context) {
 	// Get user ID from path parameter
 	userID := c.Param("id")
 	if userID == "" {
-		response.BadRequest(c, "User Profile ID is required", nil)
+		response.BadRequest(c, "User Profile ID is required", "Missing user profile ID", "")
 		return
 	}
 
 	// Delete user
 	if err := h.userProfileService.DeleteProfile(c.Request.Context(), userID); err != nil {
-		response.Conflict(c, "Failed to delete user profile", err.Error())
+		response.Conflict(c, "Failed to delete user profile", err.Error(), "")
 		return
 	}
 

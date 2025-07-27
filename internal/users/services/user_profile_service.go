@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/internal/users/repositories"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 type userProfileService struct {
@@ -17,9 +19,11 @@ type userProfileService struct {
 
 func NewUserProfileService(
 	repo repositories.UserProfileRepository,
+	userRepo repositories.UserRepository,
 ) UserProfileService {
 	return &userProfileService{
-		repo: repo,
+		repo:     repo,
+		userRepo: userRepo,
 	}
 }
 
@@ -30,12 +34,12 @@ func (s *userProfileService) CreateProfile(ctx context.Context, userProfile *mod
 	}
 
 	// Validate user existence
-	if userProfile.UserID == "" {
+	if userProfile.UserID == uuid.Nil {
 		return fmt.Errorf("user ID is required")
 	}
 
 	// Check if user exists
-	_, err := s.userRepo.FindByID(ctx, userProfile.UserID)
+	_, err := s.userRepo.FindByID(ctx, userProfile.UserID.String())
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("user with ID %s not found", userProfile.UserID)
@@ -44,7 +48,7 @@ func (s *userProfileService) CreateProfile(ctx context.Context, userProfile *mod
 	}
 
 	// Check if profile already exists for this user
-	exists, err := s.repo.ExistsByUserID(ctx, userProfile.UserID)
+	exists, err := s.repo.ExistsByUserID(ctx, userProfile.UserID.String())
 	if err != nil {
 		return fmt.Errorf("error checking profile existence: %w", err)
 	}
@@ -53,38 +57,13 @@ func (s *userProfileService) CreateProfile(ctx context.Context, userProfile *mod
 	}
 
 	// Set default values
+	userProfile.ID = uuid.New()
 	now := time.Now().UTC()
-	userProfile.CreatedAt = &now
-	userProfile.UpdatedAt = &now
+	userProfile.CreatedAt = now
+	userProfile.UpdatedAt = now
 
 	// Create profile
 	return s.repo.Create(ctx, userProfile)
-}
-
-func (s *userProfileService) GetProfiles(ctx context.Context, limit, offset int) ([]*models.UserProfile, error) {
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10 // Default limit
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Retrieve profiles
-	profiles, err := s.repo.List(ctx, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve user profiles: %w", err)
-	}
-
-	fmt.Println("User Profiles:", profiles)
-
-	// Convert to pointer slice
-	profilePtrs := make([]*models.UserProfile, len(profiles))
-	for i := range profiles {
-		profilePtrs[i] = &profiles[i]
-	}
-
-	return profilePtrs, nil
 }
 
 func (s *userProfileService) GetProfileByID(ctx context.Context, id string) (*models.UserProfile, error) {
@@ -105,31 +84,16 @@ func (s *userProfileService) GetProfileByID(ctx context.Context, id string) (*mo
 	return profile, nil
 }
 
-func (s *userProfileService) GetProfileByUserID(ctx context.Context, userID string) (*models.UserProfile, error) {
-	// Validate input
-	if userID == "" {
-		return nil, fmt.Errorf("user ID cannot be empty")
+func (s *userProfileService) ListProfiles(ctx context.Context, opts repository.ListOptions) ([]models.UserProfile, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
 	}
 
-	// Check if user exists
-	_, err := s.userRepo.FindByID(ctx, userID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user with ID %s not found", userID)
-		}
-		return nil, fmt.Errorf("error checking user existence: %w", err)
-	}
-
-	// Retrieve profile
-	profile, err := s.repo.FindByUserID(ctx, userID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("profile for user %s not found", userID)
-		}
-		return nil, fmt.Errorf("error retrieving user profile: %w", err)
-	}
-
-	return profile, nil
+	return s.repo.List(ctx, opts)
 }
 
 func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *models.UserProfile) error {
@@ -137,19 +101,19 @@ func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *mod
 	if userProfile == nil {
 		return fmt.Errorf("user profile cannot be nil")
 	}
-	if userProfile.ID == "" {
+	if userProfile.ID == uuid.Nil {
 		return fmt.Errorf("profile ID is required for update")
 	}
 
 	// Check if profile exists
-	existingProfile, err := s.GetProfileByID(ctx, userProfile.ID)
+	existingProfile, err := s.GetProfileByID(ctx, userProfile.ID.String())
 	if err != nil {
 		return err
 	}
 
 	// Validate user existence if user ID is changed
-	if userProfile.UserID != "" && userProfile.UserID != existingProfile.UserID {
-		_, err := s.userRepo.FindByID(ctx, userProfile.UserID)
+	if userProfile.UserID != uuid.Nil && userProfile.UserID != existingProfile.UserID {
+		_, err := s.userRepo.FindByID(ctx, userProfile.UserID.String())
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return fmt.Errorf("user with ID %s not found", userProfile.UserID)
@@ -160,7 +124,7 @@ func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *mod
 
 	// Update timestamps
 	now := time.Now().UTC()
-	userProfile.UpdatedAt = &now
+	userProfile.UpdatedAt = now
 
 	// Preserve creation timestamp
 	userProfile.CreatedAt = existingProfile.CreatedAt
@@ -182,5 +146,69 @@ func (s *userProfileService) DeleteProfile(ctx context.Context, id string) error
 	}
 
 	// Soft delete the profile
-	return s.repo.SoftDelete(ctx, id)
+	return s.repo.Delete(ctx, id)
+}
+
+func (s *userProfileService) CountProfiles(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	return s.repo.Count(ctx, filters)
+}
+
+func (s *userProfileService) GetProfileByUserID(ctx context.Context, userID string) (*models.UserProfile, error) {
+	// Validate input
+	if userID == "" {
+		return nil, fmt.Errorf("user ID cannot be empty")
+	}
+
+	// Convert string to UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	// Check if user exists
+	_, err = s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user with ID %s not found", userID)
+		}
+		return nil, fmt.Errorf("error checking user existence: %w", err)
+	}
+
+	// Retrieve profile
+	profile, err := s.repo.FindByField(ctx, "user_id", userUUID)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving user profile: %w", err)
+	}
+
+	if len(profile) == 0 {
+		return nil, fmt.Errorf("profile for user %s not found", userID)
+	}
+
+	return &profile[0], nil
+}
+
+func (s *userProfileService) SearchProfiles(ctx context.Context, query string, opts repository.ListOptions) ([]models.UserProfile, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+
+	// Add search query to filters
+	opts.Filters = append(opts.Filters,
+		repository.FilterOption{
+			Field:    "fullname",
+			Operator: "like",
+			Value:    query,
+		},
+		repository.FilterOption{
+			Field:    "bio",
+			Operator: "like",
+			Value:    query,
+		},
+	)
+
+	return s.repo.List(ctx, opts)
 }

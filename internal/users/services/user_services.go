@@ -8,6 +8,7 @@ import (
 
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/internal/users/repositories"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 type userService struct {
@@ -26,8 +27,6 @@ func (s *userService) CreateUser(ctx context.Context, user *models.User) error {
 		return fmt.Errorf("user cannot be nil")
 	}
 
-	fmt.Println(user.Email)
-
 	// Check if user with email already exists
 	exists, err := s.repo.ExistsByEmail(ctx, user.Email)
 	if err != nil {
@@ -42,32 +41,13 @@ func (s *userService) CreateUser(ctx context.Context, user *models.User) error {
 	user.CreatedAt = &now
 	user.UpdatedAt = &now
 
+	// Set default role if not provided
+	if user.Role == "" {
+		user.Role = "user"
+	}
+
 	// Create user
 	return s.repo.Create(ctx, user)
-}
-
-func (s *userService) GetUsers(ctx context.Context, limit, offset int) ([]*models.User, error) {
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10 // Default limit
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Retrieve users
-	users, err := s.repo.List(ctx, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve users: %w", err)
-	}
-
-	// Convert to pointer slice
-	userPtrs := make([]*models.User, len(users))
-	for i := range users {
-		userPtrs[i] = &users[i]
-	}
-
-	return userPtrs, nil
 }
 
 func (s *userService) GetUserByID(ctx context.Context, id string) (*models.User, error) {
@@ -88,22 +68,16 @@ func (s *userService) GetUserByID(ctx context.Context, id string) (*models.User,
 	return user, nil
 }
 
-func (s *userService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
-	// Validate input
-	if email == "" {
-		return nil, fmt.Errorf("email cannot be empty")
+func (s *userService) ListUsers(ctx context.Context, opts repository.ListOptions) ([]models.User, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
 	}
 
-	// Retrieve user
-	user, err := s.repo.FindByEmail(ctx, email)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user with email %s not found", email)
-		}
-		return nil, fmt.Errorf("error retrieving user: %w", err)
-	}
-
-	return user, nil
+	return s.repo.List(ctx, opts)
 }
 
 func (s *userService) UpdateUser(ctx context.Context, user *models.User) error {
@@ -146,4 +120,52 @@ func (s *userService) DeleteUser(ctx context.Context, id string) error {
 
 	// Soft delete the user
 	return s.repo.Delete(ctx, id)
+}
+
+func (s *userService) CountUsers(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	return s.repo.Count(ctx, filters)
+}
+
+func (s *userService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	// Validate input
+	if email == "" {
+		return nil, fmt.Errorf("email cannot be empty")
+	}
+
+	// Retrieve user
+	user, err := s.repo.FindByEmail(ctx, email)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user with email %s not found", email)
+		}
+		return nil, fmt.Errorf("error retrieving user: %w", err)
+	}
+
+	return user, nil
+}
+
+func (s *userService) SearchUsers(ctx context.Context, query string, opts repository.ListOptions) ([]models.User, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+
+	// Add search query to filters
+	opts.Filters = append(opts.Filters,
+		repository.FilterOption{
+			Field:    "email",
+			Operator: "like",
+			Value:    query,
+		},
+		repository.FilterOption{
+			Field:    "phone",
+			Operator: "like",
+			Value:    query,
+		},
+	)
+
+	return s.repo.List(ctx, opts)
 }

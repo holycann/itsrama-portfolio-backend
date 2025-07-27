@@ -4,143 +4,151 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/holycann/cultour-backend/internal/place/models"
+	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
 
-// cityRepository is a concrete implementation of the CityRepository interface
-// that manages CRUD operations for city entities in the Supabase database.
 type cityRepository struct {
-	supabaseClient *supabase.Client // Supabase client for interacting with the database
-	table          string           // Name of the table where city data is stored
-	column         string           // Columns to be selected in the query
-	returning      string           // Type of data returned after an operation
+	supabaseClient *supabase.Client
+	table          string
 }
 
-// CityRepositoryConfig contains custom configuration for the city repository
-// allowing flexibility in setting repository parameters.
-type CityRepositoryConfig struct {
-	Table     string // Name of the table to be used
-	Column    string // Columns to be selected in the query
-	Returning string // Type of data to be returned
-}
-
-// DefaultConfig returns the default configuration for the city repository
-// Useful for providing standard settings if no custom configuration is provided.
-func DefaultCityConfig() *CityRepositoryConfig {
-	return &CityRepositoryConfig{
-		Table:     "cities",  // Default table for cities
-		Column:    "*",       // Select all columns
-		Returning: "minimal", // Return minimal data
-	}
-}
-
-// NewCityRepository creates a new instance of the city repository
-// with the given configuration and Supabase client.
-func NewCityRepository(supabaseClient *supabase.Client, cfg CityRepositoryConfig) CityRepository {
+func NewCityRepository(supabaseClient *supabase.Client) CityRepository {
 	return &cityRepository{
 		supabaseClient: supabaseClient,
-		table:          cfg.Table,
-		column:         cfg.Column,
-		returning:      cfg.Returning,
+		table:          "cities",
 	}
 }
 
-// Create adds a new city to the database
-// Accepts context and city object, returns an error if the process fails.
 func (r *cityRepository) Create(ctx context.Context, city *models.City) error {
 	_, err := r.supabaseClient.
 		From(r.table).
 		Insert(city, false, "", "minimal", "").
 		ExecuteTo(&city)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-// FindByID searches and returns a city based on its unique ID
-// Returns a city object or an error if the city is not found.
 func (r *cityRepository) FindByID(ctx context.Context, id string) (*models.City, error) {
 	var city *models.City
-
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select(r.column, "", false).
-		Eq("id", id).
-		Single().
-		ExecuteTo(&city)
-	if err != nil {
-		return nil, err
-	}
-
-	return city, nil
-}
-
-// Update modifies an existing city in the database
-// Accepts a modified city object, returns an error if the process fails.
-func (r *cityRepository) Update(ctx context.Context, city *models.City) error {
-	_, _, err := r.supabaseClient.
-		From(r.table).
-		Update(city, r.returning, "").
-		Eq("id", city.ID).
-		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Delete removes a city from the database based on its ID
-// Returns an error if the deletion process fails.
-func (r *cityRepository) Delete(ctx context.Context, id string) error {
-	_, _, err := r.supabaseClient.
-		From(r.table).
-		Delete(r.returning, "").
-		Eq("id", id).
-		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// List retrieves a list of cities with limit and offset
-// Useful for implementing pagination or limiting the number of data retrieved.
-func (r *cityRepository) List(ctx context.Context, limit, offset int) ([]models.City, error) {
-	var cities []models.City
-
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*", "", false).
-		ExecuteTo(&cities)
-	if err != nil {
-		return nil, err
-	}
-
-	return cities, nil
+		Eq("id", id).
+		Single().
+		ExecuteTo(&city)
+	return city, err
 }
 
-// Count calculates the total number of cities stored in the database
-// Useful for determining dataset size or for pagination purposes.
-func (r *cityRepository) Count(ctx context.Context) (int, error) {
-	// Query to count the number of records in the city table
-	_, count, err := r.supabaseClient.
+func (r *cityRepository) Update(ctx context.Context, city *models.City) error {
+	_, _, err := r.supabaseClient.
 		From(r.table).
-		Select("id", "exact", false).
+		Update(city, "minimal", "").
+		Eq("id", city.ID.String()).
 		Execute()
+	return err
+}
+
+func (r *cityRepository) Delete(ctx context.Context, id string) error {
+	_, _, err := r.supabaseClient.
+		From(r.table).
+		Delete("minimal", "").
+		Eq("id", id).
+		Execute()
+	return err
+}
+
+func (r *cityRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.City, error) {
+	var cities []models.City
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Apply sorting
+	if opts.SortBy != "" {
+		ascending := opts.SortOrder == repository.SortAscending
+		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
+	}
+
+	// Apply pagination
+	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+
+	_, err := query.ExecuteTo(&cities)
+	return cities, err
+}
+
+func (r *cityRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	query := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", false)
+
+	// Apply filters
+	for _, filter := range filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	_, count, err := query.Execute()
 	if err != nil {
 		return 0, err
 	}
 
-	// Check if the response contains a count
-	if count <= 0 {
-		return 0, nil
-	}
-
 	return int(count), nil
+}
+
+func (r *cityRepository) Exists(ctx context.Context, id string) (bool, error) {
+	_, err := r.FindByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *cityRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.City, error) {
+	var cities []models.City
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq(field, fmt.Sprintf("%v", value)).
+		ExecuteTo(&cities)
+	return cities, err
+}
+
+// Specialized methods for cities
+func (r *cityRepository) FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.City, error) {
+	var cities []models.City
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq("province_id", provinceID).
+		ExecuteTo(&cities)
+	return cities, err
+}
+
+func (r *cityRepository) FindCityByName(ctx context.Context, name string) (*models.City, error) {
+	cities, err := r.FindByField(ctx, "name", name)
+	if err != nil {
+		return nil, err
+	}
+	if len(cities) == 0 {
+		return nil, fmt.Errorf("city not found")
+	}
+	return &cities[0], nil
 }

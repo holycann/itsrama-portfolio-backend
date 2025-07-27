@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"encoding/json"
 	"errors"
-	"net/http"
 	"strings"
 
 	"github.com/MicahParks/keyfunc"
@@ -39,27 +39,46 @@ func (m *Middleware) VerifyJWT() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			response.Unauthorized(c, "Missing authorization token", nil)
+			// Convert map to JSON string for error details
+			details, _ := json.Marshal(map[string]interface{}{
+				"authorization_header": "missing",
+			})
+			response.Unauthorized(c, "Missing authorization token", string(details), "")
 			c.Abort()
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		if tokenString == authHeader {
-			response.Unauthorized(c, "Invalid token format", nil)
+			// Convert map to JSON string for error details
+			details, _ := json.Marshal(map[string]interface{}{
+				"token_format": "invalid",
+			})
+			response.Unauthorized(c, "Invalid token format", string(details), "")
 			c.Abort()
 			return
 		}
 
 		token, err := jwt.Parse(tokenString, m.jwks.Keyfunc)
 		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "details": err.Error()})
+			// Convert map to JSON string for error details
+			details, _ := json.Marshal(map[string]interface{}{
+				"token_validation": "failed",
+				"error":            err.Error(),
+			})
+			response.Unauthorized(c, "Invalid token", string(details), "")
+			c.Abort()
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			// Convert map to JSON string for error details
+			details, _ := json.Marshal(map[string]interface{}{
+				"token_claims": "invalid",
+			})
+			response.Unauthorized(c, "Invalid token claims", string(details), "")
+			c.Abort()
 			return
 		}
 
@@ -80,31 +99,35 @@ func (m *Middleware) VerifyJWT() gin.HandlerFunc {
 // RequireRole creates a middleware to check user roles
 func (m *Middleware) RequireRole(allowedRoles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// userRole, exists := c.Get("role")
-		// if !exists {
-		// 	response.Forbidden(c, "User role not found", nil)
-		// 	c.Abort()
-		// 	return
-		// }
+		userRole, exists := c.Get("role")
+		if !exists {
+			// Convert map to JSON string for error details
+			details, _ := json.Marshal(map[string]interface{}{
+				"role": "not_found",
+			})
+			response.Forbidden(c, "User role not found", string(details), "")
+			c.Abort()
+			return
+		}
 
-		// roleAllowed := true
-		// for _, role := range allowedRoles {
-		// 	if userRole == role {
-		// 		roleAllowed = true
-		// 		break
-		// 	}
-		// }
+		roleAllowed := false
+		for _, role := range allowedRoles {
+			if userRole == role {
+				roleAllowed = true
+				break
+			}
+		}
 
-		// userRole = "admin"
-
-		// if !roleAllowed {
-		// 	response.Forbidden(c, "Insufficient permissions", gin.H{
-		// 		"required_roles": allowedRoles,
-		// 		"user_role":      userRole,
-		// 	})
-		// 	c.Abort()
-		// 	return
-		// }
+		if !roleAllowed {
+			// Convert map to JSON string for error details
+			details, _ := json.Marshal(map[string]interface{}{
+				"required_roles": allowedRoles,
+				"user_role":      userRole,
+			})
+			response.Forbidden(c, "Insufficient permissions", string(details), "")
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}
@@ -119,8 +142,8 @@ func (m *Middleware) RequireRoleOrBadge(allowedRoles string, allowedBadges strin
 		roles := strings.Split(allowedRoles, ",")
 		badges := strings.Split(allowedBadges, ",")
 
-		roleAllowed := true
-		badgeAllowed := true
+		roleAllowed := false
+		badgeAllowed := false
 
 		for _, role := range roles {
 			if userRole == strings.TrimSpace(role) {
@@ -136,12 +159,14 @@ func (m *Middleware) RequireRoleOrBadge(allowedRoles string, allowedBadges strin
 		}
 
 		if !roleAllowed && !badgeAllowed {
-			response.Forbidden(c, "Insufficient permissions", gin.H{
+			// Convert map to JSON string for error details
+			details, _ := json.Marshal(map[string]interface{}{
 				"required_roles":  roles,
 				"required_badges": badges,
 				"user_role":       userRole,
 				"user_badge":      userBadge,
 			})
+			response.Forbidden(c, "Insufficient permissions", string(details), "")
 			c.Abort()
 			return
 		}

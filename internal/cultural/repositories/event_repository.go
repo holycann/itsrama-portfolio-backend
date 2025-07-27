@@ -4,207 +4,247 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/cultural/models"
+	"github.com/holycann/cultour-backend/pkg/repository"
 	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
 
-// eventRepository is a concrete implementation of the EventRepository interface
-// that manages CRUD operations for event entities in the Supabase database.
 type eventRepository struct {
-	supabaseClient *supabase.Client // Supabase client for interacting with the database
-	table          string           // Name of the table where event data is stored
-	column         string           // Columns to be selected in the query
-	returning      string           // Type of data returned after an operation
+	supabaseClient *supabase.Client
+	table          string
 }
 
-// EventRepositoryConfig contains custom configuration for the event repository
-// allowing flexibility in setting repository parameters.
-type EventRepositoryConfig struct {
-	Table     string // Name of the table to be used
-	Column    string // Columns to be selected in the query
-	Returning string // Type of data to be returned
-}
-
-// DefaultConfig returns the default configuration for the event repository
-// Useful for providing standard settings if no custom configuration is provided.
-func DefaultEventConfig() *EventRepositoryConfig {
-	return &EventRepositoryConfig{
-		Table:     "events",  // Default table for events
-		Column:    "*",       // Select all columns
-		Returning: "minimal", // Return minimal data
-	}
-}
-
-// NewEventRepository creates a new instance of the event repository
-// with the given configuration and Supabase client.
-func NewEventRepository(supabaseClient *supabase.Client, cfg EventRepositoryConfig) EventRepository {
+func NewEventRepository(supabaseClient *supabase.Client) EventRepository {
 	return &eventRepository{
 		supabaseClient: supabaseClient,
-		table:          cfg.Table,
-		column:         cfg.Column,
-		returning:      cfg.Returning,
+		table:          "events",
 	}
 }
 
-// Create adds a new event to the database
-// Accepts context and event object, returns an error if the process fails.
 func (r *eventRepository) Create(ctx context.Context, event *models.Event) error {
 	_, err := r.supabaseClient.
 		From(r.table).
 		Insert(event, false, "", "minimal", "").
 		ExecuteTo(&event)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-// FindByID searches and returns a event based on its unique ID
-// Returns a event object or an error if the event is not found.
 func (r *eventRepository) FindByID(ctx context.Context, id string) (*models.Event, error) {
 	var event *models.Event
-
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select(r.column, "", false).
-		Eq("id", id).
-		Single().
-		ExecuteTo(&event)
-	if err != nil {
-		return nil, err
-	}
-
-	return event, nil
-}
-
-// Update modifies an existing event in the database
-// Accepts a modified event object, returns an error if the process fails.
-func (r *eventRepository) Update(ctx context.Context, event *models.Event) error {
-	_, _, err := r.supabaseClient.
-		From(r.table).
-		Update(event, r.returning, "").
-		Eq("id", event.ID).
-		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Delete removes a event from the database based on its ID
-// Returns an error if the deletion process fails.
-func (r *eventRepository) Delete(ctx context.Context, id string) error {
-	_, _, err := r.supabaseClient.
-		From(r.table).
-		Delete(r.returning, "").
-		Eq("id", id).
-		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// List retrieves a list of events with limit and offset
-// Useful for implementing pagination or limiting the number of data retrieved.
-func (r *eventRepository) List(ctx context.Context, limit, offset int) ([]models.Event, error) {
-	var events []models.Event
-
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*", "", false).
-		Range(offset, offset+limit-1, "").
-		ExecuteTo(&events)
-	if err != nil {
-		return nil, err
-	}
-
-	return events, nil
+		Eq("id", id).
+		Single().
+		ExecuteTo(&event)
+	return event, err
 }
 
-// Count calculates the total number of events stored in the database
-// Useful for determining dataset size or for pagination purposes.
-func (r *eventRepository) Count(ctx context.Context) (int, error) {
-	// Query to count the number of records in the event table
-	_, count, err := r.supabaseClient.
+// Update methods to handle type conversions and UUID correctly
+func (r *eventRepository) Update(ctx context.Context, event *models.Event) error {
+	_, _, err := r.supabaseClient.
 		From(r.table).
-		Select("id", "exact", false).
+		Update(event, "minimal", "").
+		Eq("id", event.ID.String()).
 		Execute()
-	if err != nil {
-		return 0, err
+	return err
+}
+
+func (r *eventRepository) Delete(ctx context.Context, id string) error {
+	_, _, err := r.supabaseClient.
+		From(r.table).
+		Delete("minimal", "").
+		Eq("id", id).
+		Execute()
+	return err
+}
+
+func (r *eventRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.Event, error) {
+	var events []models.Event
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
 	}
 
-	// Check if the response contains a count
-	if count <= 0 {
-		return 0, nil
+	// Apply sorting
+	if opts.SortBy != "" {
+		ascending := opts.SortOrder == repository.SortAscending
+		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
+	}
+
+	// Apply pagination
+	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+
+	_, err := query.ExecuteTo(&events)
+	return events, err
+}
+
+func (r *eventRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	query := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", false)
+
+	// Apply filters
+	for _, filter := range filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	_, count, err := query.Execute()
+	if err != nil {
+		return 0, err
 	}
 
 	return int(count), nil
 }
 
-// GetTrendingEvent retrieves a list of trending events based on the highest views
-func (r *eventRepository) ListTrendingEvent(ctx context.Context, limit int) ([]models.Event, error) {
-	var events []models.Event
+func (r *eventRepository) Exists(ctx context.Context, id string) (bool, error) {
+	_, err := r.FindByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
+func (r *eventRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.Event, error) {
+	var events []models.Event
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select(r.column, "", false).
+		Select("*", "", false).
+		Eq(field, fmt.Sprintf("%v", value)).
+		ExecuteTo(&events)
+	return events, err
+}
+
+// Specialized methods
+func (r *eventRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.Event, int, error) {
+	var events []models.Event
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply search query if provided
+	if opts.SearchQuery != "" {
+		escapedQuery := strings.ReplaceAll(strings.ReplaceAll(opts.SearchQuery, "%", "\\%"), "_", "\\_")
+		likeQuery := "%" + escapedQuery + "%"
+		query = query.Or(fmt.Sprintf("name.ilike.%s,description.ilike.%s", likeQuery, likeQuery), "")
+	}
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Apply sorting
+	if opts.SortBy != "" {
+		ascending := opts.SortOrder == repository.SortAscending
+		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
+	}
+
+	// Apply pagination
+	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+
+	_, err := query.ExecuteTo(&events)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get total count
+	count, err := r.Count(ctx, opts.Filters)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return events, count, nil
+}
+
+func (r *eventRepository) FindPopularEvents(ctx context.Context, limit int) ([]models.Event, error) {
+	var events []models.Event
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
 		Order("views", &postgrest.OrderOpts{Ascending: false}).
 		Limit(limit, "").
 		ExecuteTo(&events)
-	if err != nil {
-		return nil, err
-	}
-
-	return events, nil
+	return events, err
 }
 
-// Search searches for events based on a query string in the name or description
-func (r *eventRepository) Search(ctx context.Context, query string, limit, offset int) ([]models.Event, error) {
+func (r *eventRepository) FindRecentEvents(ctx context.Context, limit int) ([]models.Event, error) {
 	var events []models.Event
-
-	// Escape % and _ in query to prevent wildcard injection
-	escapedQuery := strings.ReplaceAll(strings.ReplaceAll(query, "%", "\\%"), "_", "\\_")
-	likeQuery := "%" + escapedQuery + "%"
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select(r.column, "", false).
-		Or("name.ilike."+likeQuery+",description.ilike."+likeQuery, "").
-		Range(offset, offset+limit-1, "").
+		Select("*", "", false).
+		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
+		Limit(limit, "").
 		ExecuteTo(&events)
-	if err != nil {
-		return nil, err
-	}
-	return events, nil
+	return events, err
+}
+
+func (r *eventRepository) FindEventsByLocation(ctx context.Context, locationID uuid.UUID) ([]models.Event, error) {
+	var events []models.Event
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq("location_id", locationID.String()).
+		ExecuteTo(&events)
+	return events, err
 }
 
 func (r *eventRepository) UpdateViews(ctx context.Context, id string) string {
-	err := r.supabaseClient.
+	return r.supabaseClient.
 		Rpc("increment_or_create_event_views", "", map[string]interface{}{
 			"event_id": id,
 		})
-	return err
 }
 
-// ListRelatedEvents retrieves a list of events related to a specific event
-func (r *eventRepository) ListRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.Event, error) {
+func (r *eventRepository) FindRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.Event, error) {
 	var events []models.Event
 
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select(r.column, "", false).
-		Neq("id", eventID). // Exclude the current event
-		Limit(limit, "").
-		ExecuteTo(&events)
+	// First, get the original event's details to find related events
+	originalEvent, err := r.FindByID(ctx, eventID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find original event: %w", err)
 	}
 
-	return events, nil
+	// Find related events based on similar location, city, or province
+	_, err = r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Or(
+			fmt.Sprintf(
+				"location_id.eq.%s,city_id.eq.%s,province_id.eq.%s",
+				originalEvent.LocationID.String(),
+				originalEvent.CityID.String(),
+				originalEvent.ProvinceID.String(),
+			),
+			"",
+		).
+		Neq("id", eventID).
+		Limit(limit, "").
+		ExecuteTo(&events)
+
+	return events, err
 }

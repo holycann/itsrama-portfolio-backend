@@ -16,19 +16,19 @@ func RegisterEventRoutes(
 	supabaseClient *supabase.Client,
 	routeMiddleware *middleware.Middleware,
 ) {
-	eventRepository := repositories.NewEventRepository(supabaseClient, *repositories.DefaultEventConfig())
+	eventRepository := repositories.NewEventRepository(supabaseClient)
 	eventService := services.NewEventService(eventRepository)
 	eventHandler := handlers.NewEventHandler(eventService, appLogger)
 
 	event := r.Group("/events")
 	{
 		// Only allow users with "admin" or "user" role or "penjelajah" or "warlok" badge to create/update/delete
-		event.POST("/",
+		event.POST("",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
 			eventHandler.CreateEvent,
 		)
-		event.GET("/", eventHandler.ListEvent)
+		event.GET("", eventHandler.ListEvent)
 		event.GET("/search", eventHandler.SearchEvents)
 		event.GET("/trending", eventHandler.TrendingEvents)
 		event.GET("/:id", eventHandler.GetEventByID) // detail by id
@@ -51,20 +51,21 @@ func RegisterLocalStoryRoutes(
 	supabaseClient *supabase.Client,
 	routeMiddleware *middleware.Middleware,
 ) {
-	localStoryRepository := repositories.NewLocalStoryRepository(supabaseClient, *repositories.DefaultLocalStoryConfig())
+	localStoryRepository := repositories.NewLocalStoryRepository(supabaseClient)
 	localStoryService := services.NewLocalStoryService(localStoryRepository)
 	localStoryHandler := handlers.NewLocalStoryHandler(localStoryService, appLogger)
 
 	localStory := r.Group("/local-stories")
 	{
 		// Only allow users with "admin" or "user" role or "penjelajah" or "warlok" badge to create/update/delete
-		localStory.POST("/",
+		localStory.POST("",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
 			localStoryHandler.CreateLocalStory,
 		)
-		localStory.GET("/", localStoryHandler.ListLocalStories)
+		localStory.GET("", localStoryHandler.ListLocalStories)
 		localStory.GET("/search", localStoryHandler.SearchLocalStories)
+		localStory.GET("/:id", localStoryHandler.ListLocalStories) // Use ListLocalStories with ID filter
 		localStory.PUT("/:id",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),

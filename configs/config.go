@@ -8,6 +8,7 @@ type Config struct {
 	Environment string
 	Server      ServerConfig
 	Supabase    SupabaseConfig
+	Database    DatabaseConfig
 	GeminiAI    GeminiAIConfig
 	Logging     LoggingConfig
 }
@@ -19,6 +20,7 @@ func LoadConfig() (*Config, error) {
 		Environment: getEnv("APP_ENV", "development"),
 		Server:      loadServerConfig(),
 		Supabase:    loadSupabaseConfig(),
+		Database:    loadDatabaseConfig(),
 		GeminiAI:    loadGeminiAIConfig(),
 		Logging:     loadLoggingConfig(),
 	}

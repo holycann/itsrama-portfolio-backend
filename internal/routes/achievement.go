@@ -18,7 +18,7 @@ func RegisterBadgeRoutes(
 	appLogger *logger.Logger,
 ) {
 	// Initialize repository
-	badgeRepository := repositories.NewSupabaseBadgeRepository(supabaseClient, "badges")
+	badgeRepository := repositories.NewBadgeRepository(supabaseClient)
 
 	// Initialize service
 	badgeService := services.NewBadgeService(badgeRepository)
@@ -30,16 +30,22 @@ func RegisterBadgeRoutes(
 	badges := r.Group("/badges")
 	{
 		// Create a new badge (admin only)
-		badges.POST("/",
+		badges.POST("",
 			routerMiddleware.VerifyJWT(),
 			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			badgeHandler.CreateBadge,
 		)
 
 		// List badges (optional authentication)
-		badges.GET("/",
+		badges.GET("",
 			routerMiddleware.VerifyJWT(),
 			badgeHandler.ListBadges,
+		)
+
+		// Search badges (optional authentication)
+		badges.GET("/search",
+			routerMiddleware.VerifyJWT(),
+			badgeHandler.ListBadges, // Reuse ListBadges method with query parameter
 		)
 
 		// Count total badges (optional authentication)

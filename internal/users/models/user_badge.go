@@ -1,36 +1,28 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // UserBadge represents the badge earned by a user
 // @Description Badge information associated with a user
 type UserBadge struct {
 	// Unique identifier for the user badge
 	// @example "user_badge_123"
-	ID string `json:"id" db:"id" example:"user_badge_123"`
+	ID uuid.UUID `json:"id" db:"id"`
 
 	// Associated user ID
 	// @example "user_123"
-	UserID string `json:"user_id" db:"user_id" validate:"required" example:"user_123"`
+	UserID uuid.UUID `json:"user_id" db:"user_id" validate:"required"`
 
 	// Badge identifier
 	// @example "explorer"
-	BadgeID string `json:"badge_id" db:"badge_id" validate:"required" example:"explorer"`
-
-	// Badge name
-	// @example "Penjelajah"
-	BadgeName string `json:"badge_name" db:"badge_name" validate:"required" example:"Penjelajah"`
-
-	// Badge description
-	// @example "Explored multiple cultural events"
-	BadgeDescription string `json:"badge_description" db:"badge_description"`
-
-	// Badge icon URL
-	// @example "https://example.com/badges/explorer.png"
-	BadgeIconUrl string `json:"badge_icon_url" db:"badge_icon_url" format:"uri"`
+	BadgeID uuid.UUID `json:"badge_id" db:"badge_id" validate:"required"`
 
 	// Timestamp when the badge was earned
-	EarnedAt *time.Time `json:"earned_at" db:"earned_at"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
 }
 
 // UserBadgeCreate represents the payload for creating a new user badge
@@ -38,11 +30,11 @@ type UserBadge struct {
 type UserBadgeCreate struct {
 	// Associated user ID
 	// @example "user_123"
-	UserID string `json:"user_id" validate:"required" example:"user_123"`
+	UserID uuid.UUID `json:"user_id" validate:"required"`
 
 	// Badge identifier
 	// @example "explorer"
-	BadgeID string `json:"badge_id" validate:"required" example:"explorer"`
+	BadgeID uuid.UUID `json:"badge_id" validate:"required"`
 }
 
 // UserBadgeSearch represents the search criteria for user badges
@@ -50,11 +42,11 @@ type UserBadgeCreate struct {
 type UserBadgeSearch struct {
 	// User ID to filter badges
 	// @example "user_123"
-	UserID string `json:"user_id,omitempty"`
+	UserID uuid.UUID `json:"user_id,omitempty"`
 
 	// Badge ID to filter
 	// @example "explorer"
-	BadgeID string `json:"badge_id,omitempty"`
+	BadgeID uuid.UUID `json:"badge_id,omitempty"`
 
 	// Pagination limit
 	// @example 10

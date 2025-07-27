@@ -7,17 +7,20 @@ import (
 	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
-// ThreadRepository defines the interface for CRUD operations on Thread entities
 type ThreadRepository interface {
 	repository.BaseRepository[models.Thread]
 
-	FindByTitle(ctx context.Context, id string) (*models.Thread, error)
+	// Specialized methods for threads
+	FindByTitle(ctx context.Context, title string) (*models.Thread, error)
+	FindThreadsByEvent(ctx context.Context, eventID string) ([]models.Thread, error)
+	FindActiveThreads(ctx context.Context, limit int) ([]models.Thread, error)
 }
 
-// MessageRepository defines the interface for CRUD operations on Message entities
 type MessageRepository interface {
 	repository.BaseRepository[models.Message]
 
-	ListByThreadID(ctx context.Context, threadID string, limit, offset int) ([]models.Message, error)
-	CountByThreadID(ctx context.Context, threadID string) (int, error)
+	// Specialized methods for messages
+	FindMessagesByThread(ctx context.Context, threadID string) ([]models.Message, error)
+	FindMessagesByUser(ctx context.Context, userID string) ([]models.Message, error)
+	FindRecentMessages(ctx context.Context, limit int) ([]models.Message, error)
 }

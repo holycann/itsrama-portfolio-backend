@@ -4,144 +4,151 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/cultural/models"
+	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
 
-// localStoryRepository is a concrete implementation of the LocalStoryRepository interface
-// that manages CRUD operations for local story entities in the Supabase database.
 type localStoryRepository struct {
-	supabaseClient *supabase.Client // Supabase client for interacting with the database
-	table          string           // Name of the table where local story data is stored
-	column         string           // Columns to be selected in the query
-	returning      string           // Type of data returned after an operation
+	supabaseClient *supabase.Client
+	table          string
 }
 
-// LocalStoryRepositoryConfig contains custom configuration for the local story repository
-// allowing flexibility in setting repository parameters.
-type LocalStoryRepositoryConfig struct {
-	Table     string // Name of the table to be used
-	Column    string // Columns to be selected in the query
-	Returning string // Type of data to be returned
-}
-
-// DefaultLocalStoryConfig returns the default configuration for the local story repository
-// Useful for providing standard settings if no custom configuration is provided.
-func DefaultLocalStoryConfig() *LocalStoryRepositoryConfig {
-	return &LocalStoryRepositoryConfig{
-		Table:     "local_stories", // Default table for local stories
-		Column:    "*",             // Select all columns
-		Returning: "minimal",       // Return minimal data
-	}
-}
-
-// NewLocalStoryRepository creates a new instance of the local story repository
-// with the given configuration and Supabase client.
-func NewLocalStoryRepository(supabaseClient *supabase.Client, cfg LocalStoryRepositoryConfig) LocalStoryRepository {
+func NewLocalStoryRepository(supabaseClient *supabase.Client) LocalStoryRepository {
 	return &localStoryRepository{
 		supabaseClient: supabaseClient,
-		table:          cfg.Table,
-		column:         cfg.Column,
-		returning:      cfg.Returning,
+		table:          "local_stories",
 	}
 }
 
-// Create adds a new local story to the database
-// Accepts context and local story object, returns an error if the process fails.
 func (r *localStoryRepository) Create(ctx context.Context, localStory *models.LocalStory) error {
 	_, err := r.supabaseClient.
 		From(r.table).
 		Insert(localStory, false, "", "minimal", "").
 		ExecuteTo(&localStory)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-// FindByID searches and returns a local story based on its unique ID
-// Returns a local story object or an error if the local story is not found.
 func (r *localStoryRepository) FindByID(ctx context.Context, id string) (*models.LocalStory, error) {
 	var localStory *models.LocalStory
-
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select(r.column, "", false).
-		Eq("id", id).
-		Single().
-		ExecuteTo(&localStory)
-	if err != nil {
-		return nil, err
-	}
-
-	return localStory, nil
-}
-
-// Update modifies an existing local story in the database
-// Accepts a modified local story object, returns an error if the process fails.
-func (r *localStoryRepository) Update(ctx context.Context, localStory *models.LocalStory) error {
-	_, _, err := r.supabaseClient.
-		From(r.table).
-		Update(localStory, r.returning, "").
-		Eq("id", localStory.ID).
-		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Delete removes a local story from the database based on its ID
-// Returns an error if the deletion process fails.
-func (r *localStoryRepository) Delete(ctx context.Context, id string) error {
-	_, _, err := r.supabaseClient.
-		From(r.table).
-		Delete(r.returning, "").
-		Eq("id", id).
-		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// List retrieves a list of local stories with limit and offset
-// Useful for implementing pagination or limiting the number of data retrieved.
-func (r *localStoryRepository) List(ctx context.Context, limit, offset int) ([]models.LocalStory, error) {
-	var localStories []models.LocalStory
-
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*", "", false).
-		Range(offset, offset+limit-1, "").
-		ExecuteTo(&localStories)
-	if err != nil {
-		return nil, err
-	}
-
-	return localStories, nil
+		Eq("id", id).
+		Single().
+		ExecuteTo(&localStory)
+	return localStory, err
 }
 
-// Count calculates the total number of local stories stored in the database
-// Useful for determining dataset size or for pagination purposes.
-func (r *localStoryRepository) Count(ctx context.Context) (int, error) {
-	// Query to count the number of records in the local stories table
-	_, count, err := r.supabaseClient.
+func (r *localStoryRepository) Update(ctx context.Context, localStory *models.LocalStory) error {
+	_, _, err := r.supabaseClient.
 		From(r.table).
-		Select("id", "exact", false).
+		Update(localStory, "minimal", "").
+		Eq("id", localStory.ID.String()).
 		Execute()
+	return err
+}
+
+func (r *localStoryRepository) Delete(ctx context.Context, id string) error {
+	_, _, err := r.supabaseClient.
+		From(r.table).
+		Delete("minimal", "").
+		Eq("id", id).
+		Execute()
+	return err
+}
+
+func (r *localStoryRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.LocalStory, error) {
+	var localStories []models.LocalStory
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Apply sorting
+	if opts.SortBy != "" {
+		ascending := opts.SortOrder == repository.SortAscending
+		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
+	}
+
+	// Apply pagination
+	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+
+	_, err := query.ExecuteTo(&localStories)
+	return localStories, err
+}
+
+func (r *localStoryRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	query := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", false)
+
+	// Apply filters
+	for _, filter := range filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	_, count, err := query.Execute()
 	if err != nil {
 		return 0, err
 	}
 
-	// Check if the response contains a count
-	if count <= 0 {
-		return 0, nil
-	}
-
 	return int(count), nil
+}
+
+func (r *localStoryRepository) Exists(ctx context.Context, id string) (bool, error) {
+	_, err := r.FindByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *localStoryRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.LocalStory, error) {
+	var localStories []models.LocalStory
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq(field, fmt.Sprintf("%v", value)).
+		ExecuteTo(&localStories)
+	return localStories, err
+}
+
+// Specialized methods for local stories
+func (r *localStoryRepository) FindStoriesByLocation(ctx context.Context, locationID uuid.UUID) ([]models.LocalStory, error) {
+	var localStories []models.LocalStory
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq("location_id", locationID.String()).
+		ExecuteTo(&localStories)
+	return localStories, err
+}
+
+func (r *localStoryRepository) FindStoriesByOriginCulture(ctx context.Context, culture string) ([]models.LocalStory, error) {
+	var localStories []models.LocalStory
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq("origin_culture", culture).
+		ExecuteTo(&localStories)
+	return localStories, err
 }

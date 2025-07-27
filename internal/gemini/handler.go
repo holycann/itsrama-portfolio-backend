@@ -2,6 +2,7 @@ package gemini
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/holycann/cultour-backend/internal/cultural/repositories"
 	"github.com/holycann/cultour-backend/internal/cultural/services"
 	"github.com/holycann/cultour-backend/internal/response"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 // MessageRepo is the interface for message/chat repository
@@ -77,6 +79,24 @@ type AIResponse struct {
 	} `json:"metadata"`
 }
 
+// AIEventResponse represents the structured response from the AI for event context
+type AIEventResponse struct {
+	// Generated text from the AI
+	Response string `json:"response" example:"Quantum computing is a type of computing that uses quantum-mechanical phenomena..."`
+
+	// Related events for context
+	RelatedEvents []EventSummary `json:"related_events"`
+
+	// Metadata about the generated AI content
+	Metadata struct {
+		// Length of the generated text
+		Length int `json:"length" example:"250"`
+
+		// Tokens used in the generation process
+		TokensUsed int `json:"tokens_used" example:"60"`
+	} `json:"metadata"`
+}
+
 // AskAI handles AI text generation requests
 // @Summary Generate AI text response
 // @Description Generate text using Gemini AI
@@ -85,8 +105,8 @@ type AIResponse struct {
 // @Produce json
 // @Param request body AIRequest true "AI Text Generation Request"
 // @Success 200 {object} AIResponse "Successful AI text generation"
-// @Failure 400 {object} response.ErrorResponse "Invalid request parameters"
-// @Failure 500 {object} response.ErrorResponse "Internal server error during AI generation"
+// @Failure 400 {object} response.APIResponse "Invalid request parameters"
+// @Failure 500 {object} response.APIResponse "Internal server error during AI generation"
 // @Router /ask [post]
 func (a *AIClient) AskAI(c *gin.Context) {
 	// Create request struct
@@ -94,7 +114,21 @@ func (a *AIClient) AskAI(c *gin.Context) {
 
 	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Invalid request", err.Error())
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"validation_error": err.Error(),
+		})
+		response.BadRequest(c, "Invalid request", string(details), "")
+		return
+	}
+
+	// Validate prompt length
+	if len(req.Prompt) < 1 || len(req.Prompt) > 2000 {
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"prompt_length": fmt.Sprintf("must be between 1 and 2000 characters, current length: %d", len(req.Prompt)),
+		})
+		response.BadRequest(c, "Invalid prompt length", string(details), "")
 		return
 	}
 
@@ -102,8 +136,15 @@ func (a *AIClient) AskAI(c *gin.Context) {
 	ctx, cancel := a.prepareContext()
 	defer cancel()
 
-	// Generate AI response
-	result, err := a.GenerateText(ctx, req.Prompt)
+	// Generate AI response with advanced options
+	generationOpts := &AIGenerationOptions{
+		TraceID: c.GetString("request_id"), // Assuming request_id is set in middleware
+		// Optional: Add more specific configuration if needed
+		// Model: "gemini-2.0-flash", // Optional model override
+		// Temperature: &customTemp,  // Optional temperature override
+	}
+
+	result, err := a.GenerateTextWithOptions(ctx, req.Prompt, generationOpts)
 	if err != nil {
 		// Log error for debugging
 		a.logger.Error("Failed to generate AI text",
@@ -111,8 +152,14 @@ func (a *AIClient) AskAI(c *gin.Context) {
 			"prompt", req.Prompt,
 		)
 
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"generation_error": err.Error(),
+			"prompt":           req.Prompt,
+		})
+
 		// Return structured error response
-		response.InternalServerError(c, "AI generation failed", err.Error())
+		response.InternalServerError(c, "AI generation failed", string(details), "")
 		return
 	}
 
@@ -139,87 +186,132 @@ var aiCache = make(map[string]string) // key: hash(context+prompt), value: respo
 // @Param thread_id query string false "Thread ID for chat history"
 // @Param request body AIRequest true "AI Text Generation Request"
 // @Success 200 {object} AIResponse "Successful AI text generated"
-// @Failure 400 {object} response.ErrorResponse "Invalid request parameters"
-// @Failure 404 {object} response.ErrorResponse "Event not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error during AI generation"
+// @Failure 400 {object} response.APIResponse "Invalid request parameters"
+// @Failure 404 {object} response.APIResponse "Event not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during AI generation"
 // @Router /ask/event/{id} [post]
 func (a *AIClient) AskEventAI(c *gin.Context) {
+	// Create request struct
 	var req AIRequest
+
+	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Invalid request", err.Error())
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"validation_error": err.Error(),
+		})
+		response.BadRequest(c, "Invalid request", string(details), "")
 		return
 	}
+
+	// Validate prompt length
+	if len(req.Prompt) < 1 || len(req.Prompt) > 2000 {
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"prompt_length": fmt.Sprintf("must be between 1 and 2000 characters, current length: %d", len(req.Prompt)),
+		})
+		response.BadRequest(c, "Invalid prompt length", string(details), "")
+		return
+	}
+
+	// Extract event ID from path parameter
 	eventID := c.Param("id")
 	if eventID == "" {
-		response.BadRequest(c, "Event ID is required", nil)
-		return
-	}
-	threadID := c.Query("thread_id")
-
-	// Get event details and other events (summary)
-	eventRepo := repositories.NewEventRepository(a.supabaseClient.GetClient(), *repositories.DefaultEventConfig())
-	eventService := services.NewEventService(eventRepo)
-	event, err := eventService.GetEventByID(c.Request.Context(), eventID)
-	if err != nil || event == nil {
-		response.NotFound(c, "Event not found", err)
-		return
-	}
-	relatedEvents, err := eventService.ListRelatedEvents(c.Request.Context(), eventID, 3)
-	if err != nil {
-		a.logger.Error("Failed to fetch related events", "error", err, "eventID", eventID)
-		// Continue without related events instead of returning
-	}
-
-	// Get chat history if available
-	chatHistory := ""
-	if threadID != "" {
-		msgs, _ := a.getChatHistory(threadID, 10)
-		if len(msgs) > 0 {
-			chatHistory = "[CHAT HISTORY]\n"
-			for _, m := range msgs {
-				chatHistory += m + "\n"
-			}
-		}
-	}
-
-	// Build context string
-	contextStr := a.buildEventContext(&EventDetail{
-		Name:        event.Name,
-		Description: event.Description,
-		StartDate:   event.StartDate,
-	}, func(events []*models.Event) []EventSummary {
-		summaries := make([]EventSummary, len(events))
-		for i, e := range events {
-			summaries[i] = EventSummary{
-				Name:      e.Name,
-				StartDate: e.StartDate,
-			}
-		}
-		return summaries
-	}(relatedEvents))
-	finalPrompt := contextStr + "\n" + chatHistory + "\n[PROMPT USER]\n" + req.Prompt
-
-	// Check cache
-	cacheKey := a.hashPrompt(finalPrompt)
-	if cached, ok := aiCache[cacheKey]; ok {
-		resp := AIResponse{Response: cached}
-		resp.Metadata.Length = len(resp.Response)
-		response.SuccessOK(c, resp, "AI text generated successfully (cache)")
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"event_id": "Event ID is required",
+		})
+		response.BadRequest(c, "Invalid event ID", string(details), "")
 		return
 	}
 
+	// Prepare context with timeout
 	ctx, cancel := a.prepareContext()
 	defer cancel()
-	result, err := a.GenerateText(ctx, finalPrompt)
+
+	// Fetch event details
+	eventRepo := repositories.NewEventRepository(a.supabaseClient.GetClient())
+	eventService := services.NewEventService(eventRepo)
+
+	event, err := eventService.GetEventByID(ctx, eventID)
 	if err != nil {
-		a.logger.Error("Failed to generate AI text", "error", err, "prompt", req.Prompt)
-		response.InternalServerError(c, "AI generation failed", err.Error())
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"event_fetch_error": err.Error(),
+			"event_id":          eventID,
+		})
+		response.NotFound(c, "Event not found", string(details), "")
 		return
 	}
-	aiCache[cacheKey] = result
-	resp := AIResponse{Response: result}
+
+	// Prepare event context for AI prompt
+	eventContext := fmt.Sprintf("Event Name: %s\nDescription: %s\nStart Date: %s",
+		event.Name, event.Description, event.StartDate.Format(time.RFC3339))
+
+	// Combine event context with user prompt
+	fullPrompt := fmt.Sprintf("%s\n\nUser Query: %s", eventContext, req.Prompt)
+
+	// Generate AI response with advanced options
+	generationOpts := &AIGenerationOptions{
+		TraceID: c.GetString("request_id"), // Assuming request_id is set in middleware
+		// Optional: Add more specific configuration if needed
+		// Model: "gemini-2.0-flash", // Optional model override
+		// Temperature: &customTemp,  // Optional temperature override
+	}
+
+	result, err := a.GenerateTextWithOptions(ctx, fullPrompt, generationOpts)
+	if err != nil {
+		// Log error for debugging
+		a.logger.Error("Failed to generate event AI text",
+			"error", err,
+			"event_id", eventID,
+			"prompt", req.Prompt,
+		)
+
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"generation_error": err.Error(),
+			"event_id":         eventID,
+			"prompt":           req.Prompt,
+		})
+
+		// Return structured error response
+		response.InternalServerError(c, "Event AI generation failed", string(details), "")
+		return
+	}
+
+	// Fetch related events for additional context
+	relatedEvents, err := eventService.ListEvents(ctx, repository.ListOptions{
+		Filters: []repository.FilterOption{
+			{Field: "city_id", Value: event.CityID},
+		},
+		Limit: 3,
+	})
+	if err != nil {
+		a.logger.Warn("Failed to fetch related events",
+			"error", err,
+			"event_id", eventID)
+	}
+
+	// Prepare response
+	resp := AIEventResponse{
+		Response: result,
+		RelatedEvents: func(events []models.Event) []EventSummary {
+			summaries := make([]EventSummary, 0, len(events))
+			for _, event := range events {
+				summaries = append(summaries, EventSummary{
+					ID:        event.ID.String(),
+					Name:      event.Name,
+					StartDate: event.StartDate,
+				})
+			}
+			return summaries
+		}(relatedEvents),
+	}
 	resp.Metadata.Length = len(resp.Response)
-	response.SuccessOK(c, resp, "AI text generated successfully")
+
+	// Send successful response
+	response.SuccessOK(c, resp, "Event AI text generated successfully")
 }
 
 // buildEventContext builds a context string for the AI prompt

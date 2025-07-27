@@ -5,64 +5,61 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/achievement/models"
 	"github.com/holycann/cultour-backend/internal/achievement/repositories"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
-// DefaultBadgeService implements BadgeService
-type DefaultBadgeService struct {
+type badgeService struct {
 	repo repositories.BadgeRepository
 }
 
-// NewBadgeService creates a new instance of BadgeService
 func NewBadgeService(repo repositories.BadgeRepository) BadgeService {
-	return &DefaultBadgeService{
+	return &badgeService{
 		repo: repo,
 	}
 }
 
-// CreateBadge creates a new badge in the system
-func (s *DefaultBadgeService) CreateBadge(ctx context.Context, badgeCreate *models.BadgeCreate) (*models.Badge, error) {
+func (s *badgeService) CreateBadge(ctx context.Context, badgeCreate *models.BadgeCreate) error {
 	// Validate badge creation
 	if badgeCreate.Name == "" {
-		return nil, fmt.Errorf("badge name is required")
+		return fmt.Errorf("badge name is required")
 	}
 
-	// Generate unique ID (you might want to use a more robust ID generation method)
 	now := time.Now()
 	badge := &models.Badge{
-		ID:          fmt.Sprintf("badge_%s", badgeCreate.Name),
+		ID:          uuid.New(),
 		Name:        badgeCreate.Name,
 		Description: badgeCreate.Description,
 		IconURL:     badgeCreate.IconURL,
-		CreatedAt:   &now,
+		CreatedAt:   now,
 	}
 
 	return s.repo.Create(ctx, badge)
 }
 
-// GetBadgeByID retrieves a badge by its unique identifier
-func (s *DefaultBadgeService) GetBadgeByID(ctx context.Context, id string) (*models.Badge, error) {
+func (s *badgeService) GetBadgeByID(ctx context.Context, id string) (*models.Badge, error) {
 	return s.repo.FindByID(ctx, id)
 }
 
-// ListBadges retrieves badges with pagination
-func (s *DefaultBadgeService) ListBadges(ctx context.Context, limit, offset int) ([]models.Badge, error) {
-	if limit <= 0 {
-		limit = 10
+func (s *badgeService) ListBadges(ctx context.Context, opts repository.ListOptions) ([]models.Badge, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
 	}
-	if offset < 0 {
-		offset = 0
+	if opts.Offset < 0 {
+		opts.Offset = 0
 	}
-	return s.repo.FindAll(ctx, limit, offset)
+
+	return s.repo.List(ctx, opts)
 }
 
-// UpdateBadge updates an existing badge
-func (s *DefaultBadgeService) UpdateBadge(ctx context.Context, id string, badgeUpdate *models.BadgeCreate) (*models.Badge, error) {
+func (s *badgeService) UpdateBadge(ctx context.Context, id string, badgeUpdate *models.BadgeCreate) error {
 	// First, retrieve the existing badge
 	existingBadge, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("badge not found: %w", err)
+		return fmt.Errorf("badge not found: %w", err)
 	}
 
 	// Update fields
@@ -75,12 +72,18 @@ func (s *DefaultBadgeService) UpdateBadge(ctx context.Context, id string, badgeU
 	return s.repo.Update(ctx, existingBadge)
 }
 
-// DeleteBadge removes a badge from the system
-func (s *DefaultBadgeService) DeleteBadge(ctx context.Context, id string) error {
+func (s *badgeService) DeleteBadge(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
-// CountBadges returns the total number of badges
-func (s *DefaultBadgeService) CountBadges(ctx context.Context) (int, error) {
-	return s.repo.Count(ctx)
+func (s *badgeService) CountBadges(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	return s.repo.Count(ctx, filters)
+}
+
+func (s *badgeService) GetBadgeByName(ctx context.Context, name string) (*models.Badge, error) {
+	return s.repo.FindBadgeByName(ctx, name)
+}
+
+func (s *badgeService) GetPopularBadges(ctx context.Context, limit int) ([]models.Badge, error) {
+	return s.repo.FindPopularBadges(ctx, limit)
 }

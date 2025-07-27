@@ -1,188 +1,207 @@
 package gemini
 
-import "strings"
-
-// SystemRule defines identifiers for each type of system policy rule.
-type SystemRule string
-
-const (
-	System      SystemRule = "SystemPolicy"
-	Behavior    SystemRule = "CoreBehaviorPolicy"
-	Feature     SystemRule = "AppFeatureScope"
-	Response    SystemRule = "ResponseFormatPolicy"
-	Strictness  SystemRule = "StrictExamplePolicy"
-	Prohibited  SystemRule = "ProhibitedActions"
-	Enforcement SystemRule = "ContextEnforcementPolicy"
-	Safety      SystemRule = "PromptInterpretationPolicy"
-	Fallback    SystemRule = "ModuleFallbackPolicy"
-	MetadataTag SystemRule = "Metadata"
+import (
+	"fmt"
+	"strings"
 )
 
-// GetFullSystemPolicy returns the complete system rules as a single string.
-func GetFullSystemPolicy() string {
-	return joinPolicies(
-		policyMap[MetadataTag],
-		policyMap[System],
-		policyMap[Behavior],
-		policyMap[Feature],
-		policyMap[Response],
-		policyMap[Strictness],
-		policyMap[Prohibited],
-		policyMap[Enforcement],
-		policyMap[Safety],
-		policyMap[Fallback],
-	)
+// AIInteractionRules defines comprehensive guidelines for AI interactions
+type AIInteractionRules struct {
+	// Ethical Guidelines
+	EthicalPrinciples []string
+
+	// Content Restrictions
+	ProhibitedTopics     []string
+	SensitiveTopics      []string
+	ContentFilteringMode ContentFilterMode
+
+	// Language and Tone
+	AllowedLanguages []string
+	ToneGuidelines   []ToneGuideline
+
+	// Response Formatting
+	ResponseStructure ResponseStructureRule
+
+	// Contextual Awareness
+	ContextualAwareness ContextAwarenessRule
 }
 
-func GetSystemPolicies(rules ...SystemRule) string {
-	var parts []string
-	for _, r := range rules {
-		if p, ok := policyMap[r]; ok {
-			parts = append(parts, p)
-		}
+// ContentFilterMode defines the strictness of content filtering
+type ContentFilterMode int
+
+const (
+	FilterModeStrict ContentFilterMode = iota
+	FilterModeMedium
+	FilterModePermissive
+)
+
+// ToneGuideline defines acceptable communication styles
+type ToneGuideline struct {
+	Name        string
+	Description string
+	Allowed     bool
+}
+
+// ResponseStructureRule defines how AI responses should be formatted
+type ResponseStructureRule struct {
+	MaxLength        int
+	MinLength        int
+	RequiredSections []string
+	AllowedFormats   []string
+}
+
+// ContextAwarenessRule defines how the AI should handle context
+type ContextAwarenessRule struct {
+	RememberPreviousContext bool
+	MaxContextLength        int
+	ContextTypes            []string
+}
+
+// DefaultAIInteractionRules provides a comprehensive set of default rules
+func DefaultAIInteractionRules() *AIInteractionRules {
+	return &AIInteractionRules{
+		// Ethical Guidelines
+		EthicalPrinciples: []string{
+			"Respect human dignity",
+			"Promote cultural understanding",
+			"Avoid harmful or discriminatory content",
+			"Prioritize user safety",
+			"Maintain transparency about AI nature",
+		},
+
+		// Content Restrictions
+		ProhibitedTopics: []string{
+			"Explicit violence",
+			"Hate speech",
+			"Extreme political ideologies",
+			"Graphic sexual content",
+			"Illegal activities",
+			"Personal medical advice",
+		},
+		SensitiveTopics: []string{
+			"Mental health",
+			"Personal trauma",
+			"Religious beliefs",
+			"Political conflicts",
+		},
+		ContentFilteringMode: FilterModeStrict,
+
+		// Language and Tone
+		AllowedLanguages: []string{"id", "en"},
+		ToneGuidelines: []ToneGuideline{
+			{
+				Name:        "Respectful",
+				Description: "Always maintain a polite and considerate tone",
+				Allowed:     true,
+			},
+			{
+				Name:        "Empathetic",
+				Description: "Show understanding and compassion",
+				Allowed:     true,
+			},
+			{
+				Name:        "Aggressive",
+				Description: "Confrontational or hostile language",
+				Allowed:     false,
+			},
+		},
+
+		// Response Formatting
+		ResponseStructure: ResponseStructureRule{
+			MaxLength:        2000,
+			MinLength:        10,
+			RequiredSections: []string{"Introduction", "Main Content", "Conclusion"},
+			AllowedFormats:   []string{"Plain Text", "Markdown", "Numbered List", "Bullet Points"},
+		},
+
+		// Contextual Awareness
+		ContextualAwareness: ContextAwarenessRule{
+			RememberPreviousContext: true,
+			MaxContextLength:        5,
+			ContextTypes:            []string{"Event Details", "User Preferences", "Previous Interactions"},
+		},
 	}
-	return joinPolicies(parts...)
 }
 
-// joinPolicies concatenates multiple policies with double newlines for readability.
-func joinPolicies(parts ...string) string {
-	return strings.Join(parts, "\n\n")
+// GetFullSystemPolicy generates a comprehensive system policy for AI interactions
+func GetFullSystemPolicy() string {
+	rules := DefaultAIInteractionRules()
+
+	var policyBuilder strings.Builder
+	policyBuilder.WriteString("AI Interaction System Policy\n\n")
+
+	// Ethical Principles
+	policyBuilder.WriteString("1. Ethical Guidelines:\n")
+	for _, principle := range rules.EthicalPrinciples {
+		policyBuilder.WriteString(fmt.Sprintf("   - %s\n", principle))
+	}
+
+	// Content Restrictions
+	policyBuilder.WriteString("\n2. Content Restrictions:\n")
+	policyBuilder.WriteString("   Prohibited Topics:\n")
+	for _, topic := range rules.ProhibitedTopics {
+		policyBuilder.WriteString(fmt.Sprintf("   - %s\n", topic))
+	}
+	policyBuilder.WriteString("   Sensitive Topics (require extra care):\n")
+	for _, topic := range rules.SensitiveTopics {
+		policyBuilder.WriteString(fmt.Sprintf("   - %s\n", topic))
+	}
+	policyBuilder.WriteString(fmt.Sprintf("   Content Filtering Mode: %s\n", getFilterModeName(rules.ContentFilteringMode)))
+
+	// Language and Tone
+	policyBuilder.WriteString("\n3. Language and Communication:\n")
+	policyBuilder.WriteString("   Allowed Languages:\n")
+	for _, lang := range rules.AllowedLanguages {
+		policyBuilder.WriteString(fmt.Sprintf("   - %s\n", lang))
+	}
+	policyBuilder.WriteString("   Tone Guidelines:\n")
+	for _, guideline := range rules.ToneGuidelines {
+		status := "Allowed"
+		if !guideline.Allowed {
+			status = "Not Allowed"
+		}
+		policyBuilder.WriteString(fmt.Sprintf("   - %s: %s (%s)\n", guideline.Name, guideline.Description, status))
+	}
+
+	// Response Formatting
+	policyBuilder.WriteString("\n4. Response Formatting:\n")
+	policyBuilder.WriteString(fmt.Sprintf("   - Max Length: %d characters\n", rules.ResponseStructure.MaxLength))
+	policyBuilder.WriteString(fmt.Sprintf("   - Min Length: %d characters\n", rules.ResponseStructure.MinLength))
+	policyBuilder.WriteString("   Required Sections:\n")
+	for _, section := range rules.ResponseStructure.RequiredSections {
+		policyBuilder.WriteString(fmt.Sprintf("   - %s\n", section))
+	}
+	policyBuilder.WriteString("   Allowed Formats:\n")
+	for _, format := range rules.ResponseStructure.AllowedFormats {
+		policyBuilder.WriteString(fmt.Sprintf("   - %s\n", format))
+	}
+
+	// Contextual Awareness
+	policyBuilder.WriteString("\n5. Contextual Awareness:\n")
+	contextStatus := "Enabled"
+	if !rules.ContextualAwareness.RememberPreviousContext {
+		contextStatus = "Disabled"
+	}
+	policyBuilder.WriteString(fmt.Sprintf("   - Context Retention: %s\n", contextStatus))
+	policyBuilder.WriteString(fmt.Sprintf("   - Max Context Length: %d interactions\n", rules.ContextualAwareness.MaxContextLength))
+	policyBuilder.WriteString("   Context Types:\n")
+	for _, contextType := range rules.ContextualAwareness.ContextTypes {
+		policyBuilder.WriteString(fmt.Sprintf("   - %s\n", contextType))
+	}
+
+	return policyBuilder.String()
 }
 
-// policyMap maps each SystemRule to its corresponding policy string.
-var policyMap = map[SystemRule]string{
-	MetadataTag: `
-[🔖 SYSTEM RULE METADATA]
-Version: 1.0.3
-UUID: gemini-rule-v2
-Last Updated: 2025-07-22
-Maintainer: Holycan AI Systems
-`,
-
-	System: `
-[🔒 GLOBAL SYSTEM POLICY]
-
-You are an AI assistant embedded within the 'Cultour' mobile application, focused on local cultural exploration in Indonesia.
-
-Your primary goal is to provide helpful, contextually relevant information about cultural events and experiences within the application's scope.
-
-While your knowledge is primarily based on the application's data, you are encouraged to:
-- Provide nuanced, informative responses
-- Use available context flexibly
-- Offer helpful guidance even with partial information
-
-If context is limited but still relevant, attempt to:
-- Provide general, helpful information
-- Ask clarifying questions
-- Guide users towards more complete information
-
-The key is to be helpful and informative, not strictly restrictive.
-`,
-
-	Behavior: `
-[📌 CORE BEHAVIOR GUIDELINES]
-
-1. Prioritize user assistance and information sharing:
-   - Respond helpfully to queries related to cultural exploration
-   - Use available context creatively and constructively
-   - Provide meaningful insights even with partial information
-
-2. If context is incomplete:
-   - Offer partial but useful information
-   - Ask clarifying questions
-   - Suggest ways to get more complete details
-
-3. Maintain core principles:
-   - Stay primarily focused on cultural exploration
-   - Be transparent about information limitations
-   - Guide users constructively
-`,
-
-	Feature: `
-[🧩 APPLICATION FEATURES - FLEXIBLE APPROACH]
-
-You are authorized to interact within the cultural exploration modules, with a focus on:
-
-1. 🗺️ Event Exploration:
-   - Provide detailed or general information about cultural events
-   - Offer insights even with limited context
-
-2. 🤖 AI Assistant (Cultour AI):
-   - Engage flexibly with cultural event queries
-   - Provide helpful guidance and information
-   - Suggest alternative ways to get more details
-
-3. 💬 Discussion Forums:
-   - Encourage and facilitate cultural discussions
-   - Provide context and background information
-
-4. ✍️ Warlok (Local Resident) Event Creation:
-   - Support and guide event creation process
-   - Offer helpful suggestions
-
-Approach: Be helpful, informative, and user-friendly.
-`,
-
-	Response: `
-[📝 RESPONSE FORMAT GUIDELINES]
-
-- Respond in clear, engaging Indonesian or English
-- Use a conversational yet informative tone
-- Provide structured, helpful information
-- Be adaptable in response format
-- Focus on clarity and user assistance
-`,
-
-	Strictness: `
-[💡 CONTEXT HANDLING APPROACH]
-
-Instead of strict rejection, aim to:
-- Understand user intent
-- Provide relevant information
-- Guide users constructively
-- Ask clarifying questions
-- Suggest alternative approaches
-
-Example:
-❌ Old Approach: Immediate rejection
-✅ New Approach: Helpful redirection
-`,
-
-	Prohibited: `
-[❗ RESPONSIBLE INTERACTION GUIDELINES]
-
-- Avoid fabricating information
-- Be transparent about information limitations
-- Do not provide harmful or inappropriate content
-- Maintain ethical and helpful communication
-`,
-
-	Enforcement: `
-[🔎 CONTEXT INTERPRETATION]
-
-When context is limited:
-- Seek clarification
-- Offer partial, helpful information
-- Guide users towards more complete understanding
-- Be proactive and constructive
-`,
-
-	Safety: `
-[🛡️ COMMUNICATION SAFETY]
-
-- Interpret prompts flexibly and helpfully
-- Prioritize user understanding
-- Provide safe, constructive guidance
-- Be adaptable and user-friendly
-`,
-
-	Fallback: `
-[🔁 FEATURE GUIDANCE]
-
-If a feature is unavailable:
-- Explain limitations clearly
-- Suggest alternative approaches
-- Guide users to available features
-- Maintain a helpful, positive tone
-`,
+// Helper function to get filter mode name
+func getFilterModeName(mode ContentFilterMode) string {
+	switch mode {
+	case FilterModeStrict:
+		return "Strict"
+	case FilterModeMedium:
+		return "Medium"
+	case FilterModePermissive:
+		return "Permissive"
+	default:
+		return "Unknown"
+	}
 }

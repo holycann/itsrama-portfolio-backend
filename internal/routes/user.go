@@ -21,15 +21,15 @@ func RegisterUserRoutes(
 
 	user := r.Group("/users")
 	{
-		user.POST("/",
+		user.POST("",
 			routerMiddleware.VerifyJWT(),
 			userHandler.CreateUser)
-		user.GET("/",
+		user.GET("",
 			routerMiddleware.VerifyJWT(),
 			userHandler.ListUsers)
 		user.GET("/search",
 			routerMiddleware.VerifyJWT(),
-			userHandler.SearchUser)
+			userHandler.SearchUsers)
 		user.GET("/:id",
 			routerMiddleware.VerifyJWT(),
 			userHandler.GetUserByID) // detail by id
@@ -45,24 +45,35 @@ func RegisterUserRoutes(
 func RegisterUserProfileRoutes(
 	r *gin.Engine,
 	supabaseClient *supabase.SupabaseClient,
+	supabaseAuth *supabase.SupabaseAuth,
 	table string,
 	routerMiddleware *middleware.Middleware,
 ) {
-	userProfileRepository := repositories.NewUserProfileRepository(supabaseClient.GetClient(), table)
-	userProfileService := services.NewUserProfileService(userProfileRepository)
+	userRepository := repositories.NewUserRepository(supabaseAuth.GetClient())
+	userProfileRepository := repositories.NewUserProfileRepository(supabaseClient.GetClient())
+	userProfileService := services.NewUserProfileService(userProfileRepository, userRepository)
 	userProfileHandler := handlers.NewUserProfileHandler(userProfileService)
 
 	profile := r.Group("/profile")
 	{
-		profile.POST("/",
+		profile.POST("",
 			routerMiddleware.VerifyJWT(),
 			userProfileHandler.CreateUserProfile)
-		profile.GET("/",
+		profile.GET("",
 			routerMiddleware.VerifyJWT(),
 			userProfileHandler.ListUsersProfile)
 		profile.GET("/search",
 			routerMiddleware.VerifyJWT(),
-			userProfileHandler.ListUsersProfile)
+			userProfileHandler.SearchUserProfile)
+		profile.GET("/:id",
+			routerMiddleware.VerifyJWT(),
+			userProfileHandler.ListUsersProfile) // Use ListUsersProfile with ID filter
+		profile.PUT("/:id",
+			routerMiddleware.VerifyJWT(),
+			userProfileHandler.UpdateUserProfile)
+		profile.DELETE("/:id",
+			routerMiddleware.VerifyJWT(),
+			userProfileHandler.DeleteUserProfile)
 	}
 }
 
@@ -72,22 +83,26 @@ func RegisterUserBadgeRoutes(
 	routerMiddleware *middleware.Middleware,
 	appLogger *logger.Logger,
 ) {
-	userBadgeRepository := repositories.NewUserBadgeRepository(supabaseClient.GetClient(), *repositories.DefaultUserBadgeConfig())
+	userBadgeRepository := repositories.NewUserBadgeRepository(supabaseClient.GetClient())
 	userBadgeService := services.NewUserBadgeService(userBadgeRepository)
 	userBadgeHandler := handlers.NewUserBadgeHandler(userBadgeService, appLogger)
 
 	badges := r.Group("/users/badges")
 	{
-		badges.POST("/",
+		badges.POST("",
 			routerMiddleware.VerifyJWT(),
 			routerMiddleware.RequireRoleOrBadge("admin", "warlok"),
 			userBadgeHandler.AssignBadge,
 		)
-		badges.GET("/",
+		badges.GET("",
 			routerMiddleware.VerifyJWT(),
 			userBadgeHandler.GetUserBadges,
 		)
-		badges.DELETE("/",
+		badges.GET("/search",
+			routerMiddleware.VerifyJWT(),
+			userBadgeHandler.GetUserBadges, // Reuse GetUserBadges with query parameter
+		)
+		badges.DELETE("",
 			routerMiddleware.VerifyJWT(),
 			routerMiddleware.RequireRoleOrBadge("admin", "warlok"),
 			userBadgeHandler.RemoveBadge,

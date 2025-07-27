@@ -4,144 +4,151 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/holycann/cultour-backend/internal/place/models"
+	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
 
-// locationRepository is a concrete implementation of the LocationRepository interface
-// that manages CRUD operations for location entities in the Supabase database.
 type locationRepository struct {
-	supabaseClient *supabase.Client // Supabase client for interacting with the database
-	table          string           // Name of the table where location data is stored
-	column         string           // Columns to be selected in the query
-	returning      string           // Type of data returned after an operation
+	supabaseClient *supabase.Client
+	table          string
 }
 
-// LocationRepositoryConfig contains custom configuration for the location repository
-// allowing flexibility in setting repository parameters.
-type LocationRepositoryConfig struct {
-	Table     string // Name of the table to be used
-	Column    string // Columns to be selected in the query
-	Returning string // Type of data to be returned
-}
-
-// DefaultConfig returns the default configuration for the location repository
-// Useful for providing standard settings if no custom configuration is provided.
-func DefaultLocationConfig() *LocationRepositoryConfig {
-	return &LocationRepositoryConfig{
-		Table:     "locations", // Default table for locations
-		Column:    "*",         // Select all columns
-		Returning: "minimal",   // Return minimal data
-	}
-}
-
-// NewLocationRepository creates a new instance of the location repository
-// with the given configuration and Supabase client.
-func NewLocationRepository(supabaseClient *supabase.Client, cfg LocationRepositoryConfig) LocationRepository {
+func NewLocationRepository(supabaseClient *supabase.Client) LocationRepository {
 	return &locationRepository{
 		supabaseClient: supabaseClient,
-		table:          cfg.Table,
-		column:         cfg.Column,
-		returning:      cfg.Returning,
+		table:          "locations",
 	}
 }
 
-// Create adds a new location to the database
-// Accepts context and location object, returns an error if the process fails.
 func (r *locationRepository) Create(ctx context.Context, location *models.Location) error {
 	_, err := r.supabaseClient.
 		From(r.table).
 		Insert(location, false, "", "minimal", "").
 		ExecuteTo(&location)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-// FindByID searches and returns a location based on its unique ID
-// Returns a location object or an error if the location is not found.
 func (r *locationRepository) FindByID(ctx context.Context, id string) (*models.Location, error) {
 	var location *models.Location
-
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select(r.column, "", false).
-		Eq("id", id).
-		Single().
-		ExecuteTo(&location)
-	if err != nil {
-		return nil, err
-	}
-
-	return location, nil
-}
-
-// Update modifies an existing location in the database
-// Accepts a modified location object, returns an error if the process fails.
-func (r *locationRepository) Update(ctx context.Context, location *models.Location) error {
-	_, _, err := r.supabaseClient.
-		From(r.table).
-		Update(location, r.returning, "").
-		Eq("id", location.ID).
-		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Delete removes a location from the database based on its ID
-// Returns an error if the deletion process fails.
-func (r *locationRepository) Delete(ctx context.Context, id string) error {
-	_, _, err := r.supabaseClient.
-		From(r.table).
-		Delete(r.returning, "").
-		Eq("id", id).
-		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// List retrieves a list of locations with limit and offset
-// Useful for implementing pagination or limiting the number of data retrieved.
-func (r *locationRepository) List(ctx context.Context, limit, offset int) ([]models.Location, error) {
-	var locations []models.Location
-
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*", "", false).
-		Range(offset, offset+limit-1, "").
-		ExecuteTo(&locations)
-	if err != nil {
-		return nil, err
-	}
-
-	return locations, nil
+		Eq("id", id).
+		Single().
+		ExecuteTo(&location)
+	return location, err
 }
 
-// Count calculates the total number of locations stored in the database
-// Useful for determining dataset size or for pagination purposes.
-func (r *locationRepository) Count(ctx context.Context) (int, error) {
-	// Query to count the number of records in the location table
-	_, count, err := r.supabaseClient.
+func (r *locationRepository) Update(ctx context.Context, location *models.Location) error {
+	_, _, err := r.supabaseClient.
 		From(r.table).
-		Select("id", "exact", false).
+		Update(location, "minimal", "").
+		Eq("id", location.ID.String()).
 		Execute()
+	return err
+}
+
+func (r *locationRepository) Delete(ctx context.Context, id string) error {
+	_, _, err := r.supabaseClient.
+		From(r.table).
+		Delete("minimal", "").
+		Eq("id", id).
+		Execute()
+	return err
+}
+
+func (r *locationRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.Location, error) {
+	var locations []models.Location
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Apply sorting
+	if opts.SortBy != "" {
+		ascending := opts.SortOrder == repository.SortAscending
+		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
+	}
+
+	// Apply pagination
+	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+
+	_, err := query.ExecuteTo(&locations)
+	return locations, err
+}
+
+func (r *locationRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	query := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", false)
+
+	// Apply filters
+	for _, filter := range filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	_, count, err := query.Execute()
 	if err != nil {
 		return 0, err
 	}
 
-	// Check if the response contains a count
-	if count <= 0 {
-		return 0, nil
-	}
-
 	return int(count), nil
+}
+
+func (r *locationRepository) Exists(ctx context.Context, id string) (bool, error) {
+	_, err := r.FindByID(ctx, id)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *locationRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.Location, error) {
+	var locations []models.Location
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq(field, fmt.Sprintf("%v", value)).
+		ExecuteTo(&locations)
+	return locations, err
+}
+
+// Specialized methods for locations
+func (r *locationRepository) FindLocationsByCity(ctx context.Context, cityID string) ([]models.Location, error) {
+	var locations []models.Location
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq("city_id", cityID).
+		ExecuteTo(&locations)
+	return locations, err
+}
+
+func (r *locationRepository) FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error) {
+	// Note: This is a placeholder. Actual implementation would depend on Supabase's geospatial query capabilities
+	var locations []models.Location
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		// Add geospatial filtering logic here
+		ExecuteTo(&locations)
+	return locations, err
 }

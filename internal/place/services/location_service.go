@@ -3,69 +3,45 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/place/models"
 	"github.com/holycann/cultour-backend/internal/place/repositories"
-	"github.com/holycann/cultour-backend/pkg/utils"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 type locationService struct {
 	locationRepo repositories.LocationRepository
 }
 
-// NewLocationService creates a new instance of the location service
-// with the given location repository.
 func NewLocationService(locationRepo repositories.LocationRepository) LocationService {
 	return &locationService{
 		locationRepo: locationRepo,
 	}
 }
 
-// CreateLocation adds a new location to the database
-// Validates the location object before creating
 func (s *locationService) CreateLocation(ctx context.Context, location *models.Location) error {
 	// Validate location object
 	if location == nil {
 		return fmt.Errorf("location cannot be nil")
 	}
 
-	// Validate required fields (example validation)
+	// Validate required fields
 	if location.Name == "" {
 		return fmt.Errorf("location name is required")
 	}
 
-	location.ID = utils.GenerateUUID()
+	// Set default values
+	location.ID = uuid.New()
+	now := time.Now()
+	location.CreatedAt = now
+	location.UpdatedAt = now
 
 	// Call repository to create location
 	return s.locationRepo.Create(ctx, location)
 }
 
-// GetLocations retrieves a list of locations with pagination
-func (s *locationService) GetLocations(ctx context.Context, limit, offset int) ([]*models.Location, error) {
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10 // Default limit
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Retrieve locations from repository
-	locations, err := s.locationRepo.List(ctx, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert []models.Location to []*models.Location
-	locationPtrs := make([]*models.Location, len(locations))
-	for i := range locations {
-		locationPtrs[i] = &locations[i]
-	}
-
-	return locationPtrs, nil
-}
-
-// GetLocationByID retrieves a single location by its unique identifier
 func (s *locationService) GetLocationByID(ctx context.Context, id string) (*models.Location, error) {
 	// Validate ID
 	if id == "" {
@@ -76,33 +52,18 @@ func (s *locationService) GetLocationByID(ctx context.Context, id string) (*mode
 	return s.locationRepo.FindByID(ctx, id)
 }
 
-// GetLocationByName retrieves a location by its name
-// Note: This method is not directly supported by the current repository implementation
-// You might need to add a custom method in the repository or implement filtering
-func (s *locationService) GetLocationByName(ctx context.Context, name string) (*models.Location, error) {
-	// Validate name
-	if name == "" {
-		return nil, fmt.Errorf("location name cannot be empty")
+func (s *locationService) ListLocations(ctx context.Context, opts repository.ListOptions) ([]models.Location, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
 	}
 
-	// Since the current repository doesn't have a direct method for this,
-	// we'll use a workaround by listing all locations and finding by name
-	locations, err := s.locationRepo.List(ctx, 1, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	// Find location by name (linear search)
-	for _, location := range locations {
-		if location.Name == name {
-			return &location, nil
-		}
-	}
-
-	return nil, fmt.Errorf("location with name %s not found", name)
+	return s.locationRepo.List(ctx, opts)
 }
 
-// UpdateLocation updates an existing location in the database
 func (s *locationService) UpdateLocation(ctx context.Context, location *models.Location) error {
 	// Validate location object
 	if location == nil {
@@ -110,15 +71,17 @@ func (s *locationService) UpdateLocation(ctx context.Context, location *models.L
 	}
 
 	// Validate required fields
-	if location.ID == "" {
+	if location.ID == uuid.Nil {
 		return fmt.Errorf("location ID is required for update")
 	}
+
+	// Update timestamp
+	location.UpdatedAt = time.Now()
 
 	// Call repository to update location
 	return s.locationRepo.Update(ctx, location)
 }
 
-// DeleteLocation removes a location from the database by its ID
 func (s *locationService) DeleteLocation(ctx context.Context, id string) error {
 	// Validate ID
 	if id == "" {
@@ -129,7 +92,60 @@ func (s *locationService) DeleteLocation(ctx context.Context, id string) error {
 	return s.locationRepo.Delete(ctx, id)
 }
 
-// Count calculates the total number of stored locations
-func (s *locationService) Count(ctx context.Context) (int, error) {
-	return s.locationRepo.Count(ctx)
+func (s *locationService) CountLocations(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	return s.locationRepo.Count(ctx, filters)
+}
+
+func (s *locationService) GetLocationByName(ctx context.Context, name string) (*models.Location, error) {
+	// Validate name
+	if name == "" {
+		return nil, fmt.Errorf("location name cannot be empty")
+	}
+
+	// Use repository's search method
+	locations, err := s.locationRepo.FindByField(ctx, "name", name)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(locations) == 0 {
+		return nil, fmt.Errorf("location with name %s not found", name)
+	}
+
+	return &locations[0], nil
+}
+
+func (s *locationService) GetLocationsByCity(ctx context.Context, cityID string) ([]models.Location, error) {
+	// Convert string to UUID
+	cityUUID, err := uuid.Parse(cityID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid city ID: %w", err)
+	}
+
+	return s.locationRepo.FindLocationsByCity(ctx, cityUUID.String())
+}
+
+func (s *locationService) GetLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error) {
+	return s.locationRepo.FindLocationsByProximity(ctx, latitude, longitude, radius)
+}
+
+func (s *locationService) SearchLocations(ctx context.Context, query string, opts repository.ListOptions) ([]models.Location, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+
+	// Add search query to filters
+	opts.Filters = append(opts.Filters,
+		repository.FilterOption{
+			Field:    "name",
+			Operator: "like",
+			Value:    query,
+		},
+	)
+
+	return s.locationRepo.List(ctx, opts)
 }

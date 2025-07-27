@@ -4,183 +4,163 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/holycann/cultour-backend/internal/discussion/models"
+	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
 
-// messageRepository is a concrete implementation of the MessageRepository interface
-// that manages CRUD operations for message entities in the Supabase database.
 type messageRepository struct {
-	supabaseClient *supabase.Client // Supabase client for interacting with the database
-	table          string           // Name of the table where message data is stored
-	column         string           // Columns to be selected in the query
-	returning      string           // Type of data returned after an operation
+	supabaseClient *supabase.Client
+	table          string
 }
 
-// MessageRepositoryConfig contains custom configuration for the message repository
-// allowing flexibility in setting repository parameters.
-type MessageRepositoryConfig struct {
-	Table     string // Name of the table to be used
-	Column    string // Columns to be selected in the query
-	Returning string // Type of data to be returned
-}
-
-// DefaultMessageConfig returns the default configuration for the message repository
-// Useful for providing standard settings if no custom configuration is provided.
-func DefaultMessageConfig() *MessageRepositoryConfig {
-	return &MessageRepositoryConfig{
-		Table:     "messages", // Default table for messages
-		Column:    "*",        // Select all columns
-		Returning: "minimal",  // Return minimal data
-	}
-}
-
-// NewMessageRepository creates a new instance of the message repository
-// with the given configuration and Supabase client.
-func NewMessageRepository(supabaseClient *supabase.Client, cfg MessageRepositoryConfig) MessageRepository {
+func NewMessageRepository(supabaseClient *supabase.Client) MessageRepository {
 	return &messageRepository{
 		supabaseClient: supabaseClient,
-		table:          cfg.Table,
-		column:         cfg.Column,
-		returning:      cfg.Returning,
+		table:          "messages",
 	}
 }
 
-// Create adds a new message to the database
-// Accepts context and message object, returns an error if the process fails.
 func (r *messageRepository) Create(ctx context.Context, message *models.Message) error {
 	_, err := r.supabaseClient.
 		From(r.table).
 		Insert(message, false, "", "minimal", "").
 		ExecuteTo(&message)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-// FindByID searches and returns a message based on its unique ID
-// Returns a message object or an error if the message is not found.
 func (r *messageRepository) FindByID(ctx context.Context, id string) (*models.Message, error) {
 	var message *models.Message
-
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select(r.column, "", false).
+		Select("*", "", false).
 		Eq("id", id).
 		Single().
 		ExecuteTo(&message)
-	if err != nil {
-		return nil, err
-	}
-
-	return message, nil
+	return message, err
 }
 
-// Update modifies an existing message in the database
-// Accepts a modified message object, returns an error if the process fails.
 func (r *messageRepository) Update(ctx context.Context, message *models.Message) error {
 	_, _, err := r.supabaseClient.
 		From(r.table).
-		Update(message, r.returning, "").
-		Eq("id", message.ID).
+		Update(message, "minimal", "").
+		Eq("id", message.ID.String()).
 		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-// Delete removes a message from the database based on its ID
-// Returns an error if the deletion process fails.
 func (r *messageRepository) Delete(ctx context.Context, id string) error {
 	_, _, err := r.supabaseClient.
 		From(r.table).
-		Delete(r.returning, "").
+		Delete("minimal", "").
 		Eq("id", id).
 		Execute()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-// List retrieves a list of messages with limit and offset
-// Useful for implementing pagination or limiting the number of data retrieved.
-func (r *messageRepository) List(ctx context.Context, limit, offset int) ([]models.Message, error) {
+func (r *messageRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.Message, error) {
 	var messages []models.Message
-
-	_, err := r.supabaseClient.
+	query := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
-		Range(offset, offset+limit-1, "").
-		ExecuteTo(&messages)
-	if err != nil {
-		return nil, err
+		Select("*", "", false)
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
 	}
 
-	return messages, nil
+	// Apply sorting
+	if opts.SortBy != "" {
+		ascending := opts.SortOrder == repository.SortAscending
+		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
+	}
+
+	// Apply pagination
+	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+
+	_, err := query.ExecuteTo(&messages)
+	return messages, err
 }
 
-// Count calculates the total number of messages stored in the database
-// Useful for determining dataset size or for pagination purposes.
-func (r *messageRepository) Count(ctx context.Context) (int, error) {
-	// Query to count the number of records in the message table
-	_, count, err := r.supabaseClient.
+func (r *messageRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	query := r.supabaseClient.
 		From(r.table).
-		Select("id", "exact", false).
-		Execute()
+		Select("id", "exact", false)
+
+	// Apply filters
+	for _, filter := range filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	_, count, err := query.Execute()
 	if err != nil {
 		return 0, err
-	}
-
-	// Check if the response contains a count
-	if count <= 0 {
-		return 0, nil
 	}
 
 	return int(count), nil
 }
 
-// CountByThreadID counts the number of messages in a thread
-// Accepts a thread ID and returns the count of messages associated with that thread.
-func (r *messageRepository) CountByThreadID(ctx context.Context, threadID string) (int, error) {
-	// Query to count messages by thread ID
-	_, count, err := r.supabaseClient.
-		From(r.table).
-		Select("id", "exact", false).
-		Eq("thread_id", threadID).
-		Execute()
+func (r *messageRepository) Exists(ctx context.Context, id string) (bool, error) {
+	_, err := r.FindByID(ctx, id)
 	if err != nil {
-		return 0, err
+		return false, err
 	}
-
-	// Check if the response contains a count
-	if count <= 0 {
-		return 0, nil
-	}
-
-	return int(count), nil
+	return true, nil
 }
 
-// ListByThreadID retrieves a list of messages by thread ID with limit and offset
-// Useful for getting paginated messages within a thread.
-func (r *messageRepository) ListByThreadID(ctx context.Context, threadID string, limit, offset int) ([]models.Message, error) {
+func (r *messageRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.Message, error) {
 	var messages []models.Message
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq(field, fmt.Sprintf("%v", value)).
+		ExecuteTo(&messages)
+	return messages, err
+}
 
+// Specialized methods for messages
+func (r *messageRepository) FindMessagesByThread(ctx context.Context, threadID string) ([]models.Message, error) {
+	var messages []models.Message
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*", "", false).
 		Eq("thread_id", threadID).
-		Range(offset, offset+limit-1, "").
+		Order("created_at", &postgrest.OrderOpts{Ascending: true}).
 		ExecuteTo(&messages)
-	if err != nil {
-		return nil, err
-	}
+	return messages, err
+}
 
-	return messages, nil
+func (r *messageRepository) FindMessagesByUser(ctx context.Context, userID string) ([]models.Message, error) {
+	var messages []models.Message
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Eq("user_id", userID).
+		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
+		ExecuteTo(&messages)
+	return messages, err
+}
+
+func (r *messageRepository) FindRecentMessages(ctx context.Context, limit int) ([]models.Message, error) {
+	var messages []models.Message
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
+		Limit(limit, "").
+		ExecuteTo(&messages)
+	return messages, err
 }

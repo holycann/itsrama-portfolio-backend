@@ -1,6 +1,8 @@
 definitions:
   configs.Config:
     properties:
+      database:
+        $ref: '#/definitions/configs.DatabaseConfig'
       environment:
         type: string
       geminiAI:
@@ -11,6 +13,21 @@ definitions:
         $ref: '#/definitions/configs.ServerConfig'
       supabase:
         $ref: '#/definitions/configs.SupabaseConfig'
+    type: object
+  configs.DatabaseConfig:
+    properties:
+      databaseName:
+        type: string
+      host:
+        type: string
+      password:
+        type: string
+      poolMode:
+        type: string
+      port:
+        type: integer
+      user:
+        type: string
     type: object
   configs.GeminiAIConfig:
     properties:
@@ -87,6 +104,8 @@ definitions:
         type: string
       updated_at:
         type: string
+    required:
+    - name
     type: object
   github_com_holycann_cultour-backend_internal_achievement_models.BadgeCreate:
     properties:
@@ -103,50 +122,42 @@ definitions:
     properties:
       city_id:
         description: Reference to city ID
-        example: city_12345
+        type: string
+      created_at:
+        description: Event creation time
         type: string
       description:
         description: Event description
-        example: Monas
         type: string
       end_date:
-        description: 'Event end date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
-        example: "2024-06-01T09:00:00+07:00"
+        description: Event end date
         type: string
       id:
         description: Unique identifier for the event
-        example: loc_12345
         type: string
       image_url:
         description: Event image URL
-        example: https://example.com/image.jpg
         type: string
       is_kid_friendly:
         description: Whether the event is kid-friendly
-        example: true
         type: boolean
       location_id:
         description: Reference to location ID
-        example: location_67890
         type: string
       name:
         description: Event name
-        example: Monas
         type: string
       province_id:
         description: Reference to province ID
-        example: province_67890
         type: string
       start_date:
-        description: 'Event start date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
-        example: "2024-06-01T08:00:00+07:00"
+        description: Event start date
         type: string
       user_id:
         description: ID of the user who created the event
-        example: user_67890
         type: string
       views:
-        example: 10
+        description: Number of views
         type: integer
     type: object
   github_com_holycann_cultour-backend_internal_cultural_models.LocalStory:
@@ -158,7 +169,6 @@ definitions:
       created_at:
         type: string
       id:
-        example: story_12345
         type: string
       image_url:
         type: string
@@ -192,150 +202,161 @@ definitions:
     properties:
       city_id:
         description: Reference to city ID
-        example: city_12345
+        type: string
+      created_at:
+        description: Event creation time
         type: string
       description:
         description: Event description
-        example: Monas
         type: string
       end_date:
-        description: 'Event end date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
-        example: "2024-06-01T09:00:00+07:00"
+        description: Event end date
         type: string
       id:
         description: Unique identifier for the event
-        example: loc_12345
         type: string
       image_url:
         description: Event image URL
-        example: https://example.com/image.jpg
         type: string
       is_kid_friendly:
         description: Whether the event is kid-friendly
-        example: true
         type: boolean
       location_id:
         description: Reference to location ID
-        example: location_67890
         type: string
       name:
         description: Event name
-        example: Monas
         type: string
       province_id:
         description: Reference to province ID
-        example: province_67890
         type: string
       start_date:
-        description: 'Event start date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)'
-        example: "2024-06-01T08:00:00+07:00"
+        description: Event start date
         type: string
       user:
         $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
       user_id:
         description: ID of the user who created the event
-        example: user_67890
         type: string
       views:
-        example: 10
+        description: Number of views
         type: integer
     type: object
   github_com_holycann_cultour-backend_internal_discussion_models.Message:
     properties:
       content:
         description: Message content
-        example: This is the message content
         type: string
       created_at:
         description: Message creation time
         type: string
       id:
-        description: 'Unique ID for the message, example: "msg_12345"'
-        example: msg_12345
+        description: Unique ID for the message
         type: string
       thread_id:
         description: ID of the thread the message belongs to
-        example: thread_12345
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.MessageType'
+        description: Type of message
+      updated_at:
+        description: Message last update time
         type: string
       user_id:
         description: ID of the user who sent the message
-        example: user_67890
         type: string
+    required:
+    - content
     type: object
+  github_com_holycann_cultour-backend_internal_discussion_models.MessageType:
+    enum:
+    - discussion
+    - ai
+    type: string
+    x-enum-varnames:
+    - DiscussionMessageType
+    - AIMessageType
   github_com_holycann_cultour-backend_internal_discussion_models.ResponseMessage:
     properties:
       content:
         description: Message content
-        example: This is the message content
         type: string
       created_at:
         description: Message creation time
         type: string
       id:
-        description: 'Unique ID for the message, example: "msg_12345"'
-        example: msg_12345
+        description: Unique ID for the message
         type: string
       thread_id:
         description: ID of the thread the message belongs to
-        example: thread_12345
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.MessageType'
+        description: Type of message
+      updated_at:
+        description: Message last update time
         type: string
       user:
         $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
       user_id:
         description: ID of the user who sent the message
-        example: user_67890
         type: string
+    required:
+    - content
     type: object
   github_com_holycann_cultour-backend_internal_discussion_models.Thread:
     properties:
       created_at:
         description: Thread creation time
-        example: "2024-06-01T15:04:05Z"
         type: string
       event_id:
-        description: |-
-          Content string `json:"content" db:"content" example:"Let's discuss about Monas history!"` // Thread content
-          UserID    string `json:"user_id" db:"user_id" example:"user_67890"`                         // ID of the user who created the thread
-        example: event-xx
+        description: Reference to related event
         type: string
       id:
-        description: 'Unique ID for the thread, example: "thread_12345"'
-        example: thread_12345
+        description: Unique ID for the thread
         type: string
       status:
-        description: 'Thread status, example: "open"'
-        example: open
+        description: Thread status
+        example: active
         type: string
       title:
-        description: 'Thread title, example: "Discussion about Monas History"'
-        example: Discussion about Monas History
+        description: Thread title
+        type: string
+      updated_at:
+        description: Thread last update time
         type: string
     type: object
   github_com_holycann_cultour-backend_internal_place_models.City:
     properties:
+      created_at:
+        description: City creation time
+        type: string
       id:
-        description: 'Unique ID for the city, example: "city_12345"'
-        example: city_12345
+        description: Unique ID for the city
         type: string
       name:
         description: 'City name, example: "Jakarta"'
         example: Jakarta
         type: string
-      province:
-        description: 'Name of the province where the city is located, example: "DKI
-          Jakarta"'
-        example: DKI Jakarta
+      province_id:
+        description: ID of the province where the city is located
+        type: string
+      updated_at:
+        description: City last update time
         type: string
     type: object
   github_com_holycann_cultour-backend_internal_place_models.Location:
     properties:
       city_id:
         description: Reference to the city ID
-        example: city_67890
+        type: string
+      created_at:
+        description: Location creation time
         type: string
       id:
         description: Unique identifier for the location
-        example: loc_12345
         type: string
       latitude:
         description: Latitude in decimal degrees
@@ -349,45 +370,82 @@ definitions:
         description: Name of the location
         example: Monas
         type: string
+      updated_at:
+        description: Location last update time
+        type: string
     type: object
   github_com_holycann_cultour-backend_internal_place_models.Province:
     properties:
+      created_at:
+        description: Province creation time
+        type: string
+      description:
+        description: Province description
+        type: string
       id:
-        description: 'Unique ID for the province, example: "province_12345"'
-        example: province_12345
+        description: Unique ID for the province
         type: string
       name:
         description: 'Province name, example: "West Java"'
         example: West Java
         type: string
-    type: object
-  github_com_holycann_cultour-backend_internal_response.ErrorResponse:
-    properties:
-      details:
-        description: Detailed error information
-      error:
-        description: The primary error message
+      updated_at:
+        description: Province last update time
         type: string
-      success:
-        description: Indicates whether the request was successful (always false for
-          errors)
-        type: boolean
     type: object
-  github_com_holycann_cultour-backend_internal_response.Response:
+  github_com_holycann_cultour-backend_internal_response.APIResponse:
     properties:
       data:
-        description: The actual data payload (can be an object, array, or null)
+        description: Actual response data
+      error:
+        allOf:
+        - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorDetails'
+        description: Detailed error information (only populated for error responses)
       message:
-        description: A human-readable message describing the result
+        description: Human-readable message
         type: string
-      metadata:
-        additionalProperties: true
-        description: Metadata or additional information about the response
-        type: object
-      success:
-        description: Indicates whether the request was successful
-        type: boolean
+      pagination:
+        allOf:
+        - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Pagination'
+        description: Pagination information (optional)
+      request_id:
+        description: Unique request identifier for tracing
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ResponseStatus'
+        description: Status of the response (success/error)
     type: object
+  github_com_holycann_cultour-backend_internal_response.ErrorDetails:
+    properties:
+      code:
+        description: Machine-readable error code
+        type: string
+      details:
+        description: Detailed error description
+        type: string
+    type: object
+  github_com_holycann_cultour-backend_internal_response.Pagination:
+    properties:
+      has_next_page:
+        type: boolean
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  github_com_holycann_cultour-backend_internal_response.ResponseStatus:
+    enum:
+    - success
+    - error
+    type: string
+    x-enum-varnames:
+    - StatusSuccess
+    - StatusError
   github_com_holycann_cultour-backend_internal_users_models.User:
     description: User account details with authentication and metadata
     properties:
@@ -438,47 +496,26 @@ definitions:
   github_com_holycann_cultour-backend_internal_users_models.UserBadge:
     description: Badge information associated with a user
     properties:
-      badge_description:
-        description: |-
-          Badge description
-          @example "Explored multiple cultural events"
-        type: string
-      badge_icon_url:
-        description: |-
-          Badge icon URL
-          @example "https://example.com/badges/explorer.png"
-        format: uri
-        type: string
       badge_id:
         description: |-
           Badge identifier
           @example "explorer"
-        example: explorer
         type: string
-      badge_name:
-        description: |-
-          Badge name
-          @example "Penjelajah"
-        example: Penjelajah
-        type: string
-      earned_at:
+      created_at:
         description: Timestamp when the badge was earned
         type: string
       id:
         description: |-
           Unique identifier for the user badge
           @example "user_badge_123"
-        example: user_badge_123
         type: string
       user_id:
         description: |-
           Associated user ID
           @example "user_123"
-        example: user_123
         type: string
     required:
     - badge_id
-    - badge_name
     - user_id
     type: object
   github_com_holycann_cultour-backend_internal_users_models.UserBadgeCreate:
@@ -488,13 +525,11 @@ definitions:
         description: |-
           Badge identifier
           @example "explorer"
-        example: explorer
         type: string
       user_id:
         description: |-
           Associated user ID
           @example "user_123"
-        example: user_123
         type: string
     required:
     - badge_id
@@ -549,20 +584,15 @@ definitions:
       created_at:
         description: Timestamp when the profile was created
         type: string
-      deleted_at:
-        description: Timestamp of profile soft deletion
-        type: string
       fullname:
         description: |-
           User's full name
           @example "John Doe"
-        example: John Doe
         type: string
       id:
         description: |-
           Unique identifier for the user profile
           @example "profile_123"
-        example: profile_123
         type: string
       identity_image_url:
         description: |-
@@ -571,13 +601,12 @@ definitions:
         format: uri
         type: string
       updated_at:
-        description: Timestamp of the last profile update
+        description: Timestamp when the profile was last updated
         type: string
       user_id:
         description: |-
           Associated user ID
           @example "user_123"
-        example: user_123
         type: string
     required:
     - fullname
@@ -601,7 +630,6 @@ definitions:
         description: |-
           User's full name
           @example "John Doe"
-        example: John Doe
         type: string
       identity_image_url:
         description: |-
@@ -613,7 +641,6 @@ definitions:
         description: |-
           Associated user ID
           @example "user_123"
-        example: user_123
         type: string
     required:
     - fullname
@@ -706,11 +733,11 @@ paths:
         "400":
           description: Invalid request parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error during AI generation
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       summary: Generate AI text response
       tags:
       - AI
@@ -745,21 +772,21 @@ paths:
         "400":
           description: Invalid request parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Event not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error during AI generation
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       summary: Generate AI text response for a specific event
       tags:
       - AI
   /badges:
     get:
-      description: Retrieve a list of badges with pagination
+      description: Retrieve a list of badges with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -775,6 +802,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -782,7 +819,7 @@ paths:
           description: Badges retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -792,7 +829,7 @@ paths:
         "500":
           description: Failed to list badges
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List badges
@@ -820,7 +857,7 @@ paths:
           description: Badge created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge'
@@ -828,11 +865,11 @@ paths:
         "400":
           description: Invalid badge creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new badge
@@ -855,17 +892,17 @@ paths:
       - application/json
       responses:
         "200":
-          description: Badge deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Badge ID is required
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Failed to delete badge
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete a badge
@@ -890,7 +927,7 @@ paths:
           description: Badge retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge'
@@ -898,11 +935,11 @@ paths:
         "400":
           description: Badge ID is required
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Badge not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Get a specific badge
@@ -935,7 +972,7 @@ paths:
           description: Badge updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_achievement_models.Badge'
@@ -943,11 +980,11 @@ paths:
         "400":
           description: Invalid badge update details or missing ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Failed to update badge
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update a badge
@@ -968,7 +1005,7 @@ paths:
           description: Badge count retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   type: integer
@@ -976,7 +1013,7 @@ paths:
         "500":
           description: Failed to count badges
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Count badges
@@ -984,7 +1021,7 @@ paths:
       - badges
   /cities:
     get:
-      description: Retrieve a list of cities with pagination
+      description: Retrieve a list of cities with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -1000,6 +1037,20 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
+      - description: Filter by province ID
+        in: query
+        name: province_id
+        type: string
       produces:
       - application/json
       responses:
@@ -1007,7 +1058,7 @@ paths:
           description: Cities retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -1017,7 +1068,7 @@ paths:
         "500":
           description: Failed to list cities
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List cities
@@ -1045,7 +1096,7 @@ paths:
           description: City created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.City'
@@ -1053,11 +1104,11 @@ paths:
         "400":
           description: Invalid city creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new city
@@ -1080,21 +1131,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: City deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid city ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: City not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete a city
@@ -1119,7 +1170,7 @@ paths:
           description: City retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.City'
@@ -1127,11 +1178,11 @@ paths:
         "404":
           description: City not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Get city by ID
@@ -1164,7 +1215,7 @@ paths:
           description: City updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.City'
@@ -1172,15 +1223,15 @@ paths:
         "400":
           description: Invalid city update details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: City not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update a city
@@ -1194,13 +1245,10 @@ paths:
         in: header
         name: Authorization
         type: string
-      - description: City ID
+      - description: Search query (name, etc.)
         in: query
-        name: id
-        type: string
-      - description: City Name
-        in: query
-        name: name
+        name: query
+        required: true
         type: string
       - default: 10
         description: Number of results to retrieve
@@ -1212,6 +1260,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -1219,7 +1277,7 @@ paths:
           description: Cities found successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -1229,11 +1287,11 @@ paths:
         "400":
           description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Search cities
@@ -1241,7 +1299,7 @@ paths:
       - Cities
   /events:
     get:
-      description: Retrieve a list of cultural events with pagination
+      description: Retrieve a list of cultural events with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -1257,6 +1315,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -1264,7 +1332,7 @@ paths:
           description: Events retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -1274,7 +1342,7 @@ paths:
         "500":
           description: Failed to list events
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List events
@@ -1302,7 +1370,7 @@ paths:
           description: Event created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent'
@@ -1310,11 +1378,11 @@ paths:
         "400":
           description: Invalid event creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new event
@@ -1337,21 +1405,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: Event deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid event ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Event not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete an event
@@ -1376,7 +1444,7 @@ paths:
           description: Event retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent'
@@ -1384,11 +1452,11 @@ paths:
         "404":
           description: Event not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Get event by ID
@@ -1421,7 +1489,7 @@ paths:
           description: Event updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent'
@@ -1429,15 +1497,15 @@ paths:
         "400":
           description: Invalid event update details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Event not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update an event
@@ -1451,17 +1519,10 @@ paths:
         in: header
         name: Authorization
         type: string
-      - description: Event ID
-        in: query
-        name: id
-        type: string
-      - description: Event Name
-        in: query
-        name: name
-        type: string
-      - description: Search query
+      - description: Search query (name, description, etc.)
         in: query
         name: query
+        required: true
         type: string
       - default: 10
         description: Number of results to retrieve
@@ -1473,6 +1534,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -1480,7 +1551,7 @@ paths:
           description: Events found successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -1490,11 +1561,11 @@ paths:
         "400":
           description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Search events
@@ -1520,7 +1591,7 @@ paths:
           description: Trending events retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -1530,7 +1601,7 @@ paths:
         "500":
           description: Failed to retrieve trending events
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Get trending events
@@ -1538,7 +1609,7 @@ paths:
       - Events
   /local-stories:
     get:
-      description: Retrieve a list of local cultural stories with pagination
+      description: Retrieve a list of local cultural stories with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -1554,6 +1625,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -1561,7 +1642,7 @@ paths:
           description: Local stories retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -1571,7 +1652,7 @@ paths:
         "500":
           description: Failed to list local stories
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List local stories
@@ -1599,7 +1680,7 @@ paths:
           description: Local story created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory'
@@ -1607,11 +1688,11 @@ paths:
         "400":
           description: Invalid local story creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new local story
@@ -1634,21 +1715,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: Local story deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid local story ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Local story not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete a local story
@@ -1681,7 +1762,7 @@ paths:
           description: Local story updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.LocalStory'
@@ -1689,15 +1770,15 @@ paths:
         "400":
           description: Invalid local story update details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Local story not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update a local story
@@ -1711,13 +1792,10 @@ paths:
         in: header
         name: Authorization
         type: string
-      - description: Local Story ID
+      - description: Search query (title, story text, etc.)
         in: query
-        name: id
-        type: string
-      - description: Local Story Title
-        in: query
-        name: title
+        name: query
+        required: true
         type: string
       - default: 10
         description: Number of results to retrieve
@@ -1729,6 +1807,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -1736,7 +1824,7 @@ paths:
           description: Local stories found successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -1746,11 +1834,11 @@ paths:
         "400":
           description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Search local stories
@@ -1758,7 +1846,7 @@ paths:
       - Local Stories
   /locations:
     get:
-      description: Retrieve a list of locations with pagination
+      description: Retrieve a list of locations with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -1774,6 +1862,20 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
+      - description: Filter by city ID
+        in: query
+        name: city_id
+        type: string
       produces:
       - application/json
       responses:
@@ -1781,7 +1883,7 @@ paths:
           description: Locations retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -1791,7 +1893,7 @@ paths:
         "500":
           description: Failed to list locations
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List locations
@@ -1819,7 +1921,7 @@ paths:
           description: Location created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location'
@@ -1827,11 +1929,11 @@ paths:
         "400":
           description: Invalid location creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new location
@@ -1854,24 +1956,61 @@ paths:
       - application/json
       responses:
         "200":
-          description: Location deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid location ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Location not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete a location
+      tags:
+      - Locations
+    get:
+      description: Retrieve a location's details by its unique identifier
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: Location ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Location retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location'
+              type: object
+        "404":
+          description: Location not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get location by ID
       tags:
       - Locations
     put:
@@ -1901,7 +2040,7 @@ paths:
           description: Location updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location'
@@ -1909,15 +2048,15 @@ paths:
         "400":
           description: Invalid location update details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Location not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update a location
@@ -1931,13 +2070,10 @@ paths:
         in: header
         name: Authorization
         type: string
-      - description: Location ID
+      - description: Search query (name, etc.)
         in: query
-        name: id
-        type: string
-      - description: Location Name
-        in: query
-        name: name
+        name: query
+        required: true
         type: string
       - default: 10
         description: Number of results to retrieve
@@ -1949,6 +2085,20 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
+      - description: Filter by city ID
+        in: query
+        name: city_id
+        type: string
       produces:
       - application/json
       responses:
@@ -1956,7 +2106,7 @@ paths:
           description: Locations found successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -1966,11 +2116,11 @@ paths:
         "400":
           description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Search locations
@@ -1978,7 +2128,7 @@ paths:
       - Locations
   /messages:
     get:
-      description: Retrieve a list of messages with pagination
+      description: Retrieve a list of messages with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -1994,6 +2144,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -2001,7 +2161,7 @@ paths:
           description: Messages retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -2011,7 +2171,7 @@ paths:
         "500":
           description: Failed to list messages
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List messages
@@ -2039,7 +2199,7 @@ paths:
           description: Message created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.ResponseMessage'
@@ -2047,11 +2207,11 @@ paths:
         "400":
           description: Invalid message creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new message
@@ -2074,21 +2234,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: Message deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid message ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Message not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete a message
@@ -2121,7 +2281,7 @@ paths:
           description: Message updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.ResponseMessage'
@@ -2129,15 +2289,15 @@ paths:
         "400":
           description: Invalid message update details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Message not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update a message
@@ -2151,13 +2311,10 @@ paths:
         in: header
         name: Authorization
         type: string
-      - description: Message ID
+      - description: Search query (content, etc.)
         in: query
-        name: id
-        type: string
-      - description: Thread ID
-        in: query
-        name: threadID
+        name: query
+        required: true
         type: string
       - default: 10
         description: Number of results to retrieve
@@ -2169,6 +2326,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -2176,7 +2343,7 @@ paths:
           description: Messages found successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -2186,11 +2353,11 @@ paths:
         "400":
           description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Search messages
@@ -2198,7 +2365,7 @@ paths:
       - Messages
   /profile:
     get:
-      description: Retrieve a list of user profiles with pagination
+      description: Retrieve a list of user profiles with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -2214,6 +2381,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -2221,7 +2398,7 @@ paths:
           description: User profiles retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -2231,7 +2408,7 @@ paths:
         "500":
           description: Failed to list user profiles
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List user profiles
@@ -2259,7 +2436,7 @@ paths:
           description: User profile created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
@@ -2267,11 +2444,11 @@ paths:
         "400":
           description: Invalid user profile creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new user profile
@@ -2294,21 +2471,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: User profile deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid user profile ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: User profile not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete a user profile
@@ -2341,7 +2518,7 @@ paths:
           description: User profile updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
@@ -2349,15 +2526,15 @@ paths:
         "400":
           description: Invalid user profile update details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: User profile not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update a user profile
@@ -2365,42 +2542,49 @@ paths:
       - User Profiles
   /profile/search:
     get:
-      consumes:
-      - application/json
-      description: Retrieve user profiles by ID, User ID, or with pagination
+      description: Search user profiles by various criteria
       parameters:
-      - description: Bearer token
+      - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
-      - description: User Profile ID
-        in: path
-        name: id
-        type: string
-      - description: User ID
+      - description: Search query (fullname, etc.)
         in: query
-        name: user_id
+        name: query
+        required: true
         type: string
+      - default: 10
+        description: Number of results to retrieve
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Number of results to skip
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Successfully retrieved user profiles
+          description: User profiles found successfully
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
+                  type: array
+              type: object
         "400":
-          description: Invalid input parameters
+          description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
-        "404":
-          description: User profile not found
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
-          description: Failed to retrieve user profiles
+          description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Search user profiles
@@ -2408,7 +2592,7 @@ paths:
       - User Profiles
   /provinces:
     get:
-      description: Retrieve a list of provinces with pagination
+      description: Retrieve a list of provinces with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -2424,6 +2608,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -2431,7 +2625,7 @@ paths:
           description: Provinces retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -2441,7 +2635,7 @@ paths:
         "500":
           description: Failed to list provinces
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List provinces
@@ -2469,7 +2663,7 @@ paths:
           description: Province created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
@@ -2477,11 +2671,11 @@ paths:
         "400":
           description: Invalid province creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new province
@@ -2504,21 +2698,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: Province deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid province ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Province not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete a province
@@ -2543,7 +2737,7 @@ paths:
           description: Province retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
@@ -2551,11 +2745,11 @@ paths:
         "404":
           description: Province not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Get province by ID
@@ -2588,7 +2782,7 @@ paths:
           description: Province updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
@@ -2596,15 +2790,15 @@ paths:
         "400":
           description: Invalid province update details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Province not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update a province
@@ -2618,13 +2812,10 @@ paths:
         in: header
         name: Authorization
         type: string
-      - description: Province ID
+      - description: Search query (name, etc.)
         in: query
-        name: id
-        type: string
-      - description: Province Name
-        in: query
-        name: name
+        name: query
+        required: true
         type: string
       - default: 10
         description: Number of results to retrieve
@@ -2636,6 +2827,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -2643,7 +2844,7 @@ paths:
           description: Provinces found successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -2653,11 +2854,11 @@ paths:
         "400":
           description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Search provinces
@@ -2665,7 +2866,7 @@ paths:
       - Provinces
   /threads:
     get:
-      description: Retrieve a list of discussion threads with pagination
+      description: Retrieve a list of discussion threads with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -2681,6 +2882,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -2688,7 +2899,7 @@ paths:
           description: Threads retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -2698,7 +2909,7 @@ paths:
         "500":
           description: Failed to list threads
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List threads
@@ -2726,7 +2937,7 @@ paths:
           description: Thread created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread'
@@ -2734,11 +2945,11 @@ paths:
         "400":
           description: Invalid thread creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new thread
@@ -2761,21 +2972,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: Thread deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid thread ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Thread not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete a thread
@@ -2800,7 +3011,7 @@ paths:
           description: Thread retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread'
@@ -2808,11 +3019,11 @@ paths:
         "404":
           description: Thread not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Get thread by ID
@@ -2845,7 +3056,7 @@ paths:
           description: Thread updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.Thread'
@@ -2853,15 +3064,15 @@ paths:
         "400":
           description: Invalid thread update details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: Thread not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update a thread
@@ -2875,13 +3086,10 @@ paths:
         in: header
         name: Authorization
         type: string
-      - description: Thread ID
+      - description: Search query (title, etc.)
         in: query
-        name: id
-        type: string
-      - description: Thread Title
-        in: query
-        name: title
+        name: query
+        required: true
         type: string
       - default: 10
         description: Number of results to retrieve
@@ -2893,6 +3101,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -2900,7 +3118,7 @@ paths:
           description: Threads found successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -2910,11 +3128,11 @@ paths:
         "400":
           description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Search threads
@@ -2922,7 +3140,7 @@ paths:
       - Threads
   /users:
     get:
-      description: Retrieve a list of users with pagination
+      description: Retrieve a list of users with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -2938,6 +3156,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -2945,7 +3173,7 @@ paths:
           description: Users retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -2955,7 +3183,7 @@ paths:
         "500":
           description: Failed to list users
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: List users
@@ -2983,7 +3211,7 @@ paths:
           description: User created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
@@ -2991,11 +3219,11 @@ paths:
         "400":
           description: Invalid user creation details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Create a new user
@@ -3018,21 +3246,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: User deleted successfully
+          description: Deleted successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid user ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: User not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Delete a user
@@ -3057,7 +3285,7 @@ paths:
           description: User retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
@@ -3065,11 +3293,11 @@ paths:
         "404":
           description: User not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Get user by ID
@@ -3102,7 +3330,7 @@ paths:
           description: User updated successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
@@ -3110,15 +3338,15 @@ paths:
         "400":
           description: Invalid user update details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "404":
           description: User not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Update a user
@@ -3148,22 +3376,22 @@ paths:
         "200":
           description: Badge removed successfully
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "400":
           description: Invalid user ID or badge ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Remove a badge from a user
       tags:
       - User Badges
     get:
-      description: Retrieve badges for a specific user
+      description: Retrieve badges for a specific user with pagination and filtering
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -3184,6 +3412,16 @@ paths:
         in: query
         name: offset
         type: integer
+      - default: '"created_at"'
+        description: Field to sort by
+        in: query
+        name: sort_by
+        type: string
+      - default: '"desc"'
+        description: Sort order (asc/desc)
+        in: query
+        name: sort_order
+        type: string
       produces:
       - application/json
       responses:
@@ -3191,7 +3429,7 @@ paths:
           description: User badges retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -3201,11 +3439,11 @@ paths:
         "400":
           description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Get user badges
@@ -3233,7 +3471,7 @@ paths:
           description: Badge assigned successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserBadge'
@@ -3241,11 +3479,11 @@ paths:
         "400":
           description: Invalid badge assignment details
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Assign a badge to a user
@@ -3271,7 +3509,7 @@ paths:
           description: User badge count retrieved successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   type: integer
@@ -3279,11 +3517,11 @@ paths:
         "400":
           description: Invalid user ID
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Count user badges
@@ -3297,13 +3535,10 @@ paths:
         in: header
         name: Authorization
         type: string
-      - description: User ID
+      - description: Search query (email, name, etc.)
         in: query
-        name: id
-        type: string
-      - description: User Email
-        in: query
-        name: email
+        name: query
+        required: true
         type: string
       - default: 10
         description: Number of results to retrieve
@@ -3322,7 +3557,7 @@ paths:
           description: Users found successfully
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.Response'
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
             - properties:
                 data:
                   items:
@@ -3332,11 +3567,11 @@ paths:
         "400":
           description: Invalid search parameters
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
       security:
       - ApiKeyAuth: []
       summary: Search users

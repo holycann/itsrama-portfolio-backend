@@ -4,28 +4,30 @@ import (
 	"context"
 
 	"github.com/holycann/cultour-backend/internal/cultural/models"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 type EventService interface {
 	CreateEvent(ctx context.Context, event *models.Event) error
-	GetEvents(ctx context.Context, limit, offset int) ([]*models.Event, error)
 	GetEventByID(ctx context.Context, id string) (*models.Event, error)
-	GetEventByName(ctx context.Context, name string) (*models.Event, error)
-	UpdateEvent(ctx context.Context, user *models.Event) error
+	ListEvents(ctx context.Context, opts repository.ListOptions) ([]models.Event, error)
+	UpdateEvent(ctx context.Context, event *models.Event) error
 	DeleteEvent(ctx context.Context, id string) error
-	Count(ctx context.Context) (int, error)
-	GetTrendingEvents(ctx context.Context, limit int) ([]*models.Event, error)
-	ListRelatedEvents(ctx context.Context, eventID string, limit int) ([]*models.Event, error)
-	SearchEvents(ctx context.Context, query string, limit, offset int) ([]*models.Event, error)
-	UpdateEventViews(ctx context.Context, id string) string // tambah update event view
+	CountEvents(ctx context.Context, filters []repository.FilterOption) (int, error)
+	UpdateEventViews(ctx context.Context, id string) string
+	GetTrendingEvents(ctx context.Context, limit int) ([]models.Event, error)
+	GetRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.Event, error)
+	SearchEvents(ctx context.Context, query string, opts repository.ListOptions) ([]models.Event, error)
 }
 
 type LocalStoryService interface {
-	CreateLocalStory(ctx context.Context, localStory *models.LocalStory) error
-	GetLocalStories(ctx context.Context, limit, offset int) ([]*models.LocalStory, error)
+	CreateLocalStory(ctx context.Context, story *models.LocalStory) error
 	GetLocalStoryByID(ctx context.Context, id string) (*models.LocalStory, error)
-	GetLocalStoryByTitle(ctx context.Context, title string) (*models.LocalStory, error)
-	UpdateLocalStory(ctx context.Context, localStory *models.LocalStory) error
+	ListLocalStories(ctx context.Context, opts repository.ListOptions) ([]models.LocalStory, error)
+	UpdateLocalStory(ctx context.Context, story *models.LocalStory) error
 	DeleteLocalStory(ctx context.Context, id string) error
-	Count(ctx context.Context) (int, error)
+	CountLocalStories(ctx context.Context, filters []repository.FilterOption) (int, error)
+	GetLocalStoriesByLocation(ctx context.Context, locationID string) ([]models.LocalStory, error)
+	GetLocalStoriesByOriginCulture(ctx context.Context, culture string) ([]models.LocalStory, error)
+	SearchLocalStories(ctx context.Context, query string, opts repository.ListOptions) ([]models.LocalStory, error)
 }

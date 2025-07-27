@@ -3,69 +3,45 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/place/models"
 	"github.com/holycann/cultour-backend/internal/place/repositories"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 type cityService struct {
 	cityRepo repositories.CityRepository
 }
 
-// NewCityService creates a new instance of the city service
-// with the given city repository.
 func NewCityService(cityRepo repositories.CityRepository) CityService {
 	return &cityService{
 		cityRepo: cityRepo,
 	}
 }
 
-// CreateCity adds a new city to the database
-// Validates the city object before creating
 func (s *cityService) CreateCity(ctx context.Context, city *models.City) error {
 	// Validate city object
 	if city == nil {
 		return fmt.Errorf("city cannot be nil")
 	}
 
-	// Validate required fields (example validation)
+	// Validate required fields
 	if city.Name == "" {
 		return fmt.Errorf("city name is required")
 	}
 
-	city.ID = uuid.NewString()
+	// Set default values
+	city.ID = uuid.New()
+	now := time.Now()
+	city.CreatedAt = now
+	city.UpdatedAt = now
 
 	// Call repository to create city
 	return s.cityRepo.Create(ctx, city)
 }
 
-// GetCitys retrieves a list of cities with pagination
-func (s *cityService) GetCities(ctx context.Context, limit, offset int) ([]*models.City, error) {
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10 // Default limit
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Retrieve cities from repository
-	cities, err := s.cityRepo.List(ctx, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert []models.City to []*models.City
-	cityPtrs := make([]*models.City, len(cities))
-	for i := range cities {
-		cityPtrs[i] = &cities[i]
-	}
-
-	return cityPtrs, nil
-}
-
-// GetCityByID retrieves a single city by its unique identifier
 func (s *cityService) GetCityByID(ctx context.Context, id string) (*models.City, error) {
 	// Validate ID
 	if id == "" {
@@ -76,33 +52,18 @@ func (s *cityService) GetCityByID(ctx context.Context, id string) (*models.City,
 	return s.cityRepo.FindByID(ctx, id)
 }
 
-// GetCityByName retrieves a city by its name
-// Note: This method is not directly supported by the current repository implementation
-// You might need to add a custom method in the repository or implement filtering
-func (s *cityService) GetCityByName(ctx context.Context, name string) (*models.City, error) {
-	// Validate name
-	if name == "" {
-		return nil, fmt.Errorf("city name cannot be empty")
+func (s *cityService) ListCities(ctx context.Context, opts repository.ListOptions) ([]models.City, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
 	}
 
-	// Since the current repository doesn't have a direct method for this,
-	// we'll use a workaround by listing all cities and finding by name
-	cities, err := s.cityRepo.List(ctx, 1, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	// Find city by name (linear search)
-	for _, city := range cities {
-		if city.Name == name {
-			return &city, nil
-		}
-	}
-
-	return nil, fmt.Errorf("city with name %s not found", name)
+	return s.cityRepo.List(ctx, opts)
 }
 
-// UpdateCity updates an existing city in the database
 func (s *cityService) UpdateCity(ctx context.Context, city *models.City) error {
 	// Validate city object
 	if city == nil {
@@ -110,15 +71,17 @@ func (s *cityService) UpdateCity(ctx context.Context, city *models.City) error {
 	}
 
 	// Validate required fields
-	if city.ID == "" {
+	if city.ID == uuid.Nil {
 		return fmt.Errorf("city ID is required for update")
 	}
+
+	// Update timestamp
+	city.UpdatedAt = time.Now()
 
 	// Call repository to update city
 	return s.cityRepo.Update(ctx, city)
 }
 
-// DeleteCity removes a city from the database by its ID
 func (s *cityService) DeleteCity(ctx context.Context, id string) error {
 	// Validate ID
 	if id == "" {
@@ -129,7 +92,41 @@ func (s *cityService) DeleteCity(ctx context.Context, id string) error {
 	return s.cityRepo.Delete(ctx, id)
 }
 
-// Count calculates the total number of stored locations
-func (s *cityService) Count(ctx context.Context) (int, error) {
-	return s.cityRepo.Count(ctx)
+func (s *cityService) CountCities(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	return s.cityRepo.Count(ctx, filters)
+}
+
+func (s *cityService) GetCityByName(ctx context.Context, name string) (*models.City, error) {
+	return s.cityRepo.FindCityByName(ctx, name)
+}
+
+func (s *cityService) GetCitiesByProvince(ctx context.Context, provinceID string) ([]models.City, error) {
+	// Convert string to UUID
+	provUUID, err := uuid.Parse(provinceID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid province ID: %w", err)
+	}
+
+	return s.cityRepo.FindCitiesByProvince(ctx, provUUID.String())
+}
+
+func (s *cityService) SearchCities(ctx context.Context, query string, opts repository.ListOptions) ([]models.City, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+
+	// Add search query to filters
+	opts.Filters = append(opts.Filters,
+		repository.FilterOption{
+			Field:    "name",
+			Operator: "like",
+			Value:    query,
+		},
+	)
+
+	return s.cityRepo.List(ctx, opts)
 }

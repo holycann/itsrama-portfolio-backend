@@ -4,100 +4,46 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
-// Response represents a standard API response structure
-type Response struct {
-	// Indicates whether the request was successful
-	Success bool `json:"success"`
+// ResponseStatus represents the status of an API response
+type ResponseStatus string
 
-	// A human-readable message describing the result
+// Standard response statuses
+const (
+	StatusSuccess ResponseStatus = "success"
+	StatusError   ResponseStatus = "error"
+)
+
+// APIResponse is the standard structure for all API responses
+type APIResponse struct {
+	// Status of the response (success/error)
+	Status ResponseStatus `json:"status"`
+
+	// Unique request identifier for tracing
+	RequestID uuid.UUID `json:"request_id"`
+
+	// Human-readable message
 	Message string `json:"message,omitempty"`
 
-	// Metadata or additional information about the response
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	// Detailed error information (only populated for error responses)
+	Error *ErrorDetails `json:"error,omitempty"`
 
-	// The actual data payload (can be an object, array, or null)
-	Data interface{} `json:"data"`
+	// Pagination information (optional)
+	Pagination *Pagination `json:"pagination,omitempty"`
+
+	// Actual response data
+	Data interface{} `json:"data,omitempty"`
 }
 
-// ErrorResponse represents a standard error response structure
-type ErrorResponse struct {
-	// Indicates whether the request was successful (always false for errors)
-	Success bool `json:"success"`
+// ErrorDetails provides structured error information
+type ErrorDetails struct {
+	// Machine-readable error code
+	Code string `json:"code,omitempty"`
 
-	// The primary error message
-	Error string `json:"error"`
-
-	// Detailed error information
-	Details interface{} `json:"details,omitempty"`
-}
-
-// Success creates a successful response with optional data and message
-func Success(c *gin.Context, statusCode int, data interface{}, message string, metadata ...map[string]interface{}) {
-	resp := Response{
-		Success: true,
-		Message: message,
-		Data:    data,
-	}
-
-	// Add metadata if provided
-	if len(metadata) > 0 {
-		resp.Metadata = metadata[0]
-	}
-
-	c.JSON(statusCode, resp)
-}
-
-// SuccessCreated is a shorthand for successful creation responses
-func SuccessCreated(c *gin.Context, data interface{}, message string, metadata ...map[string]interface{}) {
-	Success(c, http.StatusCreated, data, message, metadata...)
-}
-
-// SuccessOK is a shorthand for successful OK responses
-func SuccessOK(c *gin.Context, data interface{}, message string, metadata ...map[string]interface{}) {
-	Success(c, http.StatusOK, data, message, metadata...)
-}
-
-// Error creates a standard error response
-func Error(c *gin.Context, statusCode int, errorMessage string, details interface{}) {
-	resp := ErrorResponse{
-		Success: false,
-		Error:   errorMessage,
-		Details: details,
-	}
-
-	c.JSON(statusCode, resp)
-}
-
-// BadRequest generates a 400 Bad Request error response
-func BadRequest(c *gin.Context, errorMessage string, details interface{}) {
-	Error(c, http.StatusBadRequest, errorMessage, details)
-}
-
-// Unauthorized generates a 401 Unauthorized error response
-func Unauthorized(c *gin.Context, errorMessage string, details interface{}) {
-	Error(c, http.StatusUnauthorized, errorMessage, details)
-}
-
-// Forbidden generates a 403 Forbidden error response
-func Forbidden(c *gin.Context, errorMessage string, details interface{}) {
-	Error(c, http.StatusForbidden, errorMessage, details)
-}
-
-// NotFound generates a 404 Not Found error response
-func NotFound(c *gin.Context, errorMessage string, details interface{}) {
-	Error(c, http.StatusNotFound, errorMessage, details)
-}
-
-// Conflict generates a 409 Conflict error response
-func Conflict(c *gin.Context, errorMessage string, details interface{}) {
-	Error(c, http.StatusConflict, errorMessage, details)
-}
-
-// InternalServerError generates a 500 Internal Server Error response
-func InternalServerError(c *gin.Context, errorMessage string, details interface{}) {
-	Error(c, http.StatusInternalServerError, errorMessage, details)
+	// Detailed error description
+	Details string `json:"details,omitempty"`
 }
 
 // Pagination represents standard pagination metadata
@@ -109,21 +55,74 @@ type Pagination struct {
 	HasNextPage bool `json:"has_next_page"`
 }
 
-// WithPagination adds pagination metadata to a successful response
-func WithPagination(c *gin.Context, data interface{}, total, page, perPage int) {
-	// Calculate total pages
-	totalPages := (total + perPage - 1) / perPage
-	hasNextPage := page < totalPages
-
-	metadata := map[string]interface{}{
-		"pagination": Pagination{
-			Total:       total,
-			Page:        page,
-			PerPage:     perPage,
-			TotalPages:  totalPages,
-			HasNextPage: hasNextPage,
-		},
+// Success creates a successful API response
+func Success(c *gin.Context, statusCode int, data interface{}, message string, pagination ...*Pagination) {
+	resp := APIResponse{
+		Status:    StatusSuccess,
+		RequestID: uuid.New(),
+		Message:   message,
+		Data:      data,
 	}
 
-	Success(c, http.StatusOK, data, "Retrieved successfully", metadata)
+	// Add pagination if provided
+	if len(pagination) > 0 && pagination[0] != nil {
+		resp.Pagination = pagination[0]
+	}
+
+	c.JSON(statusCode, resp)
+}
+
+// Error creates a standardized error response
+func Error(c *gin.Context, statusCode int, errorCode string, message string, details string) {
+	resp := APIResponse{
+		Status:    StatusError,
+		RequestID: uuid.New(),
+		Error: &ErrorDetails{
+			Code:    errorCode,
+			Details: details,
+		},
+		Message: message,
+	}
+
+	c.JSON(statusCode, resp)
+}
+
+// SuccessCreated is a shorthand for successful creation responses
+func SuccessCreated(c *gin.Context, data interface{}, message string) {
+	Success(c, http.StatusCreated, data, message)
+}
+
+// SuccessOK is a shorthand for successful OK responses
+func SuccessOK(c *gin.Context, data interface{}, message string, pagination ...*Pagination) {
+	Success(c, http.StatusOK, data, message, pagination...)
+}
+
+// BadRequest generates a 400 Bad Request error response
+func BadRequest(c *gin.Context, errorCode string, message string, details string) {
+	Error(c, http.StatusBadRequest, errorCode, message, details)
+}
+
+// Unauthorized generates a 401 Unauthorized error response
+func Unauthorized(c *gin.Context, errorCode string, message string, details string) {
+	Error(c, http.StatusUnauthorized, errorCode, message, details)
+}
+
+// Forbidden generates a 403 Forbidden error response
+func Forbidden(c *gin.Context, errorCode string, message string, details string) {
+	Error(c, http.StatusForbidden, errorCode, message, details)
+}
+
+// NotFound generates a 404 Not Found error response
+func NotFound(c *gin.Context, errorCode string, message string, details string) {
+	Error(c, http.StatusNotFound, errorCode, message, details)
+}
+
+// Conflict generates a 409 Conflict error response
+func Conflict(c *gin.Context, errorCode string, message string, details string) {
+	Error(c, http.StatusConflict, errorCode, message, details)
+}
+
+// InternalServerError generates a 500 Internal Server Error response
+func InternalServerError(c *gin.Context, errorCode string, message string, details string) {
+	Error(c, http.StatusInternalServerError, errorCode, message, details)
 }

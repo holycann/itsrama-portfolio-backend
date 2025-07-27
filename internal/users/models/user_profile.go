@@ -1,21 +1,25 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // UserProfile represents the extended user profile information
 // @Description Detailed user profile with additional personal information, including identity (KTP) data
 type UserProfile struct {
 	// Unique identifier for the user profile
 	// @example "profile_123"
-	ID string `json:"id" db:"id" example:"profile_123"`
+	ID uuid.UUID `json:"id" db:"id"`
 
 	// Associated user ID
 	// @example "user_123"
-	UserID string `json:"user_id" db:"user_id" validate:"required" example:"user_123"`
+	UserID uuid.UUID `json:"user_id" db:"user_id" validate:"required"`
 
 	// User's full name
 	// @example "John Doe"
-	Fullname string `json:"fullname" db:"fullname" validate:"required" example:"John Doe"`
+	Fullname string `json:"fullname" db:"fullname" validate:"required"`
 
 	// User's biographical information
 	// @example "Software engineer passionate about building great products"
@@ -30,13 +34,10 @@ type UserProfile struct {
 	IdentityImageUrl string `json:"identity_image_url" db:"identity_image_url" format:"uri"`
 
 	// Timestamp when the profile was created
-	CreatedAt *time.Time `json:"created_at" db:"created_at"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
 
-	// Timestamp of the last profile update
-	UpdatedAt *time.Time `json:"updated_at" db:"updated_at"`
-
-	// Timestamp of profile soft deletion
-	DeletedAt *time.Time `json:"deleted_at" db:"deleted_at"`
+	// Timestamp when the profile was last updated
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
 
 // UserProfileCreate represents the payload for creating a new user profile
@@ -44,11 +45,11 @@ type UserProfile struct {
 type UserProfileCreate struct {
 	// Associated user ID
 	// @example "user_123"
-	UserID string `json:"user_id" validate:"required" example:"user_123"`
+	UserID uuid.UUID `json:"user_id" validate:"required"`
 
 	// User's full name
 	// @example "John Doe"
-	Fullname string `json:"fullname" validate:"required" example:"John Doe"`
+	Fullname string `json:"fullname" validate:"required"`
 
 	// User's biographical information
 	// @example "Software engineer passionate about building great products"

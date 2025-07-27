@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS increment_or_create_event_views;

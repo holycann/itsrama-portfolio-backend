@@ -5,110 +5,71 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/cultural/models"
 	"github.com/holycann/cultour-backend/internal/cultural/repositories"
-	"github.com/holycann/cultour-backend/pkg/utils"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 type localStoryService struct {
 	localStoryRepo repositories.LocalStoryRepository
 }
 
-// NewLocalStoryService creates a new instance of the local story service
-// with the given local story repository.
 func NewLocalStoryService(localStoryRepo repositories.LocalStoryRepository) LocalStoryService {
 	return &localStoryService{
 		localStoryRepo: localStoryRepo,
 	}
 }
 
-// CreateLocalStory adds a new local story to the database
-// Validates the local story object before creating
 func (s *localStoryService) CreateLocalStory(ctx context.Context, localStory *models.LocalStory) error {
 	// Validate local story object
 	if localStory == nil {
 		return fmt.Errorf("local story cannot be nil")
 	}
 
-	// Validate required fields (example validation)
+	// Validate required fields
 	if localStory.Title == "" {
 		return fmt.Errorf("local story title is required")
 	}
 
-	// Generate UUID if not provided
-	localStory.ID = utils.GenerateUUIDIfEmpty(localStory.ID)
-
-	// Set timestamps
-	localStory.CreatedAt = time.Now()
-	localStory.UpdatedAt = time.Now()
+	// Set default values
+	localStory.ID = uuid.New()
+	now := time.Now()
+	localStory.CreatedAt = now
+	localStory.UpdatedAt = now
 
 	// Call repository to create local story
 	return s.localStoryRepo.Create(ctx, localStory)
 }
 
-// GetLocalStories retrieves a list of local stories with pagination
-func (s *localStoryService) GetLocalStories(ctx context.Context, limit, offset int) ([]*models.LocalStory, error) {
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10 // Default limit
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Retrieve local stories from repository
-	localStories, err := s.localStoryRepo.List(ctx, limit, offset)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert []models.LocalStory to []*models.LocalStory
-	localStoryPtrs := make([]*models.LocalStory, len(localStories))
-	for i := range localStories {
-		localStoryPtrs[i] = &localStories[i]
-	}
-
-	return localStoryPtrs, nil
-}
-
-// GetLocalStoryByID retrieves a single local story by its unique identifier
 func (s *localStoryService) GetLocalStoryByID(ctx context.Context, id string) (*models.LocalStory, error) {
 	// Validate ID
 	if id == "" {
 		return nil, fmt.Errorf("local story ID cannot be empty")
 	}
 
-	// Retrieve local story from repository
-	return s.localStoryRepo.FindByID(ctx, id)
-}
-
-// GetLocalStoryByTitle retrieves a local story by its title
-// Note: This method is not directly supported by the current repository implementation
-// You might need to add a custom method in the repository or implement filtering
-func (s *localStoryService) GetLocalStoryByTitle(ctx context.Context, title string) (*models.LocalStory, error) {
-	// Validate title
-	if title == "" {
-		return nil, fmt.Errorf("local story title cannot be empty")
-	}
-
-	// Since the current repository doesn't have a direct method for this,
-	// we'll use a workaround by listing all local stories and finding by title
-	localStories, err := s.localStoryRepo.List(ctx, 1, 0)
+	// Parse the ID to UUID
+	storyID, err := uuid.Parse(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid local story ID: %w", err)
 	}
 
-	// Find local story by title (linear search)
-	for _, localStory := range localStories {
-		if localStory.Title == title {
-			return &localStory, nil
-		}
-	}
-
-	return nil, fmt.Errorf("local story with title %s not found", title)
+	// Retrieve local story from repository
+	return s.localStoryRepo.FindByID(ctx, storyID.String())
 }
 
-// UpdateLocalStory updates an existing local story in the database
+func (s *localStoryService) ListLocalStories(ctx context.Context, opts repository.ListOptions) ([]models.LocalStory, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+
+	return s.localStoryRepo.List(ctx, opts)
+}
+
 func (s *localStoryService) UpdateLocalStory(ctx context.Context, localStory *models.LocalStory) error {
 	// Validate local story object
 	if localStory == nil {
@@ -116,7 +77,7 @@ func (s *localStoryService) UpdateLocalStory(ctx context.Context, localStory *mo
 	}
 
 	// Validate required fields
-	if localStory.ID == "" {
+	if localStory.ID == uuid.Nil {
 		return fmt.Errorf("local story ID is required for update")
 	}
 
@@ -127,18 +88,62 @@ func (s *localStoryService) UpdateLocalStory(ctx context.Context, localStory *mo
 	return s.localStoryRepo.Update(ctx, localStory)
 }
 
-// DeleteLocalStory removes a local story from the database by its ID
 func (s *localStoryService) DeleteLocalStory(ctx context.Context, id string) error {
 	// Validate ID
 	if id == "" {
 		return fmt.Errorf("local story ID cannot be empty")
 	}
 
+	// Parse the ID to UUID
+	storyID, err := uuid.Parse(id)
+	if err != nil {
+		return fmt.Errorf("invalid local story ID: %w", err)
+	}
+
 	// Call repository to delete local story
-	return s.localStoryRepo.Delete(ctx, id)
+	return s.localStoryRepo.Delete(ctx, storyID.String())
 }
 
-// Count calculates the total number of local stories stored
-func (s *localStoryService) Count(ctx context.Context) (int, error) {
-	return s.localStoryRepo.Count(ctx)
+func (s *localStoryService) CountLocalStories(ctx context.Context, filters []repository.FilterOption) (int, error) {
+	return s.localStoryRepo.Count(ctx, filters)
+}
+
+func (s *localStoryService) GetLocalStoriesByLocation(ctx context.Context, locationID string) ([]models.LocalStory, error) {
+	// Convert string to UUID
+	locUUID, err := uuid.Parse(locationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid location ID: %w", err)
+	}
+
+	return s.localStoryRepo.FindStoriesByLocation(ctx, locUUID)
+}
+
+func (s *localStoryService) GetLocalStoriesByOriginCulture(ctx context.Context, culture string) ([]models.LocalStory, error) {
+	return s.localStoryRepo.FindStoriesByOriginCulture(ctx, culture)
+}
+
+func (s *localStoryService) SearchLocalStories(ctx context.Context, query string, opts repository.ListOptions) ([]models.LocalStory, error) {
+	// Set default values if not provided
+	if opts.Limit <= 0 {
+		opts.Limit = 10
+	}
+	if opts.Offset < 0 {
+		opts.Offset = 0
+	}
+
+	// Add search query to filters
+	opts.Filters = append(opts.Filters,
+		repository.FilterOption{
+			Field:    "title",
+			Operator: "like",
+			Value:    query,
+		},
+		repository.FilterOption{
+			Field:    "story_text",
+			Operator: "like",
+			Value:    query,
+		},
+	)
+
+	return s.localStoryRepo.List(ctx, opts)
 }

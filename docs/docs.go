@@ -51,13 +51,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error during AI generation",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -110,19 +110,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Event not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error during AI generation",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -135,7 +135,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of badges with pagination",
+                "description": "Retrieve a list of badges with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -163,6 +163,20 @@ const docTemplate = `{
                         "description": "Number of badges to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -171,7 +185,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -190,7 +204,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list badges",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -235,7 +249,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -251,13 +265,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid badge creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -292,7 +306,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -308,7 +322,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to count badges",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -350,7 +364,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -366,13 +380,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Badge ID is required",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Badge not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -424,7 +438,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -440,13 +454,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid badge update details or missing ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to update badge",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -482,21 +496,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Badge deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Badge ID is required",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Failed to delete badge",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -509,7 +523,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of cities with pagination",
+                "description": "Retrieve a list of cities with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -537,6 +551,26 @@ const docTemplate = `{
                         "description": "Number of cities to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by province ID",
+                        "name": "province_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -545,7 +579,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -564,7 +598,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list cities",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -609,7 +643,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -625,13 +659,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid city creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -661,15 +695,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "City ID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "City Name",
-                        "name": "name",
-                        "in": "query"
+                        "description": "Search query (name, etc.)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "integer",
@@ -684,6 +713,20 @@ const docTemplate = `{
                         "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -692,7 +735,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -711,13 +754,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -759,7 +802,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -775,13 +818,13 @@ const docTemplate = `{
                     "404": {
                         "description": "City not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -833,7 +876,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -849,19 +892,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid city update details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "City not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -897,27 +940,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "City deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid city ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "City not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -930,7 +973,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of cultural events with pagination",
+                "description": "Retrieve a list of cultural events with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -958,6 +1001,20 @@ const docTemplate = `{
                         "description": "Number of events to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -966,7 +1023,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -985,7 +1042,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list events",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1030,7 +1087,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1046,13 +1103,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid event creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1082,21 +1139,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Event ID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Event Name",
-                        "name": "name",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search query",
+                        "description": "Search query (name, description, etc.)",
                         "name": "query",
-                        "in": "query"
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "integer",
@@ -1111,6 +1157,20 @@ const docTemplate = `{
                         "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1119,7 +1179,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1138,13 +1198,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1186,7 +1246,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1205,7 +1265,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to retrieve trending events",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1247,7 +1307,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1263,13 +1323,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Event not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1321,7 +1381,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1337,19 +1397,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid event update details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Event not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1385,27 +1445,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Event deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid event ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Event not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1418,7 +1478,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of local cultural stories with pagination",
+                "description": "Retrieve a list of local cultural stories with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -1446,6 +1506,20 @@ const docTemplate = `{
                         "description": "Number of local stories to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1454,7 +1528,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1473,7 +1547,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list local stories",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1518,7 +1592,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1534,13 +1608,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid local story creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1570,15 +1644,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Local Story ID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Local Story Title",
-                        "name": "title",
-                        "in": "query"
+                        "description": "Search query (title, story text, etc.)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "integer",
@@ -1593,6 +1662,20 @@ const docTemplate = `{
                         "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1601,7 +1684,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1620,13 +1703,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1680,7 +1763,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1696,19 +1779,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid local story update details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Local story not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1744,27 +1827,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Local story deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid local story ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Local story not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1777,7 +1860,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of locations with pagination",
+                "description": "Retrieve a list of locations with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -1805,6 +1888,26 @@ const docTemplate = `{
                         "description": "Number of locations to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by city ID",
+                        "name": "city_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1813,7 +1916,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1832,7 +1935,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list locations",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1877,7 +1980,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1893,13 +1996,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid location creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -1929,15 +2032,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Location ID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Location Name",
-                        "name": "name",
-                        "in": "query"
+                        "description": "Search query (name, etc.)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "integer",
@@ -1952,6 +2050,26 @@ const docTemplate = `{
                         "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by city ID",
+                        "name": "city_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1960,7 +2078,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1979,19 +2097,81 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
             }
         },
         "/locations/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a location's details by its unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Locations"
+                ],
+                "summary": "Get location by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Location ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Location retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Location not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    }
+                }
+            },
             "put": {
                 "security": [
                     {
@@ -2039,7 +2219,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2055,19 +2235,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid location update details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Location not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2103,27 +2283,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Location deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid location ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Location not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2136,7 +2316,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of messages with pagination",
+                "description": "Retrieve a list of messages with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -2164,6 +2344,20 @@ const docTemplate = `{
                         "description": "Number of messages to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2172,7 +2366,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2191,7 +2385,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list messages",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2236,7 +2430,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2252,13 +2446,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid message creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2288,15 +2482,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Message ID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Thread ID",
-                        "name": "threadID",
-                        "in": "query"
+                        "description": "Search query (content, etc.)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "integer",
@@ -2311,6 +2500,20 @@ const docTemplate = `{
                         "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2319,7 +2522,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2338,13 +2541,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2398,7 +2601,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2414,19 +2617,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid message update details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Message not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2462,27 +2665,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Message deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid message ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Message not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2495,7 +2698,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of user profiles with pagination",
+                "description": "Retrieve a list of user profiles with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -2523,6 +2726,20 @@ const docTemplate = `{
                         "description": "Number of user profiles to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2531,7 +2748,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2550,7 +2767,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list user profiles",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2595,7 +2812,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2611,13 +2828,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid user profile creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2630,10 +2847,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve user profiles by ID, User ID, or with pagination",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Search user profiles by various criteria",
                 "produces": [
                     "application/json"
                 ],
@@ -2644,47 +2858,64 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
                         "name": "Authorization",
                         "in": "header"
                     },
                     {
                         "type": "string",
-                        "description": "User Profile ID",
-                        "name": "id",
-                        "in": "path"
+                        "description": "Search query (fullname, etc.)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "User ID",
-                        "name": "user_id",
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Number of results to retrieve",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Number of results to skip",
+                        "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successfully retrieved user profiles",
+                        "description": "User profiles found successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Invalid input parameters",
+                        "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "User profile not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
-                        "description": "Failed to retrieve user profiles",
+                        "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2738,7 +2969,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2754,19 +2985,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid user profile update details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "User profile not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2802,27 +3033,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "User profile deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid user profile ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "User profile not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2835,7 +3066,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of provinces with pagination",
+                "description": "Retrieve a list of provinces with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -2863,6 +3094,20 @@ const docTemplate = `{
                         "description": "Number of provinces to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -2871,7 +3116,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2890,7 +3135,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list provinces",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2935,7 +3180,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2951,13 +3196,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid province creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -2987,15 +3232,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Province ID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Province Name",
-                        "name": "name",
-                        "in": "query"
+                        "description": "Search query (name, etc.)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "integer",
@@ -3010,6 +3250,20 @@ const docTemplate = `{
                         "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3018,7 +3272,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3037,13 +3291,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3085,7 +3339,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3101,13 +3355,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Province not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3159,7 +3413,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3175,19 +3429,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid province update details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Province not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3223,27 +3477,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Province deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid province ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Province not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3256,7 +3510,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of discussion threads with pagination",
+                "description": "Retrieve a list of discussion threads with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -3284,6 +3538,20 @@ const docTemplate = `{
                         "description": "Number of threads to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3292,7 +3560,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3311,7 +3579,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list threads",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3356,7 +3624,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3372,13 +3640,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid thread creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3408,15 +3676,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Thread ID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Thread Title",
-                        "name": "title",
-                        "in": "query"
+                        "description": "Search query (title, etc.)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "integer",
@@ -3431,6 +3694,20 @@ const docTemplate = `{
                         "description": "Number of results to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3439,7 +3716,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3458,13 +3735,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3506,7 +3783,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3522,13 +3799,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Thread not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3580,7 +3857,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3596,19 +3873,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid thread update details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Thread not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3644,27 +3921,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Thread deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid thread ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Thread not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3677,7 +3954,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve a list of users with pagination",
+                "description": "Retrieve a list of users with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -3705,6 +3982,20 @@ const docTemplate = `{
                         "description": "Number of users to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3713,7 +4004,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3732,7 +4023,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Failed to list users",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3777,7 +4068,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3793,13 +4084,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid user creation details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3812,7 +4103,7 @@ const docTemplate = `{
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Retrieve badges for a specific user",
+                "description": "Retrieve badges for a specific user with pagination and filtering",
                 "produces": [
                     "application/json"
                 ],
@@ -3847,6 +4138,20 @@ const docTemplate = `{
                         "description": "Number of badges to skip",
                         "name": "offset",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"created_at\"",
+                        "description": "Field to sort by",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "\"desc\"",
+                        "description": "Sort order (asc/desc)",
+                        "name": "sort_order",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3855,7 +4160,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3874,13 +4179,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3925,7 +4230,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3941,13 +4246,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid badge assignment details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -3992,19 +4297,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Badge removed successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid user ID or badge ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -4046,7 +4351,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -4062,13 +4367,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid user ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -4098,15 +4403,10 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "User Email",
-                        "name": "email",
-                        "in": "query"
+                        "description": "Search query (email, name, etc.)",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
                     },
                     {
                         "type": "integer",
@@ -4129,7 +4429,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -4148,13 +4448,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid search parameters",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -4196,7 +4496,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -4212,13 +4512,13 @@ const docTemplate = `{
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -4270,7 +4570,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -4286,19 +4586,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid user update details",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -4334,27 +4634,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "User deleted successfully",
+                        "description": "Deleted successfully",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Response"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid user ID",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
                     }
                 }
@@ -4365,6 +4665,9 @@ const docTemplate = `{
         "configs.Config": {
             "type": "object",
             "properties": {
+                "database": {
+                    "$ref": "#/definitions/configs.DatabaseConfig"
+                },
                 "environment": {
                     "type": "string"
                 },
@@ -4379,6 +4682,29 @@ const docTemplate = `{
                 },
                 "supabase": {
                     "$ref": "#/definitions/configs.SupabaseConfig"
+                }
+            }
+        },
+        "configs.DatabaseConfig": {
+            "type": "object",
+            "properties": {
+                "databaseName": {
+                    "type": "string"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "poolMode": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "user": {
+                    "type": "string"
                 }
             }
         },
@@ -4476,6 +4802,9 @@ const docTemplate = `{
         },
         "github_com_holycann_cultour-backend_internal_achievement_models.Badge": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
                 "created_at": {
                     "type": "string"
@@ -4519,62 +4848,55 @@ const docTemplate = `{
             "properties": {
                 "city_id": {
                     "description": "Reference to city ID",
-                    "type": "string",
-                    "example": "city_12345"
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "Event creation time",
+                    "type": "string"
                 },
                 "description": {
                     "description": "Event description",
-                    "type": "string",
-                    "example": "Monas"
+                    "type": "string"
                 },
                 "end_date": {
-                    "description": "Event end date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
-                    "type": "string",
-                    "example": "2024-06-01T09:00:00+07:00"
+                    "description": "Event end date",
+                    "type": "string"
                 },
                 "id": {
                     "description": "Unique identifier for the event",
-                    "type": "string",
-                    "example": "loc_12345"
+                    "type": "string"
                 },
                 "image_url": {
                     "description": "Event image URL",
-                    "type": "string",
-                    "example": "https://example.com/image.jpg"
+                    "type": "string"
                 },
                 "is_kid_friendly": {
                     "description": "Whether the event is kid-friendly",
-                    "type": "boolean",
-                    "example": true
+                    "type": "boolean"
                 },
                 "location_id": {
                     "description": "Reference to location ID",
-                    "type": "string",
-                    "example": "location_67890"
+                    "type": "string"
                 },
                 "name": {
                     "description": "Event name",
-                    "type": "string",
-                    "example": "Monas"
+                    "type": "string"
                 },
                 "province_id": {
                     "description": "Reference to province ID",
-                    "type": "string",
-                    "example": "province_67890"
+                    "type": "string"
                 },
                 "start_date": {
-                    "description": "Event start date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
-                    "type": "string",
-                    "example": "2024-06-01T08:00:00+07:00"
+                    "description": "Event start date",
+                    "type": "string"
                 },
                 "user_id": {
                     "description": "ID of the user who created the event",
-                    "type": "string",
-                    "example": "user_67890"
+                    "type": "string"
                 },
                 "views": {
-                    "type": "integer",
-                    "example": 10
+                    "description": "Number of views",
+                    "type": "integer"
                 }
             }
         },
@@ -4591,8 +4913,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
-                    "type": "string",
-                    "example": "story_12345"
+                    "type": "string"
                 },
                 "image_url": {
                     "type": "string"
@@ -4639,126 +4960,152 @@ const docTemplate = `{
             "properties": {
                 "city_id": {
                     "description": "Reference to city ID",
-                    "type": "string",
-                    "example": "city_12345"
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "Event creation time",
+                    "type": "string"
                 },
                 "description": {
                     "description": "Event description",
-                    "type": "string",
-                    "example": "Monas"
+                    "type": "string"
                 },
                 "end_date": {
-                    "description": "Event end date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
-                    "type": "string",
-                    "example": "2024-06-01T09:00:00+07:00"
+                    "description": "Event end date",
+                    "type": "string"
                 },
                 "id": {
                     "description": "Unique identifier for the event",
-                    "type": "string",
-                    "example": "loc_12345"
+                    "type": "string"
                 },
                 "image_url": {
                     "description": "Event image URL",
-                    "type": "string",
-                    "example": "https://example.com/image.jpg"
+                    "type": "string"
                 },
                 "is_kid_friendly": {
                     "description": "Whether the event is kid-friendly",
-                    "type": "boolean",
-                    "example": true
+                    "type": "boolean"
                 },
                 "location_id": {
                     "description": "Reference to location ID",
-                    "type": "string",
-                    "example": "location_67890"
+                    "type": "string"
                 },
                 "name": {
                     "description": "Event name",
-                    "type": "string",
-                    "example": "Monas"
+                    "type": "string"
                 },
                 "province_id": {
                     "description": "Reference to province ID",
-                    "type": "string",
-                    "example": "province_67890"
+                    "type": "string"
                 },
                 "start_date": {
-                    "description": "Event start date (format: YYYY-MM-DDTHH:MM:SS±HH:MM)",
-                    "type": "string",
-                    "example": "2024-06-01T08:00:00+07:00"
+                    "description": "Event start date",
+                    "type": "string"
                 },
                 "user": {
                     "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
                 },
                 "user_id": {
                     "description": "ID of the user who created the event",
-                    "type": "string",
-                    "example": "user_67890"
+                    "type": "string"
                 },
                 "views": {
-                    "type": "integer",
-                    "example": 10
+                    "description": "Number of views",
+                    "type": "integer"
                 }
             }
         },
         "github_com_holycann_cultour-backend_internal_discussion_models.Message": {
             "type": "object",
+            "required": [
+                "content"
+            ],
             "properties": {
                 "content": {
                     "description": "Message content",
-                    "type": "string",
-                    "example": "This is the message content"
+                    "type": "string"
                 },
                 "created_at": {
                     "description": "Message creation time",
                     "type": "string"
                 },
                 "id": {
-                    "description": "Unique ID for the message, example: \"msg_12345\"",
-                    "type": "string",
-                    "example": "msg_12345"
+                    "description": "Unique ID for the message",
+                    "type": "string"
                 },
                 "thread_id": {
                     "description": "ID of the thread the message belongs to",
-                    "type": "string",
-                    "example": "thread_12345"
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Type of message",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.MessageType"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "description": "Message last update time",
+                    "type": "string"
                 },
                 "user_id": {
                     "description": "ID of the user who sent the message",
-                    "type": "string",
-                    "example": "user_67890"
+                    "type": "string"
                 }
             }
         },
+        "github_com_holycann_cultour-backend_internal_discussion_models.MessageType": {
+            "type": "string",
+            "enum": [
+                "discussion",
+                "ai"
+            ],
+            "x-enum-varnames": [
+                "DiscussionMessageType",
+                "AIMessageType"
+            ]
+        },
         "github_com_holycann_cultour-backend_internal_discussion_models.ResponseMessage": {
             "type": "object",
+            "required": [
+                "content"
+            ],
             "properties": {
                 "content": {
                     "description": "Message content",
-                    "type": "string",
-                    "example": "This is the message content"
+                    "type": "string"
                 },
                 "created_at": {
                     "description": "Message creation time",
                     "type": "string"
                 },
                 "id": {
-                    "description": "Unique ID for the message, example: \"msg_12345\"",
-                    "type": "string",
-                    "example": "msg_12345"
+                    "description": "Unique ID for the message",
+                    "type": "string"
                 },
                 "thread_id": {
                     "description": "ID of the thread the message belongs to",
-                    "type": "string",
-                    "example": "thread_12345"
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Type of message",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.MessageType"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "description": "Message last update time",
+                    "type": "string"
                 },
                 "user": {
                     "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.User"
                 },
                 "user_id": {
                     "description": "ID of the user who sent the message",
-                    "type": "string",
-                    "example": "user_67890"
+                    "type": "string"
                 }
             }
         },
@@ -4767,48 +5114,54 @@ const docTemplate = `{
             "properties": {
                 "created_at": {
                     "description": "Thread creation time",
-                    "type": "string",
-                    "example": "2024-06-01T15:04:05Z"
+                    "type": "string"
                 },
                 "event_id": {
-                    "description": "Content string ` + "`" + `json:\"content\" db:\"content\" example:\"Let's discuss about Monas history!\"` + "`" + ` // Thread content\nUserID    string ` + "`" + `json:\"user_id\" db:\"user_id\" example:\"user_67890\"` + "`" + `                         // ID of the user who created the thread",
-                    "type": "string",
-                    "example": "event-xx"
+                    "description": "Reference to related event",
+                    "type": "string"
                 },
                 "id": {
-                    "description": "Unique ID for the thread, example: \"thread_12345\"",
-                    "type": "string",
-                    "example": "thread_12345"
+                    "description": "Unique ID for the thread",
+                    "type": "string"
                 },
                 "status": {
-                    "description": "Thread status, example: \"open\"",
+                    "description": "Thread status",
                     "type": "string",
-                    "example": "open"
+                    "example": "active"
                 },
                 "title": {
-                    "description": "Thread title, example: \"Discussion about Monas History\"",
-                    "type": "string",
-                    "example": "Discussion about Monas History"
+                    "description": "Thread title",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "Thread last update time",
+                    "type": "string"
                 }
             }
         },
         "github_com_holycann_cultour-backend_internal_place_models.City": {
             "type": "object",
             "properties": {
+                "created_at": {
+                    "description": "City creation time",
+                    "type": "string"
+                },
                 "id": {
-                    "description": "Unique ID for the city, example: \"city_12345\"",
-                    "type": "string",
-                    "example": "city_12345"
+                    "description": "Unique ID for the city",
+                    "type": "string"
                 },
                 "name": {
                     "description": "City name, example: \"Jakarta\"",
                     "type": "string",
                     "example": "Jakarta"
                 },
-                "province": {
-                    "description": "Name of the province where the city is located, example: \"DKI Jakarta\"",
-                    "type": "string",
-                    "example": "DKI Jakarta"
+                "province_id": {
+                    "description": "ID of the province where the city is located",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "City last update time",
+                    "type": "string"
                 }
             }
         },
@@ -4817,13 +5170,15 @@ const docTemplate = `{
             "properties": {
                 "city_id": {
                     "description": "Reference to the city ID",
-                    "type": "string",
-                    "example": "city_67890"
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "Location creation time",
+                    "type": "string"
                 },
                 "id": {
                     "description": "Unique identifier for the location",
-                    "type": "string",
-                    "example": "loc_12345"
+                    "type": "string"
                 },
                 "latitude": {
                     "description": "Latitude in decimal degrees",
@@ -4839,60 +5194,122 @@ const docTemplate = `{
                     "description": "Name of the location",
                     "type": "string",
                     "example": "Monas"
+                },
+                "updated_at": {
+                    "description": "Location last update time",
+                    "type": "string"
                 }
             }
         },
         "github_com_holycann_cultour-backend_internal_place_models.Province": {
             "type": "object",
             "properties": {
+                "created_at": {
+                    "description": "Province creation time",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Province description",
+                    "type": "string"
+                },
                 "id": {
-                    "description": "Unique ID for the province, example: \"province_12345\"",
-                    "type": "string",
-                    "example": "province_12345"
+                    "description": "Unique ID for the province",
+                    "type": "string"
                 },
                 "name": {
                     "description": "Province name, example: \"West Java\"",
                     "type": "string",
                     "example": "West Java"
-                }
-            }
-        },
-        "github_com_holycann_cultour-backend_internal_response.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "details": {
-                    "description": "Detailed error information"
                 },
-                "error": {
-                    "description": "The primary error message",
+                "updated_at": {
+                    "description": "Province last update time",
                     "type": "string"
-                },
-                "success": {
-                    "description": "Indicates whether the request was successful (always false for errors)",
-                    "type": "boolean"
                 }
             }
         },
-        "github_com_holycann_cultour-backend_internal_response.Response": {
+        "github_com_holycann_cultour-backend_internal_response.APIResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "description": "The actual data payload (can be an object, array, or null)"
+                    "description": "Actual response data"
+                },
+                "error": {
+                    "description": "Detailed error information (only populated for error responses)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ErrorDetails"
+                        }
+                    ]
                 },
                 "message": {
-                    "description": "A human-readable message describing the result",
+                    "description": "Human-readable message",
                     "type": "string"
                 },
-                "metadata": {
-                    "description": "Metadata or additional information about the response",
-                    "type": "object",
-                    "additionalProperties": true
+                "pagination": {
+                    "description": "Pagination information (optional)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.Pagination"
+                        }
+                    ]
                 },
-                "success": {
-                    "description": "Indicates whether the request was successful",
-                    "type": "boolean"
+                "request_id": {
+                    "description": "Unique request identifier for tracing",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status of the response (success/error)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ResponseStatus"
+                        }
+                    ]
                 }
             }
+        },
+        "github_com_holycann_cultour-backend_internal_response.ErrorDetails": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Machine-readable error code",
+                    "type": "string"
+                },
+                "details": {
+                    "description": "Detailed error description",
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_response.Pagination": {
+            "type": "object",
+            "properties": {
+                "has_next_page": {
+                    "type": "boolean"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "per_page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_response.ResponseStatus": {
+            "type": "string",
+            "enum": [
+                "success",
+                "error"
+            ],
+            "x-enum-varnames": [
+                "StatusSuccess",
+                "StatusError"
+            ]
         },
         "github_com_holycann_cultour-backend_internal_users_models.User": {
             "description": "User account details with authentication and metadata",
@@ -4949,42 +5366,24 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "badge_id",
-                "badge_name",
                 "user_id"
             ],
             "properties": {
-                "badge_description": {
-                    "description": "Badge description\n@example \"Explored multiple cultural events\"",
-                    "type": "string"
-                },
-                "badge_icon_url": {
-                    "description": "Badge icon URL\n@example \"https://example.com/badges/explorer.png\"",
-                    "type": "string",
-                    "format": "uri"
-                },
                 "badge_id": {
                     "description": "Badge identifier\n@example \"explorer\"",
-                    "type": "string",
-                    "example": "explorer"
+                    "type": "string"
                 },
-                "badge_name": {
-                    "description": "Badge name\n@example \"Penjelajah\"",
-                    "type": "string",
-                    "example": "Penjelajah"
-                },
-                "earned_at": {
+                "created_at": {
                     "description": "Timestamp when the badge was earned",
                     "type": "string"
                 },
                 "id": {
                     "description": "Unique identifier for the user badge\n@example \"user_badge_123\"",
-                    "type": "string",
-                    "example": "user_badge_123"
+                    "type": "string"
                 },
                 "user_id": {
                     "description": "Associated user ID\n@example \"user_123\"",
-                    "type": "string",
-                    "example": "user_123"
+                    "type": "string"
                 }
             }
         },
@@ -4998,13 +5397,11 @@ const docTemplate = `{
             "properties": {
                 "badge_id": {
                     "description": "Badge identifier\n@example \"explorer\"",
-                    "type": "string",
-                    "example": "explorer"
+                    "type": "string"
                 },
                 "user_id": {
                     "description": "Associated user ID\n@example \"user_123\"",
-                    "type": "string",
-                    "example": "user_123"
+                    "type": "string"
                 }
             }
         },
@@ -5060,19 +5457,13 @@ const docTemplate = `{
                     "description": "Timestamp when the profile was created",
                     "type": "string"
                 },
-                "deleted_at": {
-                    "description": "Timestamp of profile soft deletion",
-                    "type": "string"
-                },
                 "fullname": {
                     "description": "User's full name\n@example \"John Doe\"",
-                    "type": "string",
-                    "example": "John Doe"
+                    "type": "string"
                 },
                 "id": {
                     "description": "Unique identifier for the user profile\n@example \"profile_123\"",
-                    "type": "string",
-                    "example": "profile_123"
+                    "type": "string"
                 },
                 "identity_image_url": {
                     "description": "URL to uploaded KTP image\n@example \"https://example.com/ktp.jpg\"",
@@ -5080,13 +5471,12 @@ const docTemplate = `{
                     "format": "uri"
                 },
                 "updated_at": {
-                    "description": "Timestamp of the last profile update",
+                    "description": "Timestamp when the profile was last updated",
                     "type": "string"
                 },
                 "user_id": {
                     "description": "Associated user ID\n@example \"user_123\"",
-                    "type": "string",
-                    "example": "user_123"
+                    "type": "string"
                 }
             }
         },
@@ -5109,8 +5499,7 @@ const docTemplate = `{
                 },
                 "fullname": {
                     "description": "User's full name\n@example \"John Doe\"",
-                    "type": "string",
-                    "example": "John Doe"
+                    "type": "string"
                 },
                 "identity_image_url": {
                     "description": "URL to uploaded KTP image\n@example \"https://example.com/ktp.jpg\"",
@@ -5119,8 +5508,7 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "description": "Associated user ID\n@example \"user_123\"",
-                    "type": "string",
-                    "example": "user_123"
+                    "type": "string"
                 }
             }
         },

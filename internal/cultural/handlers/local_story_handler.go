@@ -1,14 +1,17 @@
 package handlers
 
 import (
-	"net/http"
+	"encoding/json"
+	"math"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/cultural/models"
 	"github.com/holycann/cultour-backend/internal/cultural/services"
 	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/response"
+	"github.com/holycann/cultour-backend/pkg/repository"
 )
 
 // LocalStoryHandler handles HTTP requests related to local stories
@@ -34,21 +37,32 @@ func NewLocalStoryHandler(localStoryService services.LocalStoryService, logger *
 // @Security ApiKeyAuth
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param local_story body models.LocalStory true "Local Story Information"
-// @Success 201 {object} response.Response{data=models.LocalStory} "Local story created successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid local story creation details"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 201 {object} response.APIResponse{data=models.LocalStory} "Local story created successfully"
+// @Failure 400 {object} response.APIResponse "Invalid local story creation details"
+// @Failure 500 {object} response.APIResponse "Internal server error"
 // @Router /local-stories [post]
 func (h *LocalStoryHandler) CreateLocalStory(c *gin.Context) {
 	var localStory models.LocalStory
 	if err := c.ShouldBindJSON(&localStory); err != nil {
 		h.logger.Error("Error binding local story: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+		return
+	}
+
+	// Validate required fields
+	if localStory.Title == "" || localStory.StoryText == "" {
+		// Convert map to JSON string for error details
+		details, _ := json.Marshal(map[string]interface{}{
+			"title":      localStory.Title == "",
+			"story_text": localStory.StoryText == "",
+		})
+		response.BadRequest(c, "Missing required fields", string(details), "")
 		return
 	}
 
 	if err := h.localStoryService.CreateLocalStory(c.Request.Context(), &localStory); err != nil {
 		h.logger.Error("Error creating local story: %v", err)
-		response.InternalServerError(c, "Failed to create local story", err.Error())
+		response.InternalServerError(c, "Failed to create local story", err.Error(), "")
 		return
 	}
 
@@ -62,76 +76,75 @@ func (h *LocalStoryHandler) CreateLocalStory(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id query string false "Local Story ID"
-// @Param title query string false "Local Story Title"
+// @Param query query string true "Search query (title, story text, etc.)"
 // @Param limit query int false "Number of results to retrieve" default(10)
 // @Param offset query int false "Number of results to skip" default(0)
-// @Success 200 {object} response.Response{data=[]models.LocalStory} "Local stories found successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid search parameters"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Param sort_by query string false "Field to sort by" default("created_at")
+// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
+// @Success 200 {object} response.APIResponse{data=[]models.LocalStory} "Local stories found successfully"
+// @Failure 400 {object} response.APIResponse "Invalid search parameters"
+// @Failure 500 {object} response.APIResponse "Internal server error"
 // @Router /local-stories/search [get]
 func (h *LocalStoryHandler) SearchLocalStories(c *gin.Context) {
-	// Get query parameters
-	id := c.Query("id")
-	title := c.Query("title")
-	limitStr := c.DefaultQuery("limit", "10")
-	offsetStr := c.DefaultQuery("offset", "0")
+	// Get search query
+	query := c.Query("query")
+	if query == "" {
+		response.BadRequest(c, "Search query is required", "Empty search query", "")
+		return
+	}
 
-	// Parse limit and offset
-	limit, err := strconv.Atoi(limitStr)
+	// Parse pagination parameters
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	sortOrder := c.DefaultQuery("sort_order", "desc")
+
+	// Validate pagination parameters
+	if limit <= 0 {
+		limit = 10
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	// Prepare list options for search
+	listOptions := repository.ListOptions{
+		Limit:     limit,
+		Offset:    offset,
+		SortBy:    sortBy,
+		SortOrder: repository.SortDescending,
+	}
+	if sortOrder == "asc" {
+		listOptions.SortOrder = repository.SortAscending
+	}
+
+	// Search local stories
+	localStories, err := h.localStoryService.SearchLocalStories(c.Request.Context(), query, listOptions)
 	if err != nil {
-		response.BadRequest(c, "Invalid limit parameter", err.Error())
+		h.logger.Error("Error searching local stories: %v", err)
+		response.InternalServerError(c, "Failed to search local stories", err.Error(), "")
 		return
 	}
 
-	offset, err := strconv.Atoi(offsetStr)
+	// Count total search results
+	totalStories, err := h.localStoryService.CountLocalStories(c.Request.Context(), listOptions.Filters)
 	if err != nil {
-		response.BadRequest(c, "Invalid offset parameter", err.Error())
+		h.logger.Error("Error counting search results: %v", err)
+		response.InternalServerError(c, "Failed to count search results", err.Error(), "")
 		return
 	}
 
-	// If ID is provided, search by ID
-	if id != "" {
-		localStory, err := h.localStoryService.GetLocalStoryByID(c.Request.Context(), id)
-		if err != nil {
-			h.logger.Error("Error finding local story by ID: %v", err)
-			response.NotFound(c, "Local story not found", err.Error())
-			return
-		}
-		response.SuccessOK(c, localStory, "Local story found")
-		return
+	// Create pagination struct
+	pagination := &response.Pagination{
+		Total:       totalStories,
+		Page:        offset/limit + 1,
+		PerPage:     limit,
+		TotalPages:  int(math.Ceil(float64(totalStories) / float64(limit))),
+		HasNextPage: offset+limit < totalStories,
 	}
 
-	// If title is provided, search by title
-	if title != "" {
-		localStory, err := h.localStoryService.GetLocalStoryByTitle(c.Request.Context(), title)
-		if err != nil {
-			h.logger.Error("Error finding local story by title: %v", err)
-			response.NotFound(c, "Local story not found", err.Error())
-			return
-		}
-		response.SuccessOK(c, localStory, "Local story found")
-		return
-	}
-
-	// If no specific parameters are provided, return a list of local stories
-	localStories, err := h.localStoryService.GetLocalStories(c.Request.Context(), limit, offset)
-	if err != nil {
-		h.logger.Error("Error retrieving local stories: %v", err)
-		response.InternalServerError(c, "Failed to retrieve local stories", err.Error())
-		return
-	}
-
-	// Count total local stories for pagination
-	total, err := h.localStoryService.Count(c.Request.Context())
-	if err != nil {
-		h.logger.Error("Error counting local stories: %v", err)
-		response.InternalServerError(c, "Failed to count local stories", err.Error())
-		return
-	}
-
-	// Use WithPagination to add pagination metadata
-	response.WithPagination(c, localStories, total, offset/limit+1, limit)
+	// Respond with local stories and pagination
+	response.SuccessOK(c, localStories, "Local stories found successfully", pagination)
 }
 
 // UpdateLocalStory godoc
@@ -144,22 +157,37 @@ func (h *LocalStoryHandler) SearchLocalStories(c *gin.Context) {
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param id path string true "Local Story ID"
 // @Param local_story body models.LocalStory true "Local Story Update Details"
-// @Success 200 {object} response.Response{data=models.LocalStory} "Local story updated successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid local story update details"
-// @Failure 404 {object} response.ErrorResponse "Local story not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.APIResponse{data=models.LocalStory} "Local story updated successfully"
+// @Failure 400 {object} response.APIResponse "Invalid local story update details"
+// @Failure 404 {object} response.APIResponse "Local story not found"
+// @Failure 500 {object} response.APIResponse "Internal server error"
 // @Router /local-stories/{id} [put]
 func (h *LocalStoryHandler) UpdateLocalStory(c *gin.Context) {
-	var localStory models.LocalStory
-	if err := c.ShouldBindJSON(&localStory); err != nil {
-		h.logger.Error("Error binding local story: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error())
+	// Get local story ID from path parameter
+	storyID := c.Param("id")
+	if storyID == "" {
+		response.BadRequest(c, "Local Story ID is required", "Missing local story ID", "")
 		return
 	}
 
+	var localStory models.LocalStory
+	if err := c.ShouldBindJSON(&localStory); err != nil {
+		h.logger.Error("Error binding local story: %v", err)
+		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+		return
+	}
+
+	// Set the ID from path parameter
+	parsedID, err := uuid.Parse(storyID)
+	if err != nil {
+		response.BadRequest(c, "Invalid Local Story ID", "Invalid UUID format", "")
+		return
+	}
+	localStory.ID = parsedID
+
 	if err := h.localStoryService.UpdateLocalStory(c.Request.Context(), &localStory); err != nil {
 		h.logger.Error("Error updating local story: %v", err)
-		response.InternalServerError(c, "Failed to update local story", err.Error())
+		response.InternalServerError(c, "Failed to update local story", err.Error(), "")
 		return
 	}
 
@@ -174,73 +202,111 @@ func (h *LocalStoryHandler) UpdateLocalStory(c *gin.Context) {
 // @Security ApiKeyAuth
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param id path string true "Local Story ID"
-// @Success 200 {object} response.Response "Local story deleted successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid local story ID"
-// @Failure 404 {object} response.ErrorResponse "Local story not found"
-// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Success 200 {object} response.APIResponse "Deleted successfully"
+// @Failure 400 {object} response.APIResponse "Invalid local story ID"
+// @Failure 404 {object} response.APIResponse "Local story not found"
+// @Failure 500 {object} response.APIResponse "Internal server error"
 // @Router /local-stories/{id} [delete]
 func (h *LocalStoryHandler) DeleteLocalStory(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		response.BadRequest(c, "Local story ID is required", nil)
+	// Get local story ID from path parameter
+	storyID := c.Param("id")
+	if storyID == "" {
+		response.BadRequest(c, "Local Story ID is required", "Missing local story ID", "")
 		return
 	}
 
-	if err := h.localStoryService.DeleteLocalStory(c.Request.Context(), id); err != nil {
+	if err := h.localStoryService.DeleteLocalStory(c.Request.Context(), storyID); err != nil {
 		h.logger.Error("Error deleting local story: %v", err)
-		response.InternalServerError(c, "Failed to delete local story", err.Error())
+		response.InternalServerError(c, "Failed to delete local story", err.Error(), "")
 		return
 	}
 
-	response.Success(c, http.StatusNoContent, nil, "Local story deleted successfully")
+	response.SuccessOK(c, nil, "Local story deleted successfully")
 }
 
 // ListLocalStories godoc
 // @Summary List local stories
-// @Description Retrieve a list of local cultural stories with pagination
+// @Description Retrieve a list of local cultural stories with pagination and filtering
 // @Tags Local Stories
 // @Produce json
 // @Security ApiKeyAuth
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
 // @Param limit query int false "Number of local stories to retrieve" default(10)
 // @Param offset query int false "Number of local stories to skip" default(0)
-// @Success 200 {object} response.Response{data=[]models.LocalStory} "Local stories retrieved successfully"
-// @Failure 500 {object} response.ErrorResponse "Failed to list local stories"
+// @Param sort_by query string false "Field to sort by" default("created_at")
+// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
+// @Success 200 {object} response.APIResponse{data=[]models.LocalStory} "Local stories retrieved successfully"
+// @Failure 500 {object} response.APIResponse "Failed to list local stories"
 // @Router /local-stories [get]
 func (h *LocalStoryHandler) ListLocalStories(c *gin.Context) {
-	// Get query parameters for pagination
-	limitStr := c.DefaultQuery("limit", "10")
-	offsetStr := c.DefaultQuery("offset", "0")
+	// Parse pagination parameters with defaults
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	sortBy := c.DefaultQuery("sort_by", "created_at")
+	sortOrder := c.DefaultQuery("sort_order", "desc")
 
-	// Parse limit and offset
-	limit, err := strconv.Atoi(limitStr)
-	if err != nil {
-		response.BadRequest(c, "Invalid limit parameter", err.Error())
-		return
+	// Validate pagination parameters
+	if limit <= 0 {
+		limit = 10
+	}
+	if offset < 0 {
+		offset = 0
 	}
 
-	offset, err := strconv.Atoi(offsetStr)
-	if err != nil {
-		response.BadRequest(c, "Invalid offset parameter", err.Error())
-		return
+	// Prepare list options
+	listOptions := repository.ListOptions{
+		Limit:     limit,
+		Offset:    offset,
+		SortBy:    sortBy,
+		SortOrder: repository.SortDescending,
+	}
+	if sortOrder == "asc" {
+		listOptions.SortOrder = repository.SortAscending
 	}
 
-	// Get list of local stories
-	localStories, err := h.localStoryService.GetLocalStories(c.Request.Context(), limit, offset)
+	// Optional filtering
+	filters := []repository.FilterOption{}
+	if isForKids := c.Query("is_for_kids"); isForKids != "" {
+		filters = append(filters, repository.FilterOption{
+			Field:    "is_for_kids",
+			Operator: "=",
+			Value:    isForKids,
+		})
+	}
+	if originCulture := c.Query("origin_culture"); originCulture != "" {
+		filters = append(filters, repository.FilterOption{
+			Field:    "origin_culture",
+			Operator: "=",
+			Value:    originCulture,
+		})
+	}
+	listOptions.Filters = filters
+
+	// Retrieve local stories
+	localStories, err := h.localStoryService.ListLocalStories(c.Request.Context(), listOptions)
 	if err != nil {
 		h.logger.Error("Error retrieving local stories: %v", err)
-		response.InternalServerError(c, "Failed to retrieve local stories", err.Error())
+		response.InternalServerError(c, "Failed to retrieve local stories", err.Error(), "")
 		return
 	}
 
 	// Count total local stories for pagination
-	total, err := h.localStoryService.Count(c.Request.Context())
+	totalStories, err := h.localStoryService.CountLocalStories(c.Request.Context(), filters)
 	if err != nil {
 		h.logger.Error("Error counting local stories: %v", err)
-		response.InternalServerError(c, "Failed to count local stories", err.Error())
+		response.InternalServerError(c, "Failed to count local stories", err.Error(), "")
 		return
 	}
 
-	// Use WithPagination to add pagination metadata
-	response.WithPagination(c, localStories, total, offset/limit+1, limit)
+	// Create pagination struct
+	pagination := &response.Pagination{
+		Total:       totalStories,
+		Page:        offset/limit + 1,
+		PerPage:     limit,
+		TotalPages:  int(math.Ceil(float64(totalStories) / float64(limit))),
+		HasNextPage: offset+limit < totalStories,
+	}
+
+	// Respond with local stories and pagination
+	response.SuccessOK(c, localStories, "Local stories retrieved successfully", pagination)
 }
