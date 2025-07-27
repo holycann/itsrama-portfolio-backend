@@ -2,369 +2,430 @@ package gemini
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"time"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/holycann/cultour-backend/configs"
 	"github.com/holycann/cultour-backend/internal/cultural/models"
-	"github.com/holycann/cultour-backend/internal/cultural/repositories"
-	"github.com/holycann/cultour-backend/internal/cultural/services"
-	"github.com/holycann/cultour-backend/internal/response"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	culturalModels "github.com/holycann/cultour-backend/internal/cultural/models"
+	culturalServices "github.com/holycann/cultour-backend/internal/cultural/services"
+	placeServices "github.com/holycann/cultour-backend/internal/place/services"
+	userServices "github.com/holycann/cultour-backend/internal/users/services"
+	"google.golang.org/genai"
 )
 
-// MessageRepo is the interface for message/chat repository
-type MessageRepo interface {
-	// ListByThreadID retrieves a list of messages by thread ID, limit, and offset
-	ListByThreadID(ctx context.Context, threadID string, limit int, offset int) ([]*Message, error)
+// ErrorResponse defines a standardized error response
+type ErrorResponse struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Details string `json:"details,omitempty"`
 }
 
-// Message is a struct representing a chat message
-type Message struct {
-	ID        string
-	ThreadID  string
-	UserID    string
-	Content   string
-	CreatedAt time.Time
+// GeminiHandler manages AI-powered interactions
+type GeminiHandler struct {
+	aiService    *AIService
+	eventService culturalServices.EventService
+	cityService  placeServices.CityService
+	userService  userServices.UserProfileService
+	config       *configs.Config
 }
 
-// EventDetail and EventSummary are helper structs for context
-// (implementation of getEventDetail and getRelatedEvents can use event and user services)
-
-type EventDetail struct {
-	ID          string
-	Name        string
-	Description string
-	StartDate   time.Time
-	City        string
-	Province    string
-	UserEmail   string
-}
-
-type EventSummary struct {
-	ID        string
-	Name      string
-	StartDate time.Time
-	City      string
-}
-
-// Logger is a simple interface for logging
-type Logger interface {
-	Error(msg string, keysAndValues ...interface{})
-}
-
-// AIRequest represents the AI request structure
-type AIRequest struct {
-	// Prompt is the text input from the user for the AI
-	// Example: "Explain quantum computing in simple terms"
-	// Required: true
-	// Min length: 1
-	// Max length: 2000
-	Prompt string `json:"prompt" binding:"required,min=1,max=2000" example:"Explain quantum computing in simple terms"`
-}
-
-// AIResponse represents the structured response from the AI
-type AIResponse struct {
-	// Generated text from the AI
-	Response string `json:"response" example:"Quantum computing is a type of computing that uses quantum-mechanical phenomena..."`
-
-	// Metadata about the generated AI content
-	Metadata struct {
-		// Length of the generated text
-		Length int `json:"length" example:"250"`
-
-		// Tokens used in the generation process
-		TokensUsed int `json:"tokens_used" example:"60"`
-	} `json:"metadata"`
-}
-
-// AIEventResponse represents the structured response from the AI for event context
-type AIEventResponse struct {
-	// Generated text from the AI
-	Response string `json:"response" example:"Quantum computing is a type of computing that uses quantum-mechanical phenomena..."`
-
-	// Related events for context
-	RelatedEvents []EventSummary `json:"related_events"`
-
-	// Metadata about the generated AI content
-	Metadata struct {
-		// Length of the generated text
-		Length int `json:"length" example:"250"`
-
-		// Tokens used in the generation process
-		TokensUsed int `json:"tokens_used" example:"60"`
-	} `json:"metadata"`
-}
-
-// AskAI handles AI text generation requests
-// @Summary Generate AI text response
-// @Description Generate text using Gemini AI
-// @Tags AI
-// @Accept json
-// @Produce json
-// @Param request body AIRequest true "AI Text Generation Request"
-// @Success 200 {object} AIResponse "Successful AI text generation"
-// @Failure 400 {object} response.APIResponse "Invalid request parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error during AI generation"
-// @Router /ask [post]
-func (a *AIClient) AskAI(c *gin.Context) {
-	// Create request struct
-	var req AIRequest
-
-	// Bind and validate request
-	if err := c.ShouldBindJSON(&req); err != nil {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"validation_error": err.Error(),
-		})
-		response.BadRequest(c, "Invalid request", string(details), "")
-		return
-	}
-
-	// Validate prompt length
-	if len(req.Prompt) < 1 || len(req.Prompt) > 2000 {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"prompt_length": fmt.Sprintf("must be between 1 and 2000 characters, current length: %d", len(req.Prompt)),
-		})
-		response.BadRequest(c, "Invalid prompt length", string(details), "")
-		return
-	}
-
-	// Prepare context with timeout
-	ctx, cancel := a.prepareContext()
-	defer cancel()
-
-	// Generate AI response with advanced options
-	generationOpts := &AIGenerationOptions{
-		TraceID: c.GetString("request_id"), // Assuming request_id is set in middleware
-		// Optional: Add more specific configuration if needed
-		// Model: "gemini-2.0-flash", // Optional model override
-		// Temperature: &customTemp,  // Optional temperature override
-	}
-
-	result, err := a.GenerateTextWithOptions(ctx, req.Prompt, generationOpts)
+// NewGeminiHandler creates a new handler for Gemini AI interactions
+func NewGeminiHandler(
+	config *configs.Config,
+	eventService culturalServices.EventService,
+	cityService placeServices.CityService,
+	userService userServices.UserProfileService,
+) (*GeminiHandler, error) {
+	// Initialize AI service
+	aiService, err := NewAIService(config)
 	if err != nil {
-		// Log error for debugging
-		a.logger.Error("Failed to generate AI text",
-			"error", err,
-			"prompt", req.Prompt,
-		)
-
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"generation_error": err.Error(),
-			"prompt":           req.Prompt,
-		})
-
-		// Return structured error response
-		response.InternalServerError(c, "AI generation failed", string(details), "")
-		return
+		return nil, fmt.Errorf("failed to initialize AI service: %v", err)
 	}
 
-	// Prepare response
-	resp := AIResponse{
-		Response: result,
-	}
-	resp.Metadata.Length = len(resp.Response)
-	// Note: Actual token count requires additional implementation
-
-	// Send successful response
-	response.SuccessOK(c, resp, "AI text generated successfully")
+	return &GeminiHandler{
+		aiService:    aiService,
+		eventService: eventService,
+		cityService:  cityService,
+		userService:  userService,
+		config:       config,
+	}, nil
 }
 
-var aiCache = make(map[string]string) // key: hash(context+prompt), value: response
+// validateFeatureScope checks if the request is within supported application features
+func (h *GeminiHandler) validateFeatureScope(feature string) error {
+	supportedFeatures := map[string]bool{
+		"event_exploration": true,
+		"ai_assistant":      true,
+		"discussion_forum":  true,
+		"warlok_creation":   true,
+	}
 
-// AskEventAI handles AI text generation requests with event context
-// @Summary Generate AI text response for a specific event
-// @Description Generate text using Gemini AI with event context and chat history
+	if !supportedFeatures[feature] {
+		return fmt.Errorf("feature %s is not currently supported", feature)
+	}
+	return nil
+}
+
+// CreateChatSession handles chat session creation with strict feature validation
+// @Summary Create a new chat session
+// @Description Creates a new AI chat session for a user, optionally with an event context
 // @Tags AI
 // @Accept json
 // @Produce json
-// @Param id path string true "Event ID"
-// @Param thread_id query string false "Thread ID for chat history"
-// @Param request body AIRequest true "AI Text Generation Request"
-// @Success 200 {object} AIResponse "Successful AI text generated"
-// @Failure 400 {object} response.APIResponse "Invalid request parameters"
-// @Failure 404 {object} response.APIResponse "Event not found"
-// @Failure 500 {object} response.APIResponse "Internal server error during AI generation"
-// @Router /ask/event/{id} [post]
-func (a *AIClient) AskEventAI(c *gin.Context) {
-	// Create request struct
-	var req AIRequest
+// @Param request body CreateChatSessionRequest true "Chat Session Creation Request"
+// @Success 200 {object} CreateChatSessionResponse "Successfully created chat session"
+// @Failure 400 {object} ErrorResponse "Invalid request or user not found"
+// @Failure 403 {object} ErrorResponse "Feature not supported"
+// @Failure 500 {object} ErrorResponse "Internal server error during session creation"
+// @Router /ai/chat/session [post]
+func (h *GeminiHandler) CreateChatSession(c *gin.Context) {
+	// Validate feature scope
+	if err := h.validateFeatureScope("ai_assistant"); err != nil {
+		c.JSON(http.StatusForbidden, ErrorResponse{
+			Code:    "FEATURE_NOT_SUPPORTED",
+			Message: "AI assistant feature is currently restricted",
+			Details: err.Error(),
+		})
+		return
+	}
 
-	// Bind and validate request
+	var req CreateChatSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"validation_error": err.Error(),
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    "INVALID_REQUEST",
+			Message: "Invalid request format. Please provide a valid user ID.",
+			Details: fmt.Sprintf("Binding error: %v", err),
 		})
-		response.BadRequest(c, "Invalid request", string(details), "")
 		return
 	}
 
-	// Validate prompt length
-	if len(req.Prompt) < 1 || len(req.Prompt) > 2000 {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"prompt_length": fmt.Sprintf("must be between 1 and 2000 characters, current length: %d", len(req.Prompt)),
+	// Validate user
+	ctx := context.Background()
+	userProfile, err := h.userService.GetProfileByUserID(ctx, req.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    "USER_NOT_FOUND",
+			Message: "Pengguna tidak ditemukan. Silakan masuk atau daftar terlebih dahulu.",
+			Details: fmt.Sprintf("User retrieval error: %v", err),
 		})
-		response.BadRequest(c, "Invalid prompt length", string(details), "")
 		return
 	}
 
-	// Extract event ID from path parameter
-	eventID := c.Param("id")
-	if eventID == "" {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"event_id": "Event ID is required",
+	// Create chat session with event context if provided
+	sessionID, err := h.aiService.CreateChatSession(userProfile.ID.String(), req.EventID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Code:    "SESSION_CREATE_FAILED",
+			Message: "Gagal membuat sesi. Silakan coba lagi.",
+			Details: fmt.Sprintf("Session creation error: %v", err),
 		})
-		response.BadRequest(c, "Invalid event ID", string(details), "")
 		return
 	}
 
-	// Prepare context with timeout
-	ctx, cancel := a.prepareContext()
-	defer cancel()
+	c.JSON(http.StatusOK, CreateChatSessionResponse{
+		SessionID: sessionID,
+	})
+}
+
+// SendMessage processes user messages with flexible topic handling
+// @Summary Send a message in an AI chat session
+// @Description Sends a user message to the AI and retrieves the AI's response
+// @Tags AI
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "Chat Session ID"
+// @Param request body SendMessageRequest true "Message Request"
+// @Success 200 {object} SendMessageResponse "Successfully processed message"
+// @Failure 400 {object} ErrorResponse "Invalid request format"
+// @Failure 403 {object} ErrorResponse "Feature not supported"
+// @Failure 500 {object} ErrorResponse "Error processing message"
+// @Router /ai/chat/{sessionID}/message [post]
+func (h *GeminiHandler) SendMessage(c *gin.Context) {
+	// Validate feature scope
+	if err := h.validateFeatureScope("ai_assistant"); err != nil {
+		c.JSON(http.StatusForbidden, ErrorResponse{
+			Code:    "FEATURE_NOT_SUPPORTED",
+			Message: "AI assistant feature is currently restricted",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	// Extract session ID from path
+	sessionID := c.Param("sessionID")
+
+	// Parse request body
+	var req SendMessageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    "INVALID_REQUEST",
+			Message: "Format pesan tidak valid. Mohon periksa kembali.",
+			Details: fmt.Sprintf("Binding error: %v", err),
+		})
+		return
+	}
+
+	// Retrieve session details to get user and event context
+	session, err := h.aiService.GetChatSession(sessionID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    "SESSION_NOT_FOUND",
+			Message: "Sesi chat tidak ditemukan. Silakan buat sesi baru.",
+			Details: fmt.Sprintf("Session retrieval error: %v", err),
+		})
+		return
+	}
+
+	// Fetch user details
+	ctx := context.Background()
+	user, err := h.userService.GetProfileByID(ctx, session.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    "USER_NOT_FOUND",
+			Message: "Pengguna tidak ditemukan. Silakan masuk atau daftar terlebih dahulu.",
+			Details: fmt.Sprintf("User retrieval error: %v", err),
+		})
+		return
+	}
+
+	// Fetch user profile
+	userProfile, err := h.userService.GetProfileByID(ctx, user.ID.String())
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Code:    "PROFILE_NOT_FOUND",
+			Message: "Profil pengguna tidak ditemukan.",
+			Details: fmt.Sprintf("User profile retrieval error: %v", err),
+		})
+		return
+	}
+
+	// Prepare context for AI interaction
+	var event *culturalModels.Event
+	var eventContext AIInteractionContext
+
+	// If session has an event ID, fetch event details
+	if session.EventID != nil {
+		event, err = h.eventService.GetEventByID(ctx, *session.EventID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Code:    "EVENT_NOT_FOUND",
+				Message: "Event tidak ditemukan. Silakan periksa kembali.",
+				Details: fmt.Sprintf("Event retrieval error: %v", err),
+			})
+			return
+		}
+
+		// Fetch event-related details like city, province
+		city, err := h.cityService.GetCityByID(ctx, event.CityID.String())
+		if err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Code:    "CITY_NOT_FOUND",
+				Message: "Kota tidak ditemukan.",
+				Details: fmt.Sprintf("City retrieval error: %v", err),
+			})
+			return
+		}
+
+		// Prepare full event context
+		eventContext = AIInteractionContext{
+			UserProfile:  userProfile,
+			Event:        event,
+			City:         city,
+			Conversation: session.Messages,
+		}
+	} else {
+		eventContext = AIInteractionContext{
+			UserProfile:  userProfile,
+			Conversation: session.Messages,
+		}
+	}
+
+	// Send message with comprehensive context
+	response, err := h.aiService.SendMessageWithContext(sessionID, req.Message, eventContext)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Code:    "MESSAGE_SEND_FAILED",
+			Message: "Gagal memproses pesan. Silakan coba lagi.",
+			Details: fmt.Sprintf("Message processing error: %v", err),
+		})
+		return
+	}
+
+	// Split and clean response
+	var responseData struct {
+		Response []string `json:"response"`
+	}
+
+	// Remove asterisks, backslashes, and quotes
+	cleanedResponse := strings.ReplaceAll(response, "*", "")
+	cleanedResponse = strings.ReplaceAll(cleanedResponse, "\\", "")
+	cleanedResponse = strings.ReplaceAll(cleanedResponse, "\"", "")
+	responseData.Response = strings.Split(cleanedResponse, "\n")
+
+	// Trim any empty lines from the start or end
+	var trimmedLines []string
+	for _, line := range responseData.Response {
+		if strings.TrimSpace(line) != "" {
+			trimmedLines = append(trimmedLines, line)
+		}
+	}
+	responseData.Response = trimmedLines
+
+	c.JSON(http.StatusOK, SendMessageResponse{
+		Response: responseData.Response,
+	})
+}
+
+// GenerateEventDescription creates an AI-generated event description
+// @Summary Generate an AI event description
+// @Description Generates a comprehensive AI-powered description for a specific event
+// @Tags AI
+// @Param eventID path string true "Event ID"
+// @Success 200 {object} EventDescriptionResponse "Successfully generated event description"
+// @Failure 403 {object} ErrorResponse "Feature not supported"
+// @Failure 404 {object} ErrorResponse "Event not found"
+// @Failure 500 {object} ErrorResponse "Error generating description"
+// @Router /ai/event/{eventID}/description [get]
+func (h *GeminiHandler) GenerateEventDescription(c *gin.Context) {
+	// Validate feature scope
+	if err := h.validateFeatureScope("event_exploration"); err != nil {
+		c.JSON(http.StatusForbidden, ErrorResponse{
+			Code:    "FEATURE_NOT_SUPPORTED",
+			Message: "Event exploration feature is currently restricted",
+			Details: err.Error(),
+		})
+		return
+	}
+
+	ctx := context.Background()
+	eventID := c.Param("eventID")
 
 	// Fetch event details
-	eventRepo := repositories.NewEventRepository(a.supabaseClient.GetClient())
-	eventService := services.NewEventService(eventRepo)
-
-	event, err := eventService.GetEventByID(ctx, eventID)
+	event, err := h.eventService.GetEventByID(ctx, eventID)
 	if err != nil {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"event_fetch_error": err.Error(),
-			"event_id":          eventID,
+		c.JSON(http.StatusNotFound, ErrorResponse{
+			Code:    "EVENT_NOT_FOUND",
+			Message: "Event tidak ditemukan. Silakan periksa kembali ID event.",
+			Details: fmt.Sprintf("Event retrieval error: %v", err),
 		})
-		response.NotFound(c, "Event not found", string(details), "")
 		return
 	}
 
-	// Prepare event context for AI prompt
-	eventContext := fmt.Sprintf("Event Name: %s\nDescription: %s\nStart Date: %s",
-		event.Name, event.Description, event.StartDate.Format(time.RFC3339))
-
-	// Combine event context with user prompt
-	fullPrompt := fmt.Sprintf("%s\n\nUser Query: %s", eventContext, req.Prompt)
-
-	// Generate AI response with advanced options
-	generationOpts := &AIGenerationOptions{
-		TraceID: c.GetString("request_id"), // Assuming request_id is set in middleware
-		// Optional: Add more specific configuration if needed
-		// Model: "gemini-2.0-flash", // Optional model override
-		// Temperature: &customTemp,  // Optional temperature override
-	}
-
-	result, err := a.GenerateTextWithOptions(ctx, fullPrompt, generationOpts)
+	// Generate AI description
+	description, err := h.generateAIEventDescription(event)
 	if err != nil {
-		// Log error for debugging
-		a.logger.Error("Failed to generate event AI text",
-			"error", err,
-			"event_id", eventID,
-			"prompt", req.Prompt,
-		)
-
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"generation_error": err.Error(),
-			"event_id":         eventID,
-			"prompt":           req.Prompt,
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Code:    "DESCRIPTION_GENERATION_FAILED",
+			Message: "Gagal menghasilkan deskripsi event. Silakan coba lagi.",
+			Details: fmt.Sprintf("Description generation error: %v", err),
 		})
-
-		// Return structured error response
-		response.InternalServerError(c, "Event AI generation failed", string(details), "")
 		return
 	}
 
-	// Fetch related events for additional context
-	relatedEvents, err := eventService.ListEvents(ctx, repository.ListOptions{
-		Filters: []repository.FilterOption{
-			{Field: "city_id", Value: event.CityID},
-		},
-		Limit: 3,
+	c.JSON(http.StatusOK, EventDescriptionResponse{
+		Description: description,
+	})
+}
+
+// generateAIEventDescription creates an AI-powered event description
+func (h *GeminiHandler) generateAIEventDescription(event *models.Event) (string, error) {
+	// Prepare context-aware prompt using system policies
+	prompt := h.buildEventDescriptionPrompt(event)
+
+	// Initialize Gemini client
+	client, err := genai.NewClient(context.Background(), &genai.ClientConfig{
+		APIKey: h.config.GeminiAI.ApiKey,
 	})
 	if err != nil {
-		a.logger.Warn("Failed to fetch related events",
-			"error", err,
-			"event_id", eventID)
+		return "", fmt.Errorf("failed to create Gemini client: %v", err)
 	}
 
-	// Prepare response
-	resp := AIEventResponse{
-		Response: result,
-		RelatedEvents: func(events []models.Event) []EventSummary {
-			summaries := make([]EventSummary, 0, len(events))
-			for _, event := range events {
-				summaries = append(summaries, EventSummary{
-					ID:        event.ID.String(),
-					Name:      event.Name,
-					StartDate: event.StartDate,
-				})
-			}
-			return summaries
-		}(relatedEvents),
-	}
-	resp.Metadata.Length = len(resp.Response)
-
-	// Send successful response
-	response.SuccessOK(c, resp, "Event AI text generated successfully")
-}
-
-// buildEventContext builds a context string for the AI prompt
-func (a *AIClient) buildEventContext(event *EventDetail, related []EventSummary) string {
-	ctx := "[CONTEXT EVENT]\n"
-	ctx += "Event Name: " + event.Name + "\n"
-	ctx += "Description: " + event.Description + "\n"
-	ctx += "Date: " + event.StartDate.Format("2006-01-02") + "\n"
-	ctx += "Location: " + event.City + ", " + event.Province + "\n"
-	ctx += "Creator User: " + event.UserEmail + "\n"
-	ctx += "\n[OTHER EVENTS CONTEXT]\n"
-	for _, e := range related {
-		ctx += "- " + e.Name + ", " + e.StartDate.Format("2006-01-02") + ", " + e.City + "\n"
-	}
-	return ctx
-}
-
-// getChatHistory fetches last N messages as string slice (stub, implementation can use message repo)
-func (a *AIClient) getChatHistory(threadID string, limit int) ([]string, error) {
-	if a.messageRepo == nil {
-		return nil, fmt.Errorf("messageRepo not set")
-	}
-	ctx := context.Background()
-	msgs, err := a.messageRepo.ListByThreadID(ctx, threadID, limit, 0)
+	// Generate description with system policy
+	result, err := client.Models.GenerateContent(context.Background(), h.config.GeminiAI.AIModel, genai.Text(prompt), &genai.GenerateContentConfig{
+		Temperature: h.config.GeminiAI.Temperature,
+		TopP:        h.config.GeminiAI.TopP,
+		TopK:        h.config.GeminiAI.TopK,
+		SystemInstruction: genai.NewContentFromParts([]*genai.Part{
+			{
+				Text: GetSystemPolicies(Feature, Response, Strictness),
+			},
+		}, "system"),
+	})
 	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("failed to generate event description: %v", err)
 	}
-	var history []string
-	for _, m := range msgs {
-		role := "User"
-		if m.UserID == "ai" { // assume AI message uses user_id "ai"
-			role = "AI"
-		}
-		history = append(history, fmt.Sprintf("%s: %s", role, m.Content))
+
+	// Validate and return response
+	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
+		return "", fmt.Errorf("no description generated: empty response from AI")
 	}
-	return history, nil
+
+	return result.Candidates[0].Content.Parts[0].Text, nil
 }
 
-// hashPrompt creates a simple hash from the prompt for cache key
-func (a *AIClient) hashPrompt(s string) string {
-	// Simple: can be replaced with a stronger hash if needed
-	return fmt.Sprintf("%x", len(s)) + "-" + s[:min(16, len(s))]
+// buildEventDescriptionPrompt creates a comprehensive prompt for event description
+func (h *GeminiHandler) buildEventDescriptionPrompt(event *models.Event) string {
+	return fmt.Sprintf(`Generate a compelling and informative description for a cultural event in Indonesia:
+- Event Name: %s
+- Start Date: %s
+- End Date: %s
+- Initial Description: %s
+
+Create a rich, engaging description that:
+- Highlights the cultural significance
+- Explains why tourists should attend
+- Provides context about the event's history and importance
+- Suggests potential activities or experiences
+- Maintains an enthusiastic and inviting tone
+- Strictly focuses on local Indonesian cultural context`,
+		event.Name,
+		event.StartDate.Format("2006-01-02"),
+		event.EndDate.Format("2006-01-02"),
+		event.Description)
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
+// Request and Response Structures
+
+// CreateChatSessionRequest represents the request payload for creating a chat session
+// @Description Request to create a new AI chat session
+type CreateChatSessionRequest struct {
+	// UserID is the unique identifier of the user creating the session
+	// @Required true
+	UserID string `json:"user_id" binding:"required"`
+
+	// Optional EventID to provide context for the chat session
+	EventID *string `json:"event_id,omitempty"`
 }
 
-// prepareContext creates a context with timeout for AI requests
-func (a *AIClient) prepareContext() (context.Context, context.CancelFunc) {
-	// Default timeout of 30 seconds
-	return context.WithTimeout(context.Background(), 30*time.Second)
+// CreateChatSessionResponse represents the response after creating a chat session
+// @Description Response containing the created session ID
+type CreateChatSessionResponse struct {
+	// Unique identifier for the created chat session
+	SessionID string `json:"session_id"`
+}
+
+// SendMessageRequest represents the request payload for sending a message in a chat session
+// @Description Request to send a message to the AI
+type SendMessageRequest struct {
+	// Message content to be sent to the AI
+	// @Required true
+	// @Max length 500
+	Message string `json:"message" binding:"required,max=500"`
+}
+
+// SendMessageResponse represents the AI's response to a message
+// @Description Response from the AI containing multiple lines of text
+type SendMessageResponse struct {
+	// Multiple lines of the AI's response
+	Response []string `json:"response"`
+}
+
+// EventDescriptionResponse represents the AI-generated event description
+// @Description Response containing an AI-generated description for an event
+type EventDescriptionResponse struct {
+	// Comprehensive description of the event
+	Description string `json:"description"`
 }

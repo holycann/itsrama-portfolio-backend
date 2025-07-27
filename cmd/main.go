@@ -17,7 +17,6 @@ import (
 	"github.com/holycann/cultour-backend/configs"
 	"github.com/holycann/cultour-backend/docs"
 	_ "github.com/holycann/cultour-backend/docs"
-	"github.com/holycann/cultour-backend/internal/gemini"
 	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/middleware"
 	"github.com/holycann/cultour-backend/internal/routes"
@@ -67,32 +66,6 @@ func main() {
 		ProjectID: cfg.Supabase.ProjectID,
 	})
 
-	// Convert logger to slog
-	slogLogger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	}))
-
-	geminiAI, err := gemini.NewGeminiAIClient(&gemini.Config{
-		ApiKey:          cfg.GeminiAI.ApiKey,
-		AIModel:         cfg.GeminiAI.AIModel,
-		Temperature:     *cfg.GeminiAI.Temperature,
-		TopK:            int32(*cfg.GeminiAI.TopK),
-		TopP:            *cfg.GeminiAI.TopP,
-		MaxOutputTokens: int32(cfg.GeminiAI.MaxTokens),
-		CacheConfig: gemini.CacheConfig{
-			Enabled:    true,
-			MaxSize:    100,
-			Expiration: 1 * time.Hour,
-		},
-		SystemInstruction: gemini.GetFullSystemPolicy(),
-		SupabaseClient:    supabaseClient,
-		Logger:            slogLogger,
-	})
-	if err != nil {
-		appLogger.Error("Failed to initialize Gemini AI client", slog.Any("error", err))
-		os.Exit(1)
-	}
-
 	jwks, err := keyfunc.Get(fmt.Sprintf("https://%s.supabase.co/auth/v1/.well-known/jwks.json", cfg.Supabase.ProjectID), keyfunc.Options{
 		RefreshUnknownKID: true,
 		RefreshErrorHandler: func(err error) {
@@ -110,7 +83,7 @@ func main() {
 	router := createRouter(appLogger)
 
 	// Register routes
-	registerApplicationRoutes(router, supabaseClient, supabaseAuth, geminiAI, routeMiddleware, appLogger)
+	registerApplicationRoutes(router, supabaseClient, supabaseAuth, routeMiddleware, appLogger, cfg)
 
 	// Start server
 	startServer(router, cfg, appLogger)
@@ -212,11 +185,13 @@ func registerApplicationRoutes(
 	router *gin.Engine,
 	supabaseClient *supabase.SupabaseClient,
 	supabaseAuth *supabase.SupabaseAuth,
-	geminiAiClient *gemini.AIClient,
 	routeMiddleware *middleware.Middleware,
 	appLogger *logger.Logger,
+	config *configs.Config,
 ) {
-	routes.SetupRouter(router, *geminiAiClient)
+	// Setup Gemini routes
+	routes.SetupRouter(router)
+	routes.SetupGeminiRoutes(router, config, supabaseClient.GetClient(), supabaseAuth.GetClient(), appLogger)
 	routes.RegisterEventRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 	routes.RegisterLocationRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 	routes.RegisterUserRoutes(router, supabaseAuth, routeMiddleware)

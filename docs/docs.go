@@ -17,9 +17,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/ask": {
+        "/ai/chat/session": {
             "post": {
-                "description": "Generate text using Gemini AI",
+                "description": "Creates a new AI chat session for a user, optionally with an event context",
                 "consumes": [
                     "application/json"
                 ],
@@ -29,43 +29,49 @@ const docTemplate = `{
                 "tags": [
                     "AI"
                 ],
-                "summary": "Generate AI text response",
+                "summary": "Create a new chat session",
                 "parameters": [
                     {
-                        "description": "AI Text Generation Request",
+                        "description": "Chat Session Creation Request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_gemini.AIRequest"
+                            "$ref": "#/definitions/internal_gemini.CreateChatSessionRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successful AI text generation",
+                        "description": "Successfully created chat session",
                         "schema": {
-                            "$ref": "#/definitions/internal_gemini.AIResponse"
+                            "$ref": "#/definitions/internal_gemini.CreateChatSessionResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request parameters",
+                        "description": "Invalid request or user not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Feature not supported",
+                        "schema": {
+                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal server error during AI generation",
+                        "description": "Internal server error during session creation",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/ask/event/{id}": {
+        "/ai/chat/{sessionID}/message": {
             "post": {
-                "description": "Generate text using Gemini AI with event context and chat history",
+                "description": "Sends a user message to the AI and retrieves the AI's response",
                 "consumes": [
                     "application/json"
                 ],
@@ -75,54 +81,92 @@ const docTemplate = `{
                 "tags": [
                     "AI"
                 ],
-                "summary": "Generate AI text response for a specific event",
+                "summary": "Send a message in an AI chat session",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Event ID",
-                        "name": "id",
+                        "description": "Chat Session ID",
+                        "name": "sessionID",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "Thread ID for chat history",
-                        "name": "thread_id",
-                        "in": "query"
-                    },
-                    {
-                        "description": "AI Text Generation Request",
+                        "description": "Message Request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_gemini.AIRequest"
+                            "$ref": "#/definitions/internal_gemini.SendMessageRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Successful AI text generated",
+                        "description": "Successfully processed message",
                         "schema": {
-                            "$ref": "#/definitions/internal_gemini.AIResponse"
+                            "$ref": "#/definitions/internal_gemini.SendMessageResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request parameters",
+                        "description": "Invalid request format",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Feature not supported",
+                        "schema": {
+                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Error processing message",
+                        "schema": {
+                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/event/{eventID}/description": {
+            "get": {
+                "description": "Generates a comprehensive AI-powered description for a specific event",
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Generate an AI event description",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "eventID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully generated event description",
+                        "schema": {
+                            "$ref": "#/definitions/internal_gemini.EventDescriptionResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Feature not supported",
+                        "schema": {
+                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Event not found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal server error during AI generation",
+                        "description": "Error generating description",
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
                         }
                     }
                 }
@@ -5533,44 +5577,81 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_gemini.AIRequest": {
+        "internal_gemini.CreateChatSessionRequest": {
+            "description": "Request to create a new AI chat session",
             "type": "object",
             "required": [
-                "prompt"
+                "user_id"
             ],
             "properties": {
-                "prompt": {
-                    "description": "Prompt is the text input from the user for the AI\nExample: \"Explain quantum computing in simple terms\"\nRequired: true\nMin length: 1\nMax length: 2000",
-                    "type": "string",
-                    "maxLength": 2000,
-                    "minLength": 1,
-                    "example": "Explain quantum computing in simple terms"
+                "event_id": {
+                    "description": "Optional EventID to provide context for the chat session",
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "UserID is the unique identifier of the user creating the session\n@Required true",
+                    "type": "string"
                 }
             }
         },
-        "internal_gemini.AIResponse": {
+        "internal_gemini.CreateChatSessionResponse": {
+            "description": "Response containing the created session ID",
             "type": "object",
             "properties": {
-                "metadata": {
-                    "description": "Metadata about the generated AI content",
-                    "type": "object",
-                    "properties": {
-                        "length": {
-                            "description": "Length of the generated text",
-                            "type": "integer",
-                            "example": 250
-                        },
-                        "tokens_used": {
-                            "description": "Tokens used in the generation process",
-                            "type": "integer",
-                            "example": 60
-                        }
-                    }
+                "session_id": {
+                    "description": "Unique identifier for the created chat session",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_gemini.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
                 },
-                "response": {
-                    "description": "Generated text from the AI",
+                "details": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_gemini.EventDescriptionResponse": {
+            "description": "Response containing an AI-generated description for an event",
+            "type": "object",
+            "properties": {
+                "description": {
+                    "description": "Comprehensive description of the event",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_gemini.SendMessageRequest": {
+            "description": "Request to send a message to the AI",
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "message": {
+                    "description": "Message content to be sent to the AI\n@Required true\n@Max length 500",
                     "type": "string",
-                    "example": "Quantum computing is a type of computing that uses quantum-mechanical phenomena..."
+                    "maxLength": 500
+                }
+            }
+        },
+        "internal_gemini.SendMessageResponse": {
+            "description": "Response from the AI containing multiple lines of text",
+            "type": "object",
+            "properties": {
+                "response": {
+                    "description": "Multiple lines of the AI's response",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         }

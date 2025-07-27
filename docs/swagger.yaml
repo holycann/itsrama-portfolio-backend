@@ -667,41 +667,64 @@ definitions:
         example: admin
         type: string
     type: object
-  internal_gemini.AIRequest:
+  internal_gemini.CreateChatSessionRequest:
+    description: Request to create a new AI chat session
     properties:
-      prompt:
+      event_id:
+        description: Optional EventID to provide context for the chat session
+        type: string
+      user_id:
         description: |-
-          Prompt is the text input from the user for the AI
-          Example: "Explain quantum computing in simple terms"
-          Required: true
-          Min length: 1
-          Max length: 2000
-        example: Explain quantum computing in simple terms
-        maxLength: 2000
-        minLength: 1
+          UserID is the unique identifier of the user creating the session
+          @Required true
         type: string
     required:
-    - prompt
+    - user_id
     type: object
-  internal_gemini.AIResponse:
+  internal_gemini.CreateChatSessionResponse:
+    description: Response containing the created session ID
     properties:
-      metadata:
-        description: Metadata about the generated AI content
-        properties:
-          length:
-            description: Length of the generated text
-            example: 250
-            type: integer
-          tokens_used:
-            description: Tokens used in the generation process
-            example: 60
-            type: integer
-        type: object
-      response:
-        description: Generated text from the AI
-        example: Quantum computing is a type of computing that uses quantum-mechanical
-          phenomena...
+      session_id:
+        description: Unique identifier for the created chat session
         type: string
+    type: object
+  internal_gemini.ErrorResponse:
+    properties:
+      code:
+        type: string
+      details:
+        type: string
+      message:
+        type: string
+    type: object
+  internal_gemini.EventDescriptionResponse:
+    description: Response containing an AI-generated description for an event
+    properties:
+      description:
+        description: Comprehensive description of the event
+        type: string
+    type: object
+  internal_gemini.SendMessageRequest:
+    description: Request to send a message to the AI
+    properties:
+      message:
+        description: |-
+          Message content to be sent to the AI
+          @Required true
+          @Max length 500
+        maxLength: 500
+        type: string
+    required:
+    - message
+    type: object
+  internal_gemini.SendMessageResponse:
+    description: Response from the AI containing multiple lines of text
+    properties:
+      response:
+        description: Multiple lines of the AI's response
+        items:
+          type: string
+        type: array
     type: object
 host: localhost:8181
 info:
@@ -711,77 +734,108 @@ info:
   title: Cultour API
   version: "1.0"
 paths:
-  /ask:
+  /ai/chat/{sessionID}/message:
     post:
       consumes:
       - application/json
-      description: Generate text using Gemini AI
+      description: Sends a user message to the AI and retrieves the AI's response
       parameters:
-      - description: AI Text Generation Request
+      - description: Chat Session ID
+        in: path
+        name: sessionID
+        required: true
+        type: string
+      - description: Message Request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_gemini.AIRequest'
+          $ref: '#/definitions/internal_gemini.SendMessageRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Successful AI text generation
+          description: Successfully processed message
           schema:
-            $ref: '#/definitions/internal_gemini.AIResponse'
+            $ref: '#/definitions/internal_gemini.SendMessageResponse'
         "400":
-          description: Invalid request parameters
+          description: Invalid request format
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+            $ref: '#/definitions/internal_gemini.ErrorResponse'
+        "403":
+          description: Feature not supported
+          schema:
+            $ref: '#/definitions/internal_gemini.ErrorResponse'
         "500":
-          description: Internal server error during AI generation
+          description: Error processing message
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
-      summary: Generate AI text response
+            $ref: '#/definitions/internal_gemini.ErrorResponse'
+      summary: Send a message in an AI chat session
       tags:
       - AI
-  /ask/event/{id}:
+  /ai/chat/session:
     post:
       consumes:
       - application/json
-      description: Generate text using Gemini AI with event context and chat history
+      description: Creates a new AI chat session for a user, optionally with an event
+        context
+      parameters:
+      - description: Chat Session Creation Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_gemini.CreateChatSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully created chat session
+          schema:
+            $ref: '#/definitions/internal_gemini.CreateChatSessionResponse'
+        "400":
+          description: Invalid request or user not found
+          schema:
+            $ref: '#/definitions/internal_gemini.ErrorResponse'
+        "403":
+          description: Feature not supported
+          schema:
+            $ref: '#/definitions/internal_gemini.ErrorResponse'
+        "500":
+          description: Internal server error during session creation
+          schema:
+            $ref: '#/definitions/internal_gemini.ErrorResponse'
+      summary: Create a new chat session
+      tags:
+      - AI
+  /ai/event/{eventID}/description:
+    get:
+      description: Generates a comprehensive AI-powered description for a specific
+        event
       parameters:
       - description: Event ID
         in: path
-        name: id
+        name: eventID
         required: true
         type: string
-      - description: Thread ID for chat history
-        in: query
-        name: thread_id
-        type: string
-      - description: AI Text Generation Request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/internal_gemini.AIRequest'
-      produces:
-      - application/json
       responses:
         "200":
-          description: Successful AI text generated
+          description: Successfully generated event description
           schema:
-            $ref: '#/definitions/internal_gemini.AIResponse'
-        "400":
-          description: Invalid request parameters
+            $ref: '#/definitions/internal_gemini.EventDescriptionResponse'
+        "403":
+          description: Feature not supported
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+            $ref: '#/definitions/internal_gemini.ErrorResponse'
         "404":
           description: Event not found
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+            $ref: '#/definitions/internal_gemini.ErrorResponse'
         "500":
-          description: Internal server error during AI generation
+          description: Error generating description
           schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
-      summary: Generate AI text response for a specific event
+            $ref: '#/definitions/internal_gemini.ErrorResponse'
+      summary: Generate an AI event description
       tags:
       - AI
   /badges:
