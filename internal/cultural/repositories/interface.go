@@ -14,6 +14,7 @@ type EventRepository interface {
 
 	// Advanced search and filtering methods
 	Search(ctx context.Context, filter repository.ListOptions) ([]models.Event, int, error)
+	GetEventWithViews(ctx context.Context, id string) (*models.ResponseEvent, error)
 
 	// Specialized query methods
 	FindPopularEvents(ctx context.Context, limit int) ([]models.Event, error)

@@ -9,7 +9,7 @@ import (
 
 type EventService interface {
 	CreateEvent(ctx context.Context, event *models.Event) error
-	GetEventByID(ctx context.Context, id string) (*models.Event, error)
+	GetEventByID(ctx context.Context, id string) (*models.ResponseEvent, error)
 	ListEvents(ctx context.Context, opts repository.ListOptions) ([]models.Event, error)
 	UpdateEvent(ctx context.Context, event *models.Event) error
 	DeleteEvent(ctx context.Context, id string) error

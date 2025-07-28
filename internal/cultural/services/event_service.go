@@ -40,14 +40,14 @@ func (s *eventService) CreateEvent(ctx context.Context, event *models.Event) err
 	return s.eventRepo.Create(ctx, event)
 }
 
-func (s *eventService) GetEventByID(ctx context.Context, id string) (*models.Event, error) {
+func (s *eventService) GetEventByID(ctx context.Context, id string) (*models.ResponseEvent, error) {
 	// Validate ID
 	if id == "" {
 		return nil, fmt.Errorf("event ID cannot be empty")
 	}
 
-	// Retrieve event from repository
-	event, err := s.eventRepo.FindByID(ctx, id)
+	// Retrieve event with views from repository
+	responseEvent, err := s.eventRepo.GetEventWithViews(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (s *eventService) GetEventByID(ctx context.Context, id string) (*models.Eve
 	// Update views count
 	_ = s.UpdateEventViews(ctx, id)
 
-	return event, nil
+	return responseEvent, nil
 }
 
 func (s *eventService) ListEvents(ctx context.Context, opts repository.ListOptions) ([]models.Event, error) {
@@ -67,7 +67,14 @@ func (s *eventService) ListEvents(ctx context.Context, opts repository.ListOptio
 		opts.Offset = 0
 	}
 
-	return s.eventRepo.List(ctx, opts)
+	// Retrieve events
+	events, err := s.eventRepo.List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Consider adding a method to get views for multiple events efficiently
+	return events, nil
 }
 
 func (s *eventService) UpdateEvent(ctx context.Context, event *models.Event) error {

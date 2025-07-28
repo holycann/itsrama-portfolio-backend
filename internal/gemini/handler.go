@@ -203,7 +203,7 @@ func (h *GeminiHandler) SendMessage(c *gin.Context) {
 	}
 
 	// Prepare context for AI interaction
-	var event *culturalModels.Event
+	var event *culturalModels.ResponseEvent
 	var eventContext AIInteractionContext
 
 	// If session has an event ID, fetch event details
@@ -219,7 +219,7 @@ func (h *GeminiHandler) SendMessage(c *gin.Context) {
 		}
 
 		// Fetch event-related details like city, province
-		city, err := h.cityService.GetCityByID(ctx, event.CityID.String())
+		city, err := h.cityService.GetCityByID(ctx, event.Event.CityID.String())
 		if err != nil {
 			c.JSON(http.StatusBadRequest, ErrorResponse{
 				Code:    "CITY_NOT_FOUND",
@@ -232,7 +232,7 @@ func (h *GeminiHandler) SendMessage(c *gin.Context) {
 		// Prepare full event context
 		eventContext = AIInteractionContext{
 			UserProfile:  userProfile,
-			Event:        event,
+			Event:        &event.Event,
 			City:         city,
 			Conversation: session.Messages,
 		}
@@ -315,7 +315,7 @@ func (h *GeminiHandler) GenerateEventDescription(c *gin.Context) {
 	}
 
 	// Generate AI description
-	description, err := h.generateAIEventDescription(event)
+	description, err := h.generateAIEventDescription(&event.Event)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Code:    "DESCRIPTION_GENERATION_FAILED",

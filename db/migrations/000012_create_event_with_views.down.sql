@@ -1,0 +1,1 @@
+DROP VIEW IF EXISTS event_with_views;

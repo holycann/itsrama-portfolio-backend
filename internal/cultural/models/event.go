@@ -20,7 +20,6 @@ type Event struct {
 	StartDate     time.Time `json:"start_date" db:"start_date"`           // Event start date
 	EndDate       time.Time `json:"end_date" db:"end_date"`               // Event end date
 	IsKidFriendly bool      `json:"is_kid_friendly" db:"is_kid_friendly"` // Whether the event is kid-friendly
-	Views         int64     `json:"views" db:"views"`                     // Number of views
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`           // Event creation time
 }
 
@@ -32,5 +31,6 @@ type RequestEvent struct {
 // ResponseEvent is used for returning event data to the client
 type ResponseEvent struct {
 	Event
-	User *models.User `json:"user,omitempty"`
+	User  *models.User `json:"user,omitempty"`
+	Views int          `json:"views,omitempty"`
 }

@@ -181,15 +181,54 @@ func (r *eventRepository) Search(ctx context.Context, opts repository.ListOption
 	return events, count, nil
 }
 
+// Add a new method to get event views
+func (r *eventRepository) GetEventViews(ctx context.Context, eventID string) (int, error) {
+	var views int
+	_, err := r.supabaseClient.
+		From("event_views").
+		Select("views", "", false).
+		Eq("event_id", eventID).
+		Single().
+		ExecuteTo(&views)
+
+	// If no views found, return 0 instead of an error
+	if err != nil {
+		return 0, nil
+	}
+
+	return views, nil
+}
+
+// Modify FindPopularEvents to use event_with_views
 func (r *eventRepository) FindPopularEvents(ctx context.Context, limit int) ([]models.Event, error) {
 	var events []models.Event
 	_, err := r.supabaseClient.
-		From(r.table).
+		From("event_with_views").
 		Select("*", "", false).
 		Order("views", &postgrest.OrderOpts{Ascending: false}).
 		Limit(limit, "").
 		ExecuteTo(&events)
 	return events, err
+}
+
+// Update the ResponseEvent model to include views
+func (r *eventRepository) GetEventWithViews(ctx context.Context, id string) (*models.ResponseEvent, error) {
+	var responseEvent models.ResponseEvent
+
+	// First, get the event details
+	event, err := r.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the views
+	views, _ := r.GetEventViews(ctx, id)
+
+	// Construct the response event
+	responseEvent.Event = *event
+	responseEvent.Views = views // Assuming you'll add a Views field to the ResponseEvent struct
+
+	return &responseEvent, nil
 }
 
 func (r *eventRepository) FindRecentEvents(ctx context.Context, limit int) ([]models.Event, error) {

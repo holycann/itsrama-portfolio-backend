@@ -7,19 +7,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// ResponseStatus represents the status of an API response
-type ResponseStatus string
-
-// Standard response statuses
-const (
-	StatusSuccess ResponseStatus = "success"
-	StatusError   ResponseStatus = "error"
-)
-
 // APIResponse is the standard structure for all API responses
 type APIResponse struct {
 	// Status of the response (success/error)
-	Status ResponseStatus `json:"status"`
+	Success bool `json:"success"`
 
 	// Unique request identifier for tracing
 	RequestID uuid.UUID `json:"request_id"`
@@ -58,7 +49,7 @@ type Pagination struct {
 // Success creates a successful API response
 func Success(c *gin.Context, statusCode int, data interface{}, message string, pagination ...*Pagination) {
 	resp := APIResponse{
-		Status:    StatusSuccess,
+		Success:   true,
 		RequestID: uuid.New(),
 		Message:   message,
 		Data:      data,
@@ -75,7 +66,7 @@ func Success(c *gin.Context, statusCode int, data interface{}, message string, p
 // Error creates a standardized error response
 func Error(c *gin.Context, statusCode int, errorCode string, message string, details string) {
 	resp := APIResponse{
-		Status:    StatusError,
+		Success:   false,
 		RequestID: uuid.New(),
 		Error: &ErrorDetails{
 			Code:    errorCode,
