@@ -7,22 +7,25 @@ import (
 )
 
 type SupabaseStorage struct {
-	client   *storage_go.Client
-	bucketID string
+	client        *storage_go.Client
+	bucketID      string
+	defaultFolder string
 }
 
 type SupabaseStorageConfig struct {
-	JwtApiSecret string
-	ProjectID    string
-	BucketID     string
+	JwtApiSecret  string
+	ProjectID     string
+	BucketID      string
+	DefaultFolder string
 }
 
 func NewSupabaseStorage(cfg SupabaseStorageConfig) *SupabaseStorage {
 	storageClient := storage_go.NewClient(fmt.Sprintf("https://%s.supabase.co/storage/v1", cfg.ProjectID), cfg.JwtApiSecret, nil)
 
 	return &SupabaseStorage{
-		client:   storageClient,
-		bucketID: cfg.BucketID,
+		client:        storageClient,
+		bucketID:      cfg.BucketID,
+		defaultFolder: cfg.DefaultFolder,
 	}
 }
 
@@ -32,4 +35,8 @@ func (s *SupabaseStorage) GetClient() *storage_go.Client {
 
 func (s *SupabaseStorage) GetBucketID() string {
 	return s.bucketID
+}
+
+func (s *SupabaseStorage) GetDefaultFolder() string {
+	return s.defaultFolder
 }

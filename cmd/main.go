@@ -52,7 +52,7 @@ func main() {
 
 	// Initialize Supabase client
 	supabaseClient, err := supabase.NewSupabaseClient(supabase.SupabaseClientConfig{
-		ApiUrl:    fmt.Sprintf("https://%s.supabase.co", cfg.Supabase.ProjectID),
+		ProjectID: cfg.Supabase.ProjectID,
 		ApiSecret: cfg.Supabase.ApiSecretKey,
 	})
 	if err != nil {
@@ -64,6 +64,14 @@ func main() {
 	supabaseAuth := supabase.NewSupabaseAuth(supabase.SupabaseAuthConfig{
 		ApiKey:    cfg.Supabase.ApiSecretKey,
 		ProjectID: cfg.Supabase.ProjectID,
+	})
+
+	// Initialize Supabase storage
+	supabaseStorage := supabase.NewSupabaseStorage(supabase.SupabaseStorageConfig{
+		JwtApiSecret:  cfg.Supabase.JwtApiKeySecret,
+		ProjectID:     cfg.Supabase.ProjectID,
+		BucketID:      cfg.Supabase.StorageBucketID,
+		DefaultFolder: cfg.Supabase.DefaultFolder,
 	})
 
 	jwks, err := keyfunc.Get(fmt.Sprintf("https://%s.supabase.co/auth/v1/.well-known/jwks.json", cfg.Supabase.ProjectID), keyfunc.Options{
@@ -83,7 +91,7 @@ func main() {
 	router := createRouter(appLogger)
 
 	// Register routes
-	registerApplicationRoutes(router, supabaseClient, supabaseAuth, routeMiddleware, appLogger, cfg)
+	registerApplicationRoutes(router, supabaseClient, supabaseAuth, supabaseStorage, routeMiddleware, appLogger, cfg)
 
 	// Start server
 	startServer(router, cfg, appLogger)
@@ -185,17 +193,18 @@ func registerApplicationRoutes(
 	router *gin.Engine,
 	supabaseClient *supabase.SupabaseClient,
 	supabaseAuth *supabase.SupabaseAuth,
+	supabaseStorage *supabase.SupabaseStorage,
 	routeMiddleware *middleware.Middleware,
 	appLogger *logger.Logger,
 	config *configs.Config,
 ) {
 	// Setup Gemini routes
 	routes.SetupRouter(router)
-	routes.SetupGeminiRoutes(router, config, supabaseClient.GetClient(), supabaseAuth.GetClient(), appLogger)
+	routes.SetupGeminiRoutes(router, config, supabaseClient.GetClient(), supabaseAuth.GetClient(), supabaseStorage, appLogger)
 	routes.RegisterEventRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 	routes.RegisterLocationRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 	routes.RegisterUserRoutes(router, supabaseAuth, routeMiddleware)
-	routes.RegisterUserProfileRoutes(router, supabaseClient, supabaseAuth, "user_profiles", routeMiddleware)
+	routes.RegisterUserProfileRoutes(router, supabaseClient, supabaseAuth, supabaseStorage, routeMiddleware)
 	routes.RegisterUserBadgeRoutes(router, supabaseClient, routeMiddleware, appLogger)
 	routes.RegisterBadgeRoutes(router, supabaseClient.GetClient(), routeMiddleware, appLogger)
 	routes.RegisterCityRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)

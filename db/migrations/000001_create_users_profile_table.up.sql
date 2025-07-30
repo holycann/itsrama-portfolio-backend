@@ -5,7 +5,8 @@ CREATE TABLE public.users_profile (
     bio text,
     avatar_url character varying,
     identity_image_url character varying,
-    created_at timestamp
+    created_at timestamp,
+    updated_at timestamp NULL
     with
         time zone NOT NULL DEFAULT now(),
         CONSTRAINT users_profile_pkey PRIMARY KEY (id),

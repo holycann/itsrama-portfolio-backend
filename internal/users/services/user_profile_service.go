@@ -4,26 +4,33 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"mime/multipart"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/holycann/cultour-backend/internal/supabase"
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/internal/users/repositories"
 	"github.com/holycann/cultour-backend/pkg/repository"
+	storage_go "github.com/supabase-community/storage-go"
 )
 
 type userProfileService struct {
 	repo     repositories.UserProfileRepository
 	userRepo repositories.UserRepository
+	storage  *supabase.SupabaseStorage
 }
 
 func NewUserProfileService(
 	repo repositories.UserProfileRepository,
 	userRepo repositories.UserRepository,
+	storage *supabase.SupabaseStorage,
 ) UserProfileService {
 	return &userProfileService{
 		repo:     repo,
 		userRepo: userRepo,
+		storage:  storage,
 	}
 }
 
@@ -96,13 +103,13 @@ func (s *userProfileService) ListProfiles(ctx context.Context, opts repository.L
 	return s.repo.List(ctx, opts)
 }
 
-func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *models.UserProfile) error {
+func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *models.UserProfile, avatar *multipart.FileHeader, identity *multipart.FileHeader) error {
 	// Validate input
 	if userProfile == nil {
 		return fmt.Errorf("user profile cannot be nil")
 	}
-	if userProfile.ID == uuid.Nil {
-		return fmt.Errorf("profile ID is required for update")
+	if userProfile.ID == uuid.Nil || userProfile.UserID == uuid.Nil {
+		return fmt.Errorf("profile ID and user ID is required for update")
 	}
 
 	// Check if profile exists
@@ -122,15 +129,133 @@ func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *mod
 		}
 	}
 
-	// Update timestamps
-	now := time.Now().UTC()
-	userProfile.UpdatedAt = now
+	// Merge: if value ada di userProfile, update, jika tidak ada pake existingProfile
+	mergedProfile := *existingProfile // start with existing
 
-	// Preserve creation timestamp
-	userProfile.CreatedAt = existingProfile.CreatedAt
+	// Only update fields if userProfile has a non-zero value
+	if userProfile.Fullname != "" {
+		mergedProfile.Fullname = userProfile.Fullname
+	}
+	if userProfile.Bio != "" {
+		mergedProfile.Bio = userProfile.Bio
+	}
+	if userProfile.AvatarUrl != "" {
+		mergedProfile.AvatarUrl = userProfile.AvatarUrl
+	}
+	if userProfile.IdentityImageUrl != "" {
+		mergedProfile.IdentityImageUrl = userProfile.IdentityImageUrl
+	}
+	// Always update UpdatedAt
+	mergedProfile.UpdatedAt = time.Now().UTC()
+
+	// If avatar file is provided, upload and update AvatarUrl
+	if avatar != nil {
+		avatarUrl, err := s.UpdateAvatar(ctx, mergedProfile.UserID.String(), avatar)
+		if err != nil {
+			fmt.Println("Error:", err.Error())
+			return fmt.Errorf("failed to update avatar")
+		}
+		mergedProfile.AvatarUrl = avatarUrl
+	}
+
+	// If identity file is provided, upload and update IdentityImageUrl
+	if identity != nil {
+		identityUrl, err := s.UpdateIdentity(ctx, mergedProfile.UserID.String(), identity)
+		if err != nil {
+			fmt.Println("Error:", err.Error())
+			return fmt.Errorf("failed to update identity image")
+		}
+		mergedProfile.IdentityImageUrl = identityUrl
+	}
 
 	// Perform update
-	return s.repo.Update(ctx, userProfile)
+	return s.repo.Update(ctx, &mergedProfile)
+}
+
+// UpdateAvatar uploads the avatar file and returns the public URL
+func (s *userProfileService) UpdateAvatar(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
+	// Validate input
+	if userID == "" {
+		return "", fmt.Errorf("user ID is required")
+	}
+	if file == nil {
+		return "", fmt.Errorf("file data is required")
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	// Get file extension from the uploaded file's filename
+	ext := filepath.Ext(file.Filename)
+	if ext == "" {
+		ext = ".jpg" // default to jpg if extension is missing
+	}
+
+	// Build the destination path
+	destPath := s.storage.GetDefaultFolder() + "/avatar/" + userID + ext
+
+	// Upload file and get the response
+	result, _ := s.storage.GetClient().UploadFile(s.storage.GetBucketID(), destPath, f, storage_go.FileOptions{
+		ContentType: func(s string) *string { return &s }("image"),
+		Upsert:      func(b bool) *bool { return &b }(true),
+	})
+
+	if result.Key == "" {
+		return "", fmt.Errorf("failed to upload file: %v", result)
+	}
+
+	url := s.storage.GetClient().GetPublicUrl(s.storage.GetBucketID(), destPath)
+	if url.SignedURL == "" {
+		return "", fmt.Errorf("failed to get public url: %v", url)
+	}
+
+	return url.SignedURL, nil
+}
+
+// UpdateIdentity uploads the identity image file and returns the public URL
+func (s *userProfileService) UpdateIdentity(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
+	// Validate input
+	if userID == "" {
+		return "", fmt.Errorf("user ID is required")
+	}
+	if file == nil {
+		return "", fmt.Errorf("file data is required")
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	// Get file extension from the uploaded file's filename
+	ext := filepath.Ext(file.Filename)
+	if ext == "" {
+		ext = ".jpg" // default to jpg if extension is missing
+	}
+
+	// Build the destination path
+	destPath := s.storage.GetDefaultFolder() + "/identity/" + userID + ext
+
+	// Upload file and get the response
+	result, _ := s.storage.GetClient().UploadFile(s.storage.GetBucketID(), destPath, f, storage_go.FileOptions{
+		ContentType: func(s string) *string { return &s }("image"),
+		Upsert:      func(b bool) *bool { return &b }(true),
+	})
+
+	if result.Key == "" {
+		return "", fmt.Errorf("failed to upload file: %v", result)
+	}
+
+	url := s.storage.GetClient().GetPublicUrl(s.storage.GetBucketID(), destPath)
+	if url.SignedURL == "" {
+		return "", fmt.Errorf("failed to get public url: %v", url)
+	}
+
+	return url.SignedURL, nil
 }
 
 func (s *userProfileService) DeleteProfile(ctx context.Context, id string) error {

@@ -12,13 +12,14 @@ import (
 	"github.com/holycann/cultour-backend/internal/logger"
 	cityRepo "github.com/holycann/cultour-backend/internal/place/repositories"
 	citySvc "github.com/holycann/cultour-backend/internal/place/services"
+	sup "github.com/holycann/cultour-backend/internal/supabase"
 	userRepo "github.com/holycann/cultour-backend/internal/users/repositories"
 	userSvc "github.com/holycann/cultour-backend/internal/users/services"
 	"github.com/supabase-community/auth-go"
 	"github.com/supabase-community/supabase-go"
 )
 
-func SetupGeminiRoutes(router *gin.Engine, cfg *configs.Config, supabaseClient *supabase.Client, supabaseAuth auth.Client, appLogger *logger.Logger) {
+func SetupGeminiRoutes(router *gin.Engine, cfg *configs.Config, supabaseClient *supabase.Client, supabaseAuth auth.Client, supabaseStorage *sup.SupabaseStorage, appLogger *logger.Logger) {
 	// Initialize repositories
 	eventRepository := eventRepo.NewEventRepository(supabaseClient)
 	cityRepository := cityRepo.NewCityRepository(supabaseClient)
@@ -28,7 +29,7 @@ func SetupGeminiRoutes(router *gin.Engine, cfg *configs.Config, supabaseClient *
 	// Initialize services
 	eventService := eventSvc.NewEventService(eventRepository)
 	cityService := citySvc.NewCityService(cityRepository)
-	userProfileService := userSvc.NewUserProfileService(userProfileRepository, userRepository)
+	userProfileService := userSvc.NewUserProfileService(userProfileRepository, userRepository, supabaseStorage)
 
 	// Initialize Gemini Handler
 	geminiHandler, err := gemini.NewGeminiHandler(

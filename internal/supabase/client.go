@@ -8,7 +8,7 @@ import (
 )
 
 type SupabaseClientConfig struct {
-	ApiUrl    string
+	ProjectID string
 	ApiSecret string
 }
 
@@ -18,11 +18,11 @@ type SupabaseClient struct {
 }
 
 func NewSupabaseClient(cfg SupabaseClientConfig) (*SupabaseClient, error) {
-	if cfg.ApiSecret == "" || cfg.ApiUrl == "" {
-		return nil, fmt.Errorf("Supabase Api Key & Api Url Cannot Be Empty")
+	if cfg.ApiSecret == "" || cfg.ProjectID == "" {
+		return nil, fmt.Errorf("Supabase Api Key & Project ID Cannot Be Empty")
 	}
 
-	client, err := supabase.NewClient(cfg.ApiUrl, cfg.ApiSecret, &supabase.ClientOptions{})
+	client, err := supabase.NewClient(fmt.Sprintf("https://%s.supabase.co", cfg.ProjectID), cfg.ApiSecret, &supabase.ClientOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("Failed To Initialize Supabase Client: %v", err)
 	}

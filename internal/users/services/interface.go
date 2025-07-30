@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"mime/multipart"
 
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/pkg/repository"
@@ -33,7 +34,9 @@ type UserProfileService interface {
 	CreateProfile(ctx context.Context, userProfile *models.UserProfile) error
 	GetProfileByID(ctx context.Context, id string) (*models.UserProfile, error)
 	ListProfiles(ctx context.Context, opts repository.ListOptions) ([]models.UserProfile, error)
-	UpdateProfile(ctx context.Context, userProfile *models.UserProfile) error
+	UpdateProfile(ctx context.Context, userProfile *models.UserProfile, avatar *multipart.FileHeader, identity *multipart.FileHeader) error
+	UpdateAvatar(ctx context.Context, userID string, file *multipart.FileHeader) (string, error)
+	UpdateIdentity(ctx context.Context, userID string, file *multipart.FileHeader) (string, error)
 	DeleteProfile(ctx context.Context, id string) error
 	CountProfiles(ctx context.Context, filters []repository.FilterOption) (int, error)
 	GetProfileByUserID(ctx context.Context, userID string) (*models.UserProfile, error)

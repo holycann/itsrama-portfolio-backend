@@ -46,12 +46,12 @@ func RegisterUserProfileRoutes(
 	r *gin.Engine,
 	supabaseClient *supabase.SupabaseClient,
 	supabaseAuth *supabase.SupabaseAuth,
-	table string,
+	supabaseStorage *supabase.SupabaseStorage,
 	routerMiddleware *middleware.Middleware,
 ) {
 	userRepository := repositories.NewUserRepository(supabaseAuth.GetClient())
 	userProfileRepository := repositories.NewUserProfileRepository(supabaseClient.GetClient())
-	userProfileService := services.NewUserProfileService(userProfileRepository, userRepository)
+	userProfileService := services.NewUserProfileService(userProfileRepository, userRepository, supabaseStorage)
 	userProfileHandler := handlers.NewUserProfileHandler(userProfileService)
 
 	profile := r.Group("/profile")
@@ -65,9 +65,12 @@ func RegisterUserProfileRoutes(
 		profile.GET("/search",
 			routerMiddleware.VerifyJWT(),
 			userProfileHandler.SearchUserProfile)
+		profile.GET("/me",
+			routerMiddleware.VerifyJWT(),
+			userProfileHandler.GetAuthenticatedUserProfile)
 		profile.GET("/:id",
 			routerMiddleware.VerifyJWT(),
-			userProfileHandler.ListUsersProfile) // Use ListUsersProfile with ID filter
+			userProfileHandler.GetUserProfileById)
 		profile.PUT("/:id",
 			routerMiddleware.VerifyJWT(),
 			userProfileHandler.UpdateUserProfile)

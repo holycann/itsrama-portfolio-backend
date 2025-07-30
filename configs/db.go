@@ -15,6 +15,7 @@ type SupabaseConfig struct {
 	JwtApiKeySecret string
 	ProjectID       string
 	StorageBucketID string
+	DefaultFolder   string
 }
 
 func loadSupabaseConfig() SupabaseConfig {
@@ -24,6 +25,7 @@ func loadSupabaseConfig() SupabaseConfig {
 		JwtApiKeySecret: getEnv("SUPABASE_JWT_API_SECRET_KEY", ""),
 		ProjectID:       getEnv("SUPABASE_PROJECT_ID", ""),
 		StorageBucketID: getEnv("SUPABASE_STORAGE_BUCKET_ID", ""),
+		DefaultFolder:   getEnv("SUPABASE_DEFAULT_FOLDER", "cultour"),
 	}
 }
 
