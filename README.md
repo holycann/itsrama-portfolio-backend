@@ -1,153 +1,110 @@
-# CulTour Backend
+# 🏛️ Cultour: Cultural Exploration Mobile App
 
-## Project Overview
+## 🌟 Project Overview
 
-CulTour is a robust backend application designed to provide comprehensive cultural and tourism services. It offers APIs for managing events, local stories, discussions, and user interactions, primarily focusing on preserving and promoting Indonesian cultural heritage.
+Cultour is an innovative mobile and web application designed to help users explore, engage, and connect with local cultural experiences across Indonesia. Built with a modern, scalable architecture, Cultour bridges cultural heritage, community interaction, and technological innovation.
 
-## Technology Stack
+---
 
--   **Language**: Go (Golang) 1.20+
--   **Web Framework**: Gin
--   **Database**: PostgreSQL
--   **Authentication**: Supabase
--   **AI Integration**: Google Generative AI
--   **API Documentation**: Swagger
+## 🚀 Key Features
 
-## Prerequisites
+### 🗺️ Cultural Discovery
+- Interactive map of cultural events and locations
+- Detailed event and location information
+- AI-powered cultural insights and recommendations
 
-Ensure the following are installed on your system:
+### 💬 Community Engagement
+- Event discussions
+- AI-assisted chat for cultural queries
+- User-generated content and stories
 
--   [Go (Golang)](https://go.dev/doc/install) version 1.20+.
--   [PostgreSQL](https://www.postgresql.org/download/) database system.
--   [Git](https://git-scm.com/downloads) for repository cloning.
+### 🏆 Gamification
+- Cultural exploration badges
+- User achievement tracking
+- Interactive learning experiences
 
-## Installation and Local Setup
+---
 
-Follow these steps to set up and run the CulTour Backend locally.
+## 🔧 Technology Stack
 
-### 1. Clone the Repository
+### Frontend
+- **Framework**: React Native (Expo)
+- **Language**: TypeScript
+- **State Management**: Context API
+- **Styling**: NativeWind (Tailwind CSS)
 
-Open your terminal or command prompt and execute:
+### Backend
+- **Language**: Go (Golang) 1.20+
+- **Web Framework**: Gin
+- **Database**: PostgreSQL
+- **Authentication**: Supabase
+- **AI Integration**: Google Generative AI
 
-```bash
-git clone https://github.com/holycann/cultour-backend.git
-cd cultour-backend
-```
+### Infrastructure
+- **Authentication**: Supabase Auth
+- **Storage**: Supabase Storage
+- **Deployment**: AWS EC2
 
-### 2. Configure Environment Variables
+---
 
-Create a `.env` file in the project root and populate it with the following. These variables are crucial for database, Supabase, and AI service connections.
+## 🌈 Unique Selling Points
 
-```env
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=your_database_user
-DB_PASSWORD=your_database_password
-DB_NAME=cultour_database
+- 🤖 AI-Powered Cultural Insights
+- 🌍 Hyperlocal Cultural Content
+- 🤝 Community-Driven Platform
+- 📱 Cross-Platform Accessibility
+- 🏛️ Preservation of Cultural Heritage
 
-# Supabase Configuration
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_KEY=your_supabase_project_key
-SUPABASE_PROJECT_ID=your_supabase_project_id
+---
 
-# Gemini AI Configuration
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_AI_MODEL=gemini-pro
-GEMINI_TEMPERATURE=0.7
-GEMINI_TOP_K=40
-GEMINI_TOP_P=0.95
+## 🚧 Upcoming Features
 
-# Application Settings
-APP_ENV=development # Options: 'development', 'production'
-APP_PORT=8181       # Port for the application
-SERVER_HOST=0.0.0.0 # Host address (0.0.0.0 for all interfaces)
-PRODUCTION_DOMAIN=your.production.domain # Domain for Swagger in production
-LOG_LEVEL=info      # Logging level
-LOG_FILE_PATH=logs/app.log # Path for logs
-```
+### Cultural Expansion
+- Multi-language support
+- Expanded cultural region coverage
+- Enhanced local story collection
 
-### 3. Install Dependencies
+### Technical Improvements
+- Comprehensive offline mode
+- Advanced recommendation algorithms
+- Performance optimizations
 
-Navigate to the project root and install Go modules:
+### Community Features
+- Social sharing capabilities
+- Enhanced user-generated content
+- Collaborative cultural mapping
 
-```bash
-go mod tidy
-```
+---
 
-### 4. Database Preparation
-
-Ensure your Supabase database is configured. The database will be automatically set up through Supabase configuration:
-
-1. Verify your Supabase project is initialized
-2. Ensure the connection details in the `.env` file are correct
-3. Supabase will handle database schema and migrations
-
-### 5. Run the Application
-
-#### Development Mode
-
-```bash
-go run cmd/main.go
-```
-
-The server will be accessible at `http://localhost:8181`.
-
-#### Production Build
-
-```bash
-# Build the executable
-go build -o cultour-backend ./cmd
-
-# Run the compiled application
-./cultour-backend
-```
-
-## Deployment Guide
-
-This guide covers deploying the CulTour Backend to a production environment, specifically on AWS EC2.
-
-### AWS EC2 Deployment
-
-When deploying to an AWS EC2 instance, consider these best practices:
-
-1.  **Environment Variables**: Securely configure all `.env` variables on your EC2 instance. Set `APP_ENV=production` and `PRODUCTION_DOMAIN` to your live domain.
-2.  **Security Groups**: Allow inbound traffic on `APP_PORT` (default 8181).
-3.  **Process Management**: Use `systemd` or `Supervisor` for continuous background operation and automatic restarts.
-4.  **Reverse Proxy**: Implement Nginx or Apache for SSL/TLS termination, request forwarding, and load balancing.
-
-### Test Deployment Link (AWS EC2 Example)
-
-Access the deployed application (replace with your actual EC2 public IP or domain name):
-
-[http://cultour.holyycan.com/docs/index.html](http://cultour.holyycan.com/docs/index.html)
-
-## Project Structure
+## 🔍 Project Structure
 
 ```
-cultour-backend/
-├── cmd/            # Application entry points
-├── configs/        # Configuration files
-├── internal/       # Core application logic (e.g., cultural, discussion, place, users modules)
-├── pkg/            # Shared utilities
-└── docs/           # API documentation
+Cultour/
+├── mobile/     # React Native Frontend
+├── backend/    # Go Backend Services
+│   ├── cmd/    # Application entry points
+│   ├── configs/# Configuration management
+│   ├── internal/# Core application logic
+│   └── pkg/    # Shared utilities
+└── docs/      # Project documentation
 ```
 
-## API Documentation
+---
 
-Swagger documentation is available at:
+## 🤝 Contributing
 
--   **Local Development**: `http://localhost:8181/swagger/index.html`
--   **Production**: `http://cultour.holyycan.com/docs/index.html`
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## Security Features
+---
 
--   Supabase authentication
--   JWT based authorization
--   Environment based configuration for sensitive data
+## 📄 License
 
-## Acknowledgments
+Distributed under the MIT License. See `LICENSE` for more information.
 
--   Developed for **Garuda Hack 6.0**
+---
 
-**CulTour: Bridging Culture, Inspiring Exploration**
+**🌍 Bridging Cultures, Inspiring Exploration**
