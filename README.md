@@ -4,8 +4,6 @@
 
 Cultour is a robust backend-powered application designed to revolutionize cultural exploration through sophisticated server-side technologies. Originally conceptualized during Garuda Hack 6.0, the project has evolved into a comprehensive platform focusing on delivering rich, intelligent cultural experiences through powerful backend services.
 
-Built with a scalable and performant architecture, Cultour leverages advanced backend technologies to bridge cultural heritage, intelligent data processing, and technological innovation.
-
 ---
 
 ## 🚀 Key Backend Features
@@ -30,7 +28,7 @@ Built with a scalable and performant architecture, Cultour leverages advanced ba
 ## 🔧 Backend Technology Stack
 
 ### Backend Core
-- **Language**: Go (Golang) 1.20+
+- **Language**: Go (Golang) 1.21+
 - **Web Framework**: Gin
 
 ### Database & Storage
