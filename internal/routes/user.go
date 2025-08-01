@@ -2,6 +2,8 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	achievementRepo "github.com/holycann/cultour-backend/internal/achievement/repositories"
+	achievementSvc "github.com/holycann/cultour-backend/internal/achievement/services"
 	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/middleware"
 	"github.com/holycann/cultour-backend/internal/supabase"
@@ -51,7 +53,14 @@ func RegisterUserProfileRoutes(
 ) {
 	userRepository := repositories.NewUserRepository(supabaseAuth.GetClient())
 	userProfileRepository := repositories.NewUserProfileRepository(supabaseClient.GetClient())
-	userProfileService := services.NewUserProfileService(userProfileRepository, userRepository, supabaseStorage)
+
+	userBadgeRepository := repositories.NewUserBadgeRepository(supabaseClient.GetClient())
+	userProfileBadgeRepository := services.NewUserBadgeService(userBadgeRepository)
+
+	badgeRepository := achievementRepo.NewBadgeRepository(supabaseClient.GetClient())
+	badgeService := achievementSvc.NewBadgeService(badgeRepository)
+
+	userProfileService := services.NewUserProfileService(userProfileRepository, userRepository, userProfileBadgeRepository, badgeService, supabaseStorage)
 	userProfileHandler := handlers.NewUserProfileHandler(userProfileService)
 
 	profile := r.Group("/profile")

@@ -23,10 +23,10 @@ func NewUserBadgeRepository(client *supabase.Client) UserBadgeRepository {
 }
 
 func (r *userBadgeRepository) Create(ctx context.Context, badge *models.UserBadge) error {
-	_, err := r.client.
+	_, _, err := r.client.
 		From(r.table).
 		Insert(badge, false, "", "minimal", "").
-		ExecuteTo(&badge)
+		Execute()
 	return err
 }
 

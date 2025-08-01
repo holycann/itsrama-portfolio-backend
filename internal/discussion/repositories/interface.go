@@ -8,10 +8,10 @@ import (
 )
 
 type ThreadRepository interface {
-	repository.BaseRepository[models.Thread, models.Thread]
-	FindByTitle(ctx context.Context, title string) (*models.Thread, error)
-	FindThreadsByEvent(ctx context.Context, eventID string) ([]models.Thread, error)
-	FindActiveThreads(ctx context.Context, limit int) ([]models.Thread, error)
+	repository.BaseRepository[models.Thread, models.ResponseThread]
+	FindThreadByEvent(ctx context.Context, eventID string) (*models.ResponseThread, error)
+	FindActiveThreads(ctx context.Context, limit int) ([]models.ResponseThread, error)
+	JoinThread(ctx context.Context, threadID, userID string) error
 }
 
 type MessageRepository interface {
@@ -19,4 +19,10 @@ type MessageRepository interface {
 	FindMessagesByThread(ctx context.Context, threadID string) ([]models.ResponseMessage, error)
 	FindMessagesByUser(ctx context.Context, userID string) ([]models.ResponseMessage, error)
 	FindRecentMessages(ctx context.Context, limit int) ([]models.ResponseMessage, error)
+}
+type ParticipantRepository interface {
+	repository.BaseRepository[models.Participant, models.ResponseParticipant]
+	FindParticipantsByThread(ctx context.Context, threadID string) ([]models.ResponseParticipant, error)
+	FindThreadParticipants(ctx context.Context, threadID string) ([]models.ResponseParticipant, error)
+	RemoveParticipant(ctx context.Context, threadID, userID string) error
 }

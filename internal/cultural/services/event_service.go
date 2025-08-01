@@ -217,11 +217,11 @@ func (s *eventService) CountEvents(ctx context.Context, filters []repository.Fil
 	return s.eventRepo.Count(ctx, filters)
 }
 
-func (s *eventService) UpdateEventViews(ctx context.Context, id string) string {
-	if id == "" {
-		return "event ID cannot be empty"
+func (s *eventService) UpdateEventViews(ctx context.Context, userID, eventID string) string {
+	if userID == "" || eventID == "" {
+		return "user ID and event ID cannot be empty"
 	}
-	return s.eventRepo.UpdateViews(ctx, id)
+	return s.eventRepo.UpdateViews(ctx, userID, eventID)
 }
 
 func (s *eventService) GetTrendingEvents(ctx context.Context, limit int) ([]models.ResponseEvent, error) {

@@ -4,7 +4,10 @@ CREATE TABLE public.users_badge (
     badge_id uuid NOT NULL,
     created_at timestamp
     with
-        time zone NOT NULL DEFAULT now(),
+        time zone DEFAULT now(),
+        updated_at timestamp
+    with
+        time zone NULL,
         CONSTRAINT users_badge_pkey PRIMARY KEY (id),
         CONSTRAINT users_badge_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users (id),
         CONSTRAINT users_badge_badge_id_fkey FOREIGN KEY (badge_id) REFERENCES public.badges (id),
@@ -26,7 +29,7 @@ VALUES (
             SELECT id
             FROM badges
             WHERE
-                name = 'Cultural Explorer'
+                name = 'Penjelajah'
         )
     ),
     (
@@ -36,7 +39,7 @@ VALUES (
             SELECT id
             FROM badges
             WHERE
-                name = 'Local Story Master'
+                name = 'Penjelajah'
         )
     ),
     (
@@ -46,7 +49,7 @@ VALUES (
             SELECT id
             FROM badges
             WHERE
-                name = 'Event Enthusiast'
+                name = 'Penjelajah'
         )
     ),
     (
@@ -56,7 +59,7 @@ VALUES (
             SELECT id
             FROM badges
             WHERE
-                name = 'Province Traveler'
+                name = 'Penjelajah'
         )
     ),
     (
@@ -66,6 +69,6 @@ VALUES (
             SELECT id
             FROM badges
             WHERE
-                name = 'Community Contributor'
+                name = 'Penjelajah'
         )
     );

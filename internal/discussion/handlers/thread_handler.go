@@ -50,11 +50,11 @@ func (h *ThreadHandler) CreateThread(c *gin.Context) {
 	}
 
 	// Validate required fields
-	if thread.Title == "" || thread.EventID == uuid.Nil {
+	if thread.EventID == uuid.Nil || thread.CreatorID == uuid.Nil {
 		// Convert map to JSON string for error details
 		details, _ := json.Marshal(map[string]interface{}{
-			"title":    thread.Title == "",
-			"event_id": thread.EventID == uuid.Nil,
+			"event_id":   thread.EventID == uuid.Nil,
+			"creator_id": thread.CreatorID == uuid.Nil,
 		})
 		response.BadRequest(c, "Missing required fields", string(details), "")
 		return
@@ -346,4 +346,80 @@ func (h *ThreadHandler) GetThreadByID(c *gin.Context) {
 	}
 
 	response.SuccessOK(c, thread, "Thread detail retrieved successfully")
+}
+
+// JoinThread godoc
+// @Summary Join a thread
+// @Description Allow a user to join an existing thread
+// @Tags Threads
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param threadID path string true "Thread ID"
+// @Param userID query string true "User ID"
+// @Success 200 {object} response.APIResponse "Successfully joined thread"
+// @Failure 400 {object} response.APIResponse "Invalid input parameters"
+// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Router /threads/{threadID}/join [post]
+func (h *ThreadHandler) JoinThread(c *gin.Context) {
+	// Get thread ID from path parameter
+	threadID := c.Param("id")
+	if threadID == "" {
+		response.BadRequest(c, "Thread ID is required", "Missing thread ID", "")
+		return
+	}
+
+	userID := c.GetString("user_id")
+
+	if userID == "" {
+		response.Unauthorized(c, "User authentication required", "Missing or invalid user ID", "")
+		return
+	}
+
+	// Call service to join thread
+	if err := h.threadService.JoinThread(c.Request.Context(), threadID, userID); err != nil {
+		h.logger.Error("Error joining thread: %v", err)
+		response.InternalServerError(c, "Failed to join thread", err.Error(), "")
+		return
+	}
+
+	response.SuccessOK(c, nil, "Successfully joined thread")
+}
+
+// GetThreadByEventID godoc
+// @Summary Get thread by event ID
+// @Description Retrieve a thread associated with a specific event
+// @Tags Threads
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param event_id path string true "Event ID"
+// @Success 200 {object} response.APIResponse "Thread retrieved successfully"
+// @Failure 400 {object} response.APIResponse "Invalid event ID"
+// @Failure 404 {object} response.APIResponse "Thread not found"
+// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Router /threads/event/{event_id} [get]
+func (h *ThreadHandler) GetThreadByEvent(c *gin.Context) {
+	// Get event ID from path parameter
+	eventID := c.Param("event_id")
+	if eventID == "" {
+		response.BadRequest(c, "Event ID is required", "Missing event ID", "")
+		return
+	}
+
+	// Call service to get thread by event ID
+	thread, err := h.threadService.GetThreadByEvent(c.Request.Context(), eventID)
+	if err != nil {
+		h.logger.Error("Error retrieving thread by event ID: %v", err)
+		response.InternalServerError(c, "Failed to retrieve thread", err.Error(), "")
+		return
+	}
+
+	// If no thread found, return 404
+	if thread == nil {
+		response.NotFound(c, "Thread not found", "No thread exists for the given event", "")
+		return
+	}
+
+	response.SuccessOK(c, thread, "Thread retrieved successfully")
 }

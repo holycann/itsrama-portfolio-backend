@@ -15,7 +15,7 @@ type EventService interface {
 	UpdateEvent(ctx context.Context, event *models.RequestEvent) error
 	DeleteEvent(ctx context.Context, id string) error
 	CountEvents(ctx context.Context, filters []repository.FilterOption) (int, error)
-	UpdateEventViews(ctx context.Context, id string) string
+	UpdateEventViews(ctx context.Context, userID, eventID string) string
 	GetTrendingEvents(ctx context.Context, limit int) ([]models.ResponseEvent, error)
 	GetRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.ResponseEvent, error)
 	SearchEvents(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseEvent, error)

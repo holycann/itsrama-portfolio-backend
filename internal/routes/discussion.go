@@ -22,12 +22,37 @@ func RegisterThreadRoutes(
 
 	thread := r.Group("/threads")
 	{
-		thread.POST("", routeMiddleware.VerifyJWT(), threadHandler.CreateThread)
-		thread.GET("", threadHandler.ListThreads)
-		thread.GET("/search", routeMiddleware.VerifyJWT(), threadHandler.SearchThreads)
-		thread.GET("/:id", routeMiddleware.VerifyJWT(), threadHandler.GetThreadByID)
-		thread.PUT("/:id", routeMiddleware.VerifyJWT(), threadHandler.UpdateThread)
-		thread.DELETE("/:id", routeMiddleware.VerifyJWT(), threadHandler.DeleteThread)
+		thread.POST("",
+			routeMiddleware.VerifyJWT(),
+			threadHandler.CreateThread,
+		)
+		thread.GET("",
+			threadHandler.ListThreads,
+		)
+		thread.GET("/search",
+			routeMiddleware.VerifyJWT(),
+			threadHandler.SearchThreads,
+		)
+		thread.GET("/:id",
+			routeMiddleware.VerifyJWT(),
+			threadHandler.GetThreadByID,
+		)
+		thread.PUT("/:id",
+			routeMiddleware.VerifyJWT(),
+			threadHandler.UpdateThread,
+		)
+		thread.DELETE("/:id",
+			routeMiddleware.VerifyJWT(),
+			threadHandler.DeleteThread,
+		)
+		thread.POST("/:id/join",
+			routeMiddleware.VerifyJWT(),
+			threadHandler.JoinThread,
+		)
+		thread.GET("/event/:event_id",
+			routeMiddleware.VerifyJWT(),
+			threadHandler.GetThreadByEvent,
+		)
 	}
 }
 
@@ -43,11 +68,29 @@ func RegisterMessageRoutes(
 
 	message := r.Group("/messages")
 	{
-		message.POST("", routeMiddleware.VerifyJWT(), messageHandler.CreateMessage)
-		message.GET("", messageHandler.ListMessages)
-		message.GET("/search", messageHandler.SearchMessages)
-		message.GET("/:id", routeMiddleware.VerifyJWT(), messageHandler.ListMessages) // Use ListMessages with ID filter
-		message.PUT("/:id", routeMiddleware.VerifyJWT(), messageHandler.UpdateMessage)
-		message.DELETE("/:id", routeMiddleware.VerifyJWT(), messageHandler.DeleteMessage)
+		message.POST("",
+			routeMiddleware.VerifyJWT(),
+			messageHandler.CreateMessage,
+		)
+		message.GET("",
+			routeMiddleware.VerifyJWT(),
+			messageHandler.ListMessages,
+		)
+		message.GET("/search",
+			routeMiddleware.VerifyJWT(),
+			messageHandler.SearchMessages,
+		)
+		message.PUT("/:id",
+			routeMiddleware.VerifyJWT(),
+			messageHandler.UpdateMessage,
+		)
+		message.DELETE("/:id",
+			routeMiddleware.VerifyJWT(),
+			messageHandler.DeleteMessage,
+		)
+		message.GET("/thread/:thread_id",
+			routeMiddleware.VerifyJWT(),
+			messageHandler.GetMessagesByThread,
+		)
 	}
 }

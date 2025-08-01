@@ -27,11 +27,6 @@ func (s *threadService) CreateThread(ctx context.Context, thread *models.Thread)
 		return fmt.Errorf("thread tidak boleh nil")
 	}
 
-	// Validasi field yang wajib diisi
-	if thread.Title == "" {
-		return fmt.Errorf("judul thread wajib diisi")
-	}
-
 	// Set default values
 	thread.ID = uuid.New()
 	thread.CreatedAt = time.Now()
@@ -45,17 +40,21 @@ func (s *threadService) CreateThread(ctx context.Context, thread *models.Thread)
 	return s.threadRepo.Create(ctx, thread)
 }
 
-func (s *threadService) GetThreadByID(ctx context.Context, id string) (*models.Thread, error) {
+func (s *threadService) GetThreadByID(ctx context.Context, id string) (*models.ResponseThread, error) {
 	// Validasi ID
 	if id == "" {
 		return nil, fmt.Errorf("thread ID tidak boleh kosong")
 	}
 
 	// Ambil thread dari repository
-	return s.threadRepo.FindByID(ctx, id)
+	thread, err := s.threadRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return thread, nil
 }
 
-func (s *threadService) ListThreads(ctx context.Context, opts repository.ListOptions) ([]models.Thread, error) {
+func (s *threadService) ListThreads(ctx context.Context, opts repository.ListOptions) ([]models.ResponseThread, error) {
 	// Set default values if not provided
 	if opts.Limit <= 0 {
 		opts.Limit = 10
@@ -64,7 +63,11 @@ func (s *threadService) ListThreads(ctx context.Context, opts repository.ListOpt
 		opts.Offset = 0
 	}
 
-	return s.threadRepo.List(ctx, opts)
+	threads, err := s.threadRepo.List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return threads, nil
 }
 
 func (s *threadService) UpdateThread(ctx context.Context, thread *models.Thread) error {
@@ -99,28 +102,26 @@ func (s *threadService) CountThreads(ctx context.Context, filters []repository.F
 	return s.threadRepo.Count(ctx, filters)
 }
 
-func (s *threadService) GetThreadByTitle(ctx context.Context, title string) (*models.Thread, error) {
-	// Validasi title
-	if title == "" {
-		return nil, fmt.Errorf("judul thread tidak boleh kosong")
+func (s *threadService) GetThreadByEvent(ctx context.Context, eventID string) (*models.ResponseThread, error) {
+	thread, err := s.threadRepo.FindThreadByEvent(ctx, eventID)
+	if err != nil {
+		return nil, err
 	}
-
-	// Ambil thread dari repository
-	return s.threadRepo.FindByTitle(ctx, title)
+	return thread, nil
 }
 
-func (s *threadService) GetThreadsByEvent(ctx context.Context, eventID string) ([]models.Thread, error) {
-	return s.threadRepo.FindThreadsByEvent(ctx, eventID)
-}
-
-func (s *threadService) GetActiveThreads(ctx context.Context, limit int) ([]models.Thread, error) {
+func (s *threadService) GetActiveThreads(ctx context.Context, limit int) ([]models.ResponseThread, error) {
 	if limit <= 0 {
 		limit = 10
 	}
-	return s.threadRepo.FindActiveThreads(ctx, limit)
+	threads, err := s.threadRepo.FindActiveThreads(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	return threads, nil
 }
 
-func (s *threadService) SearchThreads(ctx context.Context, query string, opts repository.ListOptions) ([]models.Thread, error) {
+func (s *threadService) SearchThreads(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseThread, error) {
 	// Set default values if not provided
 	if opts.Limit <= 0 {
 		opts.Limit = 10
@@ -138,5 +139,22 @@ func (s *threadService) SearchThreads(ctx context.Context, query string, opts re
 		},
 	)
 
-	return s.threadRepo.List(ctx, opts)
+	threads, err := s.threadRepo.List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return threads, nil
+}
+
+func (s *threadService) JoinThread(ctx context.Context, threadID, userID string) error {
+	// Validate input parameters
+	if threadID == "" {
+		return fmt.Errorf("thread ID cannot be empty")
+	}
+	if userID == "" {
+		return fmt.Errorf("user ID cannot be empty")
+	}
+
+	// Call repository to join thread
+	return s.threadRepo.JoinThread(ctx, threadID, userID)
 }

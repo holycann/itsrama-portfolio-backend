@@ -2,10 +2,9 @@ CREATE TABLE public.provinces (
     id uuid NOT NULL DEFAULT gen_random_uuid (),
     name character varying NOT NULL UNIQUE,
     description text,
-    created_at timestamp
-    with
-        time zone NOT NULL DEFAULT now(),
-        CONSTRAINT provinces_pkey PRIMARY KEY (id)
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone NULL,
+    CONSTRAINT provinces_pkey PRIMARY KEY (id)
 );
 
 -- Dummy data for provinces

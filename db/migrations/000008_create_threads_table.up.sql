@@ -2,52 +2,65 @@ CREATE TABLE public.threads (
     id uuid NOT NULL DEFAULT gen_random_uuid (),
     created_at timestamp
     with
-        time zone NOT NULL DEFAULT now(),
-        title character varying NOT NULL,
+        time zone DEFAULT now(),
+        updated_at timestamp
+    with
+        time zone NULL,
         event_id uuid NOT NULL,
+        creator_id uuid NOT NULL,
         status character varying DEFAULT 'active',
         CONSTRAINT threads_pkey PRIMARY KEY (id),
-        CONSTRAINT threads_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events (id)
+        CONSTRAINT threads_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events (id),
+        CONSTRAINT threads_user_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users (id)
 );
 
--- Dummy data for threads
-WITH
-    events AS (
-        SELECT id, name
-        FROM public.events
-    )
 INSERT INTO
-    public.threads (id, title, event_id, status)
+    public.threads (id, event_id, status, creator_id)
 VALUES (
         gen_random_uuid (),
-        'Sharing Experiences at Bali Cultural Festival',
         (
             SELECT id
             FROM events
             WHERE
                 name = 'Bali Cultural Festival'
         ),
-        'active'
+        'active',
+        (
+            SELECT id 
+            FROM auth.users 
+            WHERE email = 'admin@gmail.com' 
+            LIMIT 1
+        )
     ),
     (
         gen_random_uuid (),
-        'Hidden Stories of Jakarta Heritage Walk',
         (
             SELECT id
             FROM events
             WHERE
                 name = 'Jakarta Heritage Walk'
         ),
-        'active'
+        'active',
+        (
+            SELECT id 
+            FROM auth.users 
+            WHERE email = 'admin@gmail.com' 
+            LIMIT 1
+        )
     ),
     (
         gen_random_uuid (),
-        'Exploring Semarang''s Night Secrets',
         (
             SELECT id
             FROM events
             WHERE
                 name = 'Semarang Night Heritage Tour'
         ),
-        'active'
+        'active',
+        (
+            SELECT id 
+            FROM auth.users 
+            WHERE email = 'admin@gmail.com' 
+            LIMIT 1
+        )
     );

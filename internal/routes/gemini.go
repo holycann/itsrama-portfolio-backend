@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/holycann/cultour-backend/configs"
+	achievementRepo "github.com/holycann/cultour-backend/internal/achievement/repositories"
+	achievementSvc "github.com/holycann/cultour-backend/internal/achievement/services"
 	eventRepo "github.com/holycann/cultour-backend/internal/cultural/repositories"
 	eventSvc "github.com/holycann/cultour-backend/internal/cultural/services"
 	"github.com/holycann/cultour-backend/internal/gemini"
@@ -24,14 +26,18 @@ func SetupGeminiRoutes(router *gin.Engine, cfg *configs.Config, supabaseClient *
 	eventRepository := eventRepo.NewEventRepository(supabaseClient)
 	cityRepository := placeRepo.NewCityRepository(supabaseClient)
 	locationRepository := placeRepo.NewLocationRepository(supabaseClient)
-	userProfileRepository := userRepo.NewUserProfileRepository(supabaseClient)
 	userRepository := userRepo.NewUserRepository(supabaseAuth)
+	userProfileRepository := userRepo.NewUserProfileRepository(supabaseClient)
+	userBadgeRepository := userRepo.NewUserBadgeRepository(supabaseClient)
+	badgeRepository := achievementRepo.NewBadgeRepository(supabaseClient)
 
 	// Initialize services
 	cityService := placeSvc.NewCityService(cityRepository)
 	locationService := placeSvc.NewLocationService(locationRepository)
 	eventService := eventSvc.NewEventService(eventRepository, locationService, supabaseStorage)
-	userProfileService := userSvc.NewUserProfileService(userProfileRepository, userRepository, supabaseStorage)
+	badgeService := achievementSvc.NewBadgeService(badgeRepository)
+	userBadgeService := userSvc.NewUserBadgeService(userBadgeRepository)
+	userProfileService := userSvc.NewUserProfileService(userProfileRepository, userRepository, userBadgeService, badgeService, supabaseStorage)
 
 	// Initialize Gemini Handler
 	geminiHandler, err := gemini.NewGeminiHandler(

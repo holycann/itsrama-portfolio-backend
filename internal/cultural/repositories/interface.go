@@ -17,7 +17,7 @@ type EventRepository interface {
 	FindRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.ResponseEvent, error)
 	FindRecentEvents(ctx context.Context, limit int) ([]models.ResponseEvent, error)
 	FindEventsByLocation(ctx context.Context, locationID uuid.UUID) ([]models.ResponseEvent, error)
-	UpdateViews(ctx context.Context, id string) string
+	UpdateViews(ctx context.Context, userID, eventID string) string
 	GetEventViews(ctx context.Context, id string) (int, error)
 }
 

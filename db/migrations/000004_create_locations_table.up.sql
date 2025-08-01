@@ -4,12 +4,10 @@ CREATE TABLE public.locations (
     city_id uuid NOT NULL,
     latitude double precision NOT NULL,
     longitude double precision NOT NULL,
-    created_at timestamp,
-    updated_at timestamp NULL
-    with
-        time zone NOT NULL DEFAULT now(),
-        CONSTRAINT locations_pkey PRIMARY KEY (id),
-        CONSTRAINT locations_city_id_fkey FOREIGN KEY (city_id) REFERENCES public.cities (id)
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone NULL,
+    CONSTRAINT locations_pkey PRIMARY KEY (id),
+    CONSTRAINT locations_city_id_fkey FOREIGN KEY (city_id) REFERENCES public.cities (id)
 );
 
 -- Dummy data for locations

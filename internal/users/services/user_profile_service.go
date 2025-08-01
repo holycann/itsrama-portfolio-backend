@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/holycann/cultour-backend/internal/achievement/services"
 	"github.com/holycann/cultour-backend/internal/supabase"
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/internal/users/repositories"
@@ -17,20 +18,26 @@ import (
 )
 
 type userProfileService struct {
-	repo     repositories.UserProfileRepository
-	userRepo repositories.UserRepository
-	storage  *supabase.SupabaseStorage
+	repo      repositories.UserProfileRepository
+	userRepo  repositories.UserRepository
+	userBadge UserBadgeService
+	badge     services.BadgeService
+	storage   *supabase.SupabaseStorage
 }
 
 func NewUserProfileService(
 	repo repositories.UserProfileRepository,
 	userRepo repositories.UserRepository,
+	userBadge UserBadgeService,
+	badge services.BadgeService,
 	storage *supabase.SupabaseStorage,
 ) UserProfileService {
 	return &userProfileService{
-		repo:     repo,
-		userRepo: userRepo,
-		storage:  storage,
+		repo:      repo,
+		userRepo:  userRepo,
+		userBadge: userBadge,
+		badge:     badge,
+		storage:   storage,
 	}
 }
 
@@ -166,6 +173,21 @@ func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *mod
 			return fmt.Errorf("failed to update identity image")
 		}
 		mergedProfile.IdentityImageUrl = identityUrl
+
+		badge, err := s.badge.GetBadgeByName(ctx, "Warlok")
+		if err != nil {
+			fmt.Printf("Error getting Warlok badge: %v\n", err)
+			return fmt.Errorf("failed to get Warlok badge: %w", err)
+		}
+
+		err = s.userBadge.CreateUserBadge(ctx, &models.UserBadgeCreate{
+			UserID:  mergedProfile.UserID,
+			BadgeID: badge.ID,
+		})
+		if err != nil {
+			fmt.Printf("Error creating user badge: %v\n", err)
+			return fmt.Errorf("failed to create user badge: %w", err)
+		}
 	}
 
 	// Perform update

@@ -1,9 +1,11 @@
 CREATE TABLE public.events (
     id uuid NOT NULL DEFAULT gen_random_uuid (),
-    created_at timestamp,
-    updated_at timestamp
+    created_at timestamp
     with
-        time zone NOT NULL DEFAULT now(),
+        time zone DEFAULT now(),
+        updated_at timestamp
+    with
+        time zone NULL,
         name character varying NOT NULL,
         location_id uuid NOT NULL,
         description text,

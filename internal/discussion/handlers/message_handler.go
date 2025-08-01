@@ -49,6 +49,22 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 		return
 	}
 
+	userID := c.GetString("user_id")
+	if userID == "" {
+		h.logger.Error("Unauthorized: No user ID found")
+		response.Unauthorized(c, "Authentication required", "No user ID found in context", "")
+		return
+	}
+
+	parsedUserID, err := uuid.Parse(userID)
+	if err != nil {
+		h.logger.Error("Invalid user ID format")
+		response.Unauthorized(c, "Authentication required", "Invalid user ID format", "")
+		return
+	}
+
+	message.UserID = parsedUserID
+
 	// Validate required fields
 	if message.ThreadID == uuid.Nil || message.UserID == uuid.Nil || message.Content == "" {
 		// Convert map to JSON string for error details
@@ -317,4 +333,35 @@ func (h *MessageHandler) DeleteMessage(c *gin.Context) {
 	}
 
 	response.SuccessOK(c, nil, "Message deleted successfully")
+}
+
+// GetMessagesByThread godoc
+// @Summary Get messages by thread
+// @Description Retrieve all messages for a specific thread
+// @Tags Messages
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param thread_id path string true "Thread ID"
+// @Success 200 {object} response.APIResponse{data=[]models.ResponseMessage} "Messages retrieved successfully"
+// @Failure 400 {object} response.APIResponse "Invalid thread ID"
+// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Router /messages/thread/{thread_id} [get]
+func (h *MessageHandler) GetMessagesByThread(c *gin.Context) {
+	// Get thread ID from path parameter
+	threadID := c.Param("thread_id")
+	if threadID == "" {
+		response.BadRequest(c, "Thread ID is required", "Missing thread ID", "")
+		return
+	}
+
+	// Retrieve messages for the specified thread
+	messages, err := h.messageService.GetMessagesByThread(c.Request.Context(), threadID)
+	if err != nil {
+		h.logger.Error("Error retrieving messages by thread: %v", err)
+		response.InternalServerError(c, "Failed to retrieve messages", err.Error(), "")
+		return
+	}
+
+	response.SuccessOK(c, messages, "Messages retrieved successfully")
 }

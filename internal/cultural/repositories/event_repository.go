@@ -110,16 +110,18 @@ func (r *eventRepository) GetEventViews(ctx context.Context, eventID string) (in
 	}
 
 	_, err := r.supabaseClient.
-		From("event_views").
+		From("event_with_views").
 		Select("views", "", false).
 		Single().
-		Eq("event_id", eventID).
+		Eq("id", eventID).
 		ExecuteTo(&viewsData)
 
-	views := viewsData.Views
 	if err != nil {
 		return 0, err
 	}
+
+	views := viewsData.Views
+
 	return views, nil
 }
 
@@ -248,10 +250,11 @@ func (r *eventRepository) FindPopularEvents(ctx context.Context, limit int) ([]m
 	return events, err
 }
 
-func (r *eventRepository) UpdateViews(ctx context.Context, id string) string {
+func (r *eventRepository) UpdateViews(ctx context.Context, userID, eventID string) string {
 	return r.supabaseClient.
-		Rpc("increment_or_create_event_views", "", map[string]interface{}{
-			"event_id": id,
+		Rpc("insert_event_view_once", "", map[string]interface{}{
+			"_event_id": eventID,
+			"_user_id":  userID,
 		})
 }
 

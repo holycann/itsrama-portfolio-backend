@@ -37,7 +37,10 @@ func RegisterEventRoutes(
 		event.GET("/search", eventHandler.SearchEvents)
 		event.GET("/trending", eventHandler.TrendingEvents)
 		event.GET("/:id", eventHandler.GetEventByID)
-		event.POST("/:id/views", eventHandler.UpdateEventViews)
+		event.POST("/:id/views",
+			routeMiddleware.VerifyJWT(),
+			eventHandler.UpdateEventViews,
+		)
 		event.PUT("/:id",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),

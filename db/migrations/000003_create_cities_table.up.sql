@@ -3,7 +3,8 @@ CREATE TABLE public.cities (
     name character varying NOT NULL,
     province_id uuid NOT NULL,
     image_url varchar NULL,
-    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone NULL,
     CONSTRAINT cities_pkey PRIMARY KEY (id),
     CONSTRAINT cities_province_id_fkey FOREIGN KEY (province_id) REFERENCES public.provinces (id),
     CONSTRAINT cities_unique_name_in_province UNIQUE (name, province_id)

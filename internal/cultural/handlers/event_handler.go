@@ -515,8 +515,15 @@ func (h *EventHandler) UpdateEventViews(c *gin.Context) {
 		return
 	}
 
+	// Get user ID from context (assuming it's set by middleware)
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.BadRequest(c, "User ID is required", "Missing user ID", "")
+		return
+	}
+
 	// Update event views
-	result := h.eventService.UpdateEventViews(c.Request.Context(), eventID)
+	result := h.eventService.UpdateEventViews(c.Request.Context(), userID.(string), eventID)
 	if result != "" {
 		h.logger.Error("Error updating event views: %s", result)
 		response.BadRequest(c, "Failed to update event views", result, "")

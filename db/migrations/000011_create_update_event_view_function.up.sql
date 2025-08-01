@@ -1,9 +1,8 @@
-create or replace function increment_or_create_event_views(event_id uuid)
-returns void as $$
-begin
-  insert into event_views (event_id, views)
-  values (event_id, 1)
-  on conflict (event_id)
-  do update set views = event_views.views + 1;
-end;
-$$ language plpgsql;
+CREATE OR REPLACE FUNCTION insert_event_view_once(_event_id UUID, _user_id UUID)
+RETURNS VOID AS $$
+BEGIN
+    INSERT INTO event_views (event_id, user_id)
+    VALUES (_event_id, _user_id)
+    ON CONFLICT DO NOTHING;
+END;
+$$ LANGUAGE plpgsql;

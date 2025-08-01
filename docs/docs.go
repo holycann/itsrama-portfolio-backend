@@ -1467,7 +1467,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.Event"
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.RequestEvent"
                         }
                     }
                 ],
@@ -1560,6 +1560,41 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/events/{id}/views": {
+            "post": {
+                "description": "Increment the view count for a specific event",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Update event views",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Event views updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid event ID",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
@@ -2636,6 +2671,73 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid search parameters",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/messages/thread/{thread_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve all messages for a specific thread",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Get messages by thread",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
+                        "name": "thread_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Messages retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_discussion_models.ResponseMessage"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid thread ID",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
@@ -3885,6 +3987,64 @@ const docTemplate = `{
                 }
             }
         },
+        "/threads/event/{event_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a thread associated with a specific event",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Get thread by event ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Event ID",
+                        "name": "event_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Thread retrieved successfully",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid event ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Thread not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/threads/search": {
             "get": {
                 "security": [
@@ -4167,6 +4327,65 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Thread not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/threads/{threadID}/join": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Allow a user to join an existing thread",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threads"
+                ],
+                "summary": "Join a thread",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Thread ID",
+                        "name": "threadID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successfully joined thread",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input parameters",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
                         }
@@ -5079,63 +5298,6 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_holycann_cultour-backend_internal_cultural_models.Event": {
-            "type": "object",
-            "properties": {
-                "city_id": {
-                    "description": "Reference to city ID",
-                    "type": "string"
-                },
-                "created_at": {
-                    "description": "Event creation time",
-                    "type": "string"
-                },
-                "description": {
-                    "description": "Event description",
-                    "type": "string"
-                },
-                "end_date": {
-                    "description": "Event end date",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "Unique identifier for the event",
-                    "type": "string"
-                },
-                "image_url": {
-                    "description": "Event image URL",
-                    "type": "string"
-                },
-                "is_kid_friendly": {
-                    "description": "Whether the event is kid-friendly",
-                    "type": "boolean"
-                },
-                "location_id": {
-                    "description": "Reference to location ID",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Event name",
-                    "type": "string"
-                },
-                "province_id": {
-                    "description": "Reference to province ID",
-                    "type": "string"
-                },
-                "start_date": {
-                    "description": "Event start date",
-                    "type": "string"
-                },
-                "updated_at": {
-                    "description": "Event last update time",
-                    "type": "string"
-                },
-                "user_id": {
-                    "description": "ID of the user who created the event",
-                    "type": "string"
-                }
-            }
-        },
         "github_com_holycann_cultour-backend_internal_cultural_models.LocalStory": {
             "type": "object",
             "properties": {
@@ -5187,6 +5349,66 @@ const docTemplate = `{
                     "example": "Legend of Sangkuriang"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_holycann_cultour-backend_internal_cultural_models.RequestEvent": {
+            "type": "object",
+            "properties": {
+                "city_id": {
+                    "description": "Reference to city ID",
+                    "type": "string"
+                },
+                "created_at": {
+                    "description": "Event creation time",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Event description",
+                    "type": "string"
+                },
+                "end_date": {
+                    "description": "Event end date",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Unique identifier for the event",
+                    "type": "string"
+                },
+                "image_url": {
+                    "description": "Event image URL",
+                    "type": "string"
+                },
+                "is_kid_friendly": {
+                    "description": "Whether the event is kid-friendly",
+                    "type": "boolean"
+                },
+                "location": {
+                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location"
+                },
+                "location_id": {
+                    "description": "Reference to location ID",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Event name",
+                    "type": "string"
+                },
+                "province_id": {
+                    "description": "Reference to province ID",
+                    "type": "string"
+                },
+                "start_date": {
+                    "description": "Event start date",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "Event last update time",
+                    "type": "string"
+                },
+                "user_id": {
+                    "description": "ID of the user who created the event",
                     "type": "string"
                 }
             }
@@ -5364,6 +5586,10 @@ const docTemplate = `{
                     "description": "Thread creation time",
                     "type": "string"
                 },
+                "creator_id": {
+                    "description": "Reference to the user who created the thread",
+                    "type": "string"
+                },
                 "event_id": {
                     "description": "Reference to related event",
                     "type": "string"
@@ -5376,10 +5602,6 @@ const docTemplate = `{
                     "description": "Thread status",
                     "type": "string",
                     "example": "active"
-                },
-                "title": {
-                    "description": "Thread title",
-                    "type": "string"
                 },
                 "updated_at": {
                     "description": "Thread last update time",
