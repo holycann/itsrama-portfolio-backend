@@ -25,10 +25,10 @@ func NewUserProfileRepository(client *supabase.Client) UserProfileRepository {
 }
 
 func (r *userProfileRepository) Create(ctx context.Context, value *models.UserProfile) error {
-	_, err := r.supabaseClient.
+	_, _, err := r.supabaseClient.
 		From(r.table).
 		Insert(value, false, "", "minimal", "").
-		ExecuteTo(&value)
+		Execute()
 
 	return err
 }

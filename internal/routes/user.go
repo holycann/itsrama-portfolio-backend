@@ -66,7 +66,6 @@ func RegisterUserProfileRoutes(
 	profile := r.Group("/profile")
 	{
 		profile.POST("",
-			routerMiddleware.VerifyJWT(),
 			userProfileHandler.CreateUserProfile)
 		profile.GET("",
 			routerMiddleware.VerifyJWT(),
@@ -103,7 +102,7 @@ func RegisterUserBadgeRoutes(
 	{
 		badges.POST("",
 			routerMiddleware.VerifyJWT(),
-			routerMiddleware.RequireRoleOrBadge("admin", "warlok"),
+			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			userBadgeHandler.AssignBadge,
 		)
 		badges.GET("",
@@ -116,12 +115,16 @@ func RegisterUserBadgeRoutes(
 		)
 		badges.DELETE("",
 			routerMiddleware.VerifyJWT(),
-			routerMiddleware.RequireRoleOrBadge("admin", "warlok"),
+			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			userBadgeHandler.RemoveBadge,
 		)
 		badges.GET("/count",
 			routerMiddleware.VerifyJWT(),
 			userBadgeHandler.CountUserBadges,
+		)
+		badges.GET("/:user_id",
+			routerMiddleware.VerifyJWT(),
+			userBadgeHandler.GetUserBadgesByUser,
 		)
 	}
 }

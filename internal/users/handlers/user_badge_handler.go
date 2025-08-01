@@ -267,3 +267,33 @@ func (h *UserBadgeHandler) CountUserBadges(c *gin.Context) {
 
 	response.SuccessOK(c, count, "User badges counted successfully")
 }
+
+// GetUserBadgesByUser godoc
+// @Summary Get badges for a specific user
+// @Description Retrieve all badges associated with a given user ID
+// @Tags User Badges
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param user_id path string true "User ID"
+// @Success 200 {object} response.APIResponse{data=[]models.UserBadge} "User badges retrieved successfully"
+// @Failure 400 {object} response.APIResponse "Invalid user ID"
+// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Router /users/badges/{user_id} [get]
+func (h *UserBadgeHandler) GetUserBadgesByUser(c *gin.Context) {
+	// Verify the authenticated user's permission to access the badges
+	userID := c.GetString("user_id")
+	if userID == "" {
+		response.Unauthorized(c, "Authentication failed", "User not authenticated", "")
+		return
+	}
+
+	userBadges, err := h.service.GetUserBadgesByUser(c.Request.Context(), userID)
+	if err != nil {
+		h.logger.Error("Failed to retrieve user badges", err)
+		response.InternalServerError(c, "Failed to retrieve user badges", err.Error(), "")
+		return
+	}
+
+	response.SuccessOK(c, userBadges, "User badges retrieved successfully")
+}

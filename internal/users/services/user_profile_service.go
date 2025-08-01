@@ -77,7 +77,28 @@ func (s *userProfileService) CreateProfile(ctx context.Context, userProfile *mod
 	userProfile.UpdatedAt = now
 
 	// Create profile
-	return s.repo.Create(ctx, userProfile)
+	err = s.repo.Create(ctx, userProfile)
+	if err != nil {
+		return err
+	}
+
+	// Automatically assign Penjelajah badge
+	penjelajahBadge, err := s.badge.GetBadgeByName(ctx, "Penjelajah")
+	if err != nil {
+		return fmt.Errorf("error retrieving penjelajah badge: %w", err)
+	}
+
+	userBadgeCreate := &models.UserBadgeCreate{
+		UserID:  userProfile.UserID,
+		BadgeID: penjelajahBadge.ID,
+	}
+
+	err = s.userBadge.CreateUserBadge(ctx, userBadgeCreate)
+	if err != nil {
+		return fmt.Errorf("error assigning penjelajah badge: %w", err)
+	}
+
+	return nil
 }
 
 func (s *userProfileService) GetProfileByID(ctx context.Context, id string) (*models.UserProfile, error) {
