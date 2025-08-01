@@ -3,12 +3,13 @@ package gemini
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/configs"
-	"github.com/holycann/cultour-backend/internal/cultural/models"
 	culturalModels "github.com/holycann/cultour-backend/internal/cultural/models"
 	culturalServices "github.com/holycann/cultour-backend/internal/cultural/services"
 	placeServices "github.com/holycann/cultour-backend/internal/place/services"
@@ -280,15 +281,6 @@ func (h *GeminiHandler) SendMessage(c *gin.Context) {
 }
 
 // GenerateEventDescription creates an AI-generated event description
-// @Summary Generate an AI event description
-// @Description Generates a comprehensive AI-powered description for a specific event
-// @Tags AI
-// @Param eventID path string true "Event ID"
-// @Success 200 {object} EventDescriptionResponse "Successfully generated event description"
-// @Failure 403 {object} ErrorResponse "Feature not supported"
-// @Failure 404 {object} ErrorResponse "Event not found"
-// @Failure 500 {object} ErrorResponse "Error generating description"
-// @Router /ai/event/{eventID}/description [get]
 func (h *GeminiHandler) GenerateEventDescription(c *gin.Context) {
 	// Validate feature scope
 	if err := h.validateFeatureScope("event_exploration"); err != nil {
@@ -303,13 +295,40 @@ func (h *GeminiHandler) GenerateEventDescription(c *gin.Context) {
 	ctx := context.Background()
 	eventID := c.Param("eventID")
 
-	// Fetch event details
+	// Fetch event details with more robust error handling
 	event, err := h.eventService.GetEventByID(ctx, eventID)
 	if err != nil {
+		// Log the full error for debugging
+		log.Printf("Event retrieval error: %v", err)
+
+		// Check for specific Supabase/PostgreSQL row retrieval errors
+		errorMessage := err.Error()
+		switch {
+		case strings.Contains(errorMessage, "PGRST116") ||
+			strings.Contains(errorMessage, "multiple (or no) rows returned") ||
+			strings.Contains(errorMessage, "no rows in result set"):
+			c.JSON(http.StatusNotFound, ErrorResponse{
+				Code:    "EVENT_NOT_FOUND",
+				Message: "Event tidak ditemukan atau memiliki data ganda. Silakan periksa kembali ID event.",
+				Details: fmt.Sprintf("Row retrieval error: %v", errorMessage),
+			})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, ErrorResponse{
+				Code:    "EVENT_RETRIEVAL_ERROR",
+				Message: "Terjadi kesalahan saat mengambil detail event.",
+				Details: fmt.Sprintf("Unexpected error: %v", err),
+			})
+			return
+		}
+	}
+
+	// Additional null checks
+	if event == nil || event.Event.ID == uuid.Nil {
 		c.JSON(http.StatusNotFound, ErrorResponse{
 			Code:    "EVENT_NOT_FOUND",
 			Message: "Event tidak ditemukan. Silakan periksa kembali ID event.",
-			Details: fmt.Sprintf("Event retrieval error: %v", err),
+			Details: "Nil or invalid event returned from service",
 		})
 		return
 	}
@@ -331,7 +350,7 @@ func (h *GeminiHandler) GenerateEventDescription(c *gin.Context) {
 }
 
 // generateAIEventDescription creates an AI-powered event description
-func (h *GeminiHandler) generateAIEventDescription(event *models.Event) (string, error) {
+func (h *GeminiHandler) generateAIEventDescription(event *culturalModels.Event) (string, error) {
 	// Prepare context-aware prompt using system policies
 	prompt := h.buildEventDescriptionPrompt(event)
 
@@ -367,7 +386,7 @@ func (h *GeminiHandler) generateAIEventDescription(event *models.Event) (string,
 }
 
 // buildEventDescriptionPrompt creates a comprehensive prompt for event description
-func (h *GeminiHandler) buildEventDescriptionPrompt(event *models.Event) string {
+func (h *GeminiHandler) buildEventDescriptionPrompt(event *culturalModels.Event) string {
 	return fmt.Sprintf(`Generate a compelling and informative description for a cultural event in Indonesia:
 - Event Name: %s
 - Start Date: %s
