@@ -8,9 +8,7 @@ import (
 )
 
 type BadgeRepository interface {
-	repository.BaseRepository[models.Badge]
-
-	// Specialized methods for badges
+	repository.BaseRepository[models.Badge, models.Badge]
 	FindBadgeByName(ctx context.Context, name string) (*models.Badge, error)
 	FindPopularBadges(ctx context.Context, limit int) ([]models.Badge, error)
 }

@@ -1099,7 +1099,7 @@ const docTemplate = `{
                 ],
                 "description": "Add a new cultural event to the system",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -1116,13 +1116,65 @@ const docTemplate = `{
                         "in": "header"
                     },
                     {
-                        "description": "Event Information",
-                        "name": "event",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.Event"
-                        }
+                        "type": "string",
+                        "description": "Event Name",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Event Description",
+                        "name": "description",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "City ID",
+                        "name": "city_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Province ID",
+                        "name": "province_id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Location object as JSON (name, latitude, longitude)",
+                        "name": "location",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start Date (RFC3339 or YYYY-MM-DD)",
+                        "name": "start_date",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "End Date (RFC3339 or YYYY-MM-DD)",
+                        "name": "end_date",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Is Kid Friendly",
+                        "name": "is_kid_friendly",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Event Image",
+                        "name": "image",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -2884,6 +2936,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/profile/me": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve the user profile for the currently authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Profiles"
+                ],
+                "summary": "Get user profile for the authenticated user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User profile retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User profile not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/profile/search": {
             "get": {
                 "security": [
@@ -2966,15 +3081,77 @@ const docTemplate = `{
             }
         },
         "/profile/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve a user profile by its profile ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Profiles"
+                ],
+                "summary": "Get user profile by profile ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "User Profile ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User profile retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "User profile not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    }
+                }
+            },
             "put": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Update an existing user profile's details",
+                "description": "Update an existing user profile's details, including uploading an avatar file or identity image",
                 "consumes": [
-                    "application/json"
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -3005,6 +3182,18 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile"
                         }
+                    },
+                    {
+                        "type": "file",
+                        "description": "Avatar file",
+                        "name": "avatar",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "file",
+                        "description": "Identity image file",
+                        "name": "identity_image",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -4833,6 +5022,9 @@ const docTemplate = `{
                 "apiSecretKey": {
                     "type": "string"
                 },
+                "defaultFolder": {
+                    "type": "string"
+                },
                 "jwtApiKeySecret": {
                     "type": "string"
                 },
@@ -4934,13 +5126,13 @@ const docTemplate = `{
                     "description": "Event start date",
                     "type": "string"
                 },
+                "updated_at": {
+                    "description": "Event last update time",
+                    "type": "string"
+                },
                 "user_id": {
                     "description": "ID of the user who created the event",
                     "type": "string"
-                },
-                "views": {
-                    "description": "Number of views",
-                    "type": "integer"
                 }
             }
         },
@@ -5002,6 +5194,9 @@ const docTemplate = `{
         "github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent": {
             "type": "object",
             "properties": {
+                "city": {
+                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.City"
+                },
                 "city_id": {
                     "description": "Reference to city ID",
                     "type": "string"
@@ -5030,6 +5225,9 @@ const docTemplate = `{
                     "description": "Whether the event is kid-friendly",
                     "type": "boolean"
                 },
+                "location": {
+                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location"
+                },
                 "location_id": {
                     "description": "Reference to location ID",
                     "type": "string"
@@ -5038,12 +5236,19 @@ const docTemplate = `{
                     "description": "Event name",
                     "type": "string"
                 },
+                "province": {
+                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province"
+                },
                 "province_id": {
                     "description": "Reference to province ID",
                     "type": "string"
                 },
                 "start_date": {
                     "description": "Event start date",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "description": "Event last update time",
                     "type": "string"
                 },
                 "user": {
@@ -5054,7 +5259,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "views": {
-                    "description": "Number of views",
                     "type": "integer"
                 }
             }
@@ -5194,6 +5398,10 @@ const docTemplate = `{
                     "description": "Unique ID for the city",
                     "type": "string"
                 },
+                "image_url": {
+                    "description": "URL of the city's image",
+                    "type": "string"
+                },
                 "name": {
                     "description": "City name, example: \"Jakarta\"",
                     "type": "string",
@@ -5301,13 +5509,9 @@ const docTemplate = `{
                     "description": "Unique request identifier for tracing",
                     "type": "string"
                 },
-                "status": {
+                "success": {
                     "description": "Status of the response (success/error)",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.ResponseStatus"
-                        }
-                    ]
+                    "type": "boolean"
                 }
             }
         },
@@ -5343,17 +5547,6 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
-        },
-        "github_com_holycann_cultour-backend_internal_response.ResponseStatus": {
-            "type": "string",
-            "enum": [
-                "success",
-                "error"
-            ],
-            "x-enum-varnames": [
-                "StatusSuccess",
-                "StatusError"
-            ]
         },
         "github_com_holycann_cultour-backend_internal_users_models.User": {
             "description": "User account details with authentication and metadata",

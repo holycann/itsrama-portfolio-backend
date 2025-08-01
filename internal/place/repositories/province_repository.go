@@ -140,3 +140,42 @@ func (r *provinceRepository) FindProvinceByName(ctx context.Context, name string
 	}
 	return &provinces[0], nil
 }
+func (r *provinceRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.Province, int, error) {
+	var provinces []models.Province
+
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply search query if provided
+	if opts.SearchQuery != "" {
+		query = query.Or(
+			fmt.Sprintf("name.ilike.%%%s%%", opts.SearchQuery),
+			fmt.Sprintf("description.ilike.%%%s%%", opts.SearchQuery),
+		)
+	}
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Execute query to get results
+	_, err := query.ExecuteTo(&provinces)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to search provinces: %w", err)
+	}
+
+	// Count total matching records
+	_, count, err := query.Execute()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count provinces: %w", err)
+	}
+
+	return provinces, int(count), nil
+}

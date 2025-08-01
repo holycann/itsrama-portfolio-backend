@@ -194,6 +194,22 @@ func (r *userRepository) FindByField(ctx context.Context, field string, value in
 	return matchedUsers, nil
 }
 
+func (r *userRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.User, int, error) {
+	// Perform list operation first
+	users, err := r.List(ctx, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Count total matching users
+	totalCount, err := r.Count(ctx, opts.Filters)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return users, totalCount, nil
+}
+
 // Helper methods for filtering and sorting
 func (r *userRepository) matchesFilters(user types.User, filters []repository.FilterOption) bool {
 	if len(filters) == 0 {

@@ -8,24 +8,18 @@ import (
 )
 
 type ProvinceRepository interface {
-	repository.BaseRepository[models.Province]
-
-	// Specialized methods for provinces
+	repository.BaseRepository[models.Province, models.Province]
 	FindProvinceByName(ctx context.Context, name string) (*models.Province, error)
 }
 
 type CityRepository interface {
-	repository.BaseRepository[models.City]
-
-	// Specialized methods for cities
+	repository.BaseRepository[models.City, models.City]
 	FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.City, error)
 	FindCityByName(ctx context.Context, name string) (*models.City, error)
 }
 
 type LocationRepository interface {
-	repository.BaseRepository[models.Location]
-
-	// Specialized methods for locations
+	repository.BaseRepository[models.Location, models.Location]
 	FindLocationsByCity(ctx context.Context, cityID string) ([]models.Location, error)
 	FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error)
 }

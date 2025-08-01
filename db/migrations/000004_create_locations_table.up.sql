@@ -4,7 +4,8 @@ CREATE TABLE public.locations (
     city_id uuid NOT NULL,
     latitude double precision NOT NULL,
     longitude double precision NOT NULL,
-    created_at timestamp
+    created_at timestamp,
+    updated_at timestamp NULL
     with
         time zone NOT NULL DEFAULT now(),
         CONSTRAINT locations_pkey PRIMARY KEY (id),

@@ -150,7 +150,7 @@ func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *mod
 
 	// If avatar file is provided, upload and update AvatarUrl
 	if avatar != nil {
-		avatarUrl, err := s.UpdateAvatar(ctx, mergedProfile.UserID.String(), avatar)
+		avatarUrl, err := s.updateAvatar(ctx, mergedProfile.UserID.String(), avatar)
 		if err != nil {
 			fmt.Println("Error:", err.Error())
 			return fmt.Errorf("failed to update avatar")
@@ -160,7 +160,7 @@ func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *mod
 
 	// If identity file is provided, upload and update IdentityImageUrl
 	if identity != nil {
-		identityUrl, err := s.UpdateIdentity(ctx, mergedProfile.UserID.String(), identity)
+		identityUrl, err := s.updateIdentity(ctx, mergedProfile.UserID.String(), identity)
 		if err != nil {
 			fmt.Println("Error:", err.Error())
 			return fmt.Errorf("failed to update identity image")
@@ -173,7 +173,7 @@ func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *mod
 }
 
 // UpdateAvatar uploads the avatar file and returns the public URL
-func (s *userProfileService) UpdateAvatar(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
+func (s *userProfileService) updateAvatar(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
 	// Validate input
 	if userID == "" {
 		return "", fmt.Errorf("user ID is required")
@@ -216,7 +216,7 @@ func (s *userProfileService) UpdateAvatar(ctx context.Context, userID string, fi
 }
 
 // UpdateIdentity uploads the identity image file and returns the public URL
-func (s *userProfileService) UpdateIdentity(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
+func (s *userProfileService) updateIdentity(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
 	// Validate input
 	if userID == "" {
 		return "", fmt.Errorf("user ID is required")

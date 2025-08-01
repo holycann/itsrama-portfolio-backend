@@ -83,6 +83,8 @@ definitions:
         type: string
       apiSecretKey:
         type: string
+      defaultFolder:
+        type: string
       jwtApiKeySecret:
         type: string
       projectID:
@@ -153,12 +155,12 @@ definitions:
       start_date:
         description: Event start date
         type: string
+      updated_at:
+        description: Event last update time
+        type: string
       user_id:
         description: ID of the user who created the event
         type: string
-      views:
-        description: Number of views
-        type: integer
     type: object
   github_com_holycann_cultour-backend_internal_cultural_models.LocalStory:
     properties:
@@ -200,6 +202,8 @@ definitions:
     type: object
   github_com_holycann_cultour-backend_internal_cultural_models.ResponseEvent:
     properties:
+      city:
+        $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.City'
       city_id:
         description: Reference to city ID
         type: string
@@ -221,17 +225,24 @@ definitions:
       is_kid_friendly:
         description: Whether the event is kid-friendly
         type: boolean
+      location:
+        $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Location'
       location_id:
         description: Reference to location ID
         type: string
       name:
         description: Event name
         type: string
+      province:
+        $ref: '#/definitions/github_com_holycann_cultour-backend_internal_place_models.Province'
       province_id:
         description: Reference to province ID
         type: string
       start_date:
         description: Event start date
+        type: string
+      updated_at:
+        description: Event last update time
         type: string
       user:
         $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.User'
@@ -239,7 +250,6 @@ definitions:
         description: ID of the user who created the event
         type: string
       views:
-        description: Number of views
         type: integer
     type: object
   github_com_holycann_cultour-backend_internal_discussion_models.Message:
@@ -336,6 +346,9 @@ definitions:
       id:
         description: Unique ID for the city
         type: string
+      image_url:
+        description: URL of the city's image
+        type: string
       name:
         description: 'City name, example: "Jakarta"'
         example: Jakarta
@@ -411,10 +424,9 @@ definitions:
       request_id:
         description: Unique request identifier for tracing
         type: string
-      status:
-        allOf:
-        - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.ResponseStatus'
+      success:
         description: Status of the response (success/error)
+        type: boolean
     type: object
   github_com_holycann_cultour-backend_internal_response.ErrorDetails:
     properties:
@@ -438,14 +450,6 @@ definitions:
       total_pages:
         type: integer
     type: object
-  github_com_holycann_cultour-backend_internal_response.ResponseStatus:
-    enum:
-    - success
-    - error
-    type: string
-    x-enum-varnames:
-    - StatusSuccess
-    - StatusError
   github_com_holycann_cultour-backend_internal_users_models.User:
     description: User account details with authentication and metadata
     properties:
@@ -1404,19 +1408,56 @@ paths:
       - Events
     post:
       consumes:
-      - application/json
+      - multipart/form-data
       description: Add a new cultural event to the system
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         type: string
-      - description: Event Information
-        in: body
-        name: event
+      - description: Event Name
+        in: formData
+        name: name
         required: true
-        schema:
-          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_cultural_models.Event'
+        type: string
+      - description: Event Description
+        in: formData
+        name: description
+        required: true
+        type: string
+      - description: City ID
+        in: formData
+        name: city_id
+        required: true
+        type: string
+      - description: Province ID
+        in: formData
+        name: province_id
+        required: true
+        type: string
+      - description: Location object as JSON (name, latitude, longitude)
+        in: formData
+        name: location
+        required: true
+        type: string
+      - description: Start Date (RFC3339 or YYYY-MM-DD)
+        in: formData
+        name: start_date
+        required: true
+        type: string
+      - description: End Date (RFC3339 or YYYY-MM-DD)
+        in: formData
+        name: end_date
+        required: true
+        type: string
+      - description: Is Kid Friendly
+        in: formData
+        name: is_kid_friendly
+        type: boolean
+      - description: Event Image
+        in: formData
+        name: image
+        type: file
       produces:
       - application/json
       responses:
@@ -2545,10 +2586,48 @@ paths:
       summary: Delete a user profile
       tags:
       - User Profiles
+    get:
+      description: Retrieve a user profile by its profile ID
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: User Profile ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
+              type: object
+        "404":
+          description: User profile not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user profile by profile ID
+      tags:
+      - User Profiles
     put:
       consumes:
-      - application/json
-      description: Update an existing user profile's details
+      - multipart/form-data
+      description: Update an existing user profile's details, including uploading
+        an avatar file or identity image
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
@@ -2565,6 +2644,14 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
+      - description: Avatar file
+        in: formData
+        name: avatar
+        type: file
+      - description: Identity image file
+        in: formData
+        name: identity_image
+        type: file
       produces:
       - application/json
       responses:
@@ -2592,6 +2679,43 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Update a user profile
+      tags:
+      - User Profiles
+  /profile/me:
+    get:
+      description: Retrieve the user profile for the currently authenticated user
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfile'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+        "404":
+          description: User profile not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user profile for the authenticated user
       tags:
       - User Profiles
   /profile/search:

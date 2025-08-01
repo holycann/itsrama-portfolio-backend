@@ -213,3 +213,35 @@ func (r *userProfileRepository) ExistsByUserID(ctx context.Context, userID strin
 
 	return count > 0, nil
 }
+
+func (r *userProfileRepository) Search(ctx context.Context, option repository.ListOptions) ([]models.UserProfile, int, error) {
+	var userProfiles []models.UserProfile
+
+	query := option.SearchQuery
+
+	_, count, err := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Or(
+			fmt.Sprintf("username.ilike.%%%s%%", query),
+			fmt.Sprintf("email.ilike.%%%s%%", query),
+		).
+		Execute()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to search user profiles: %w", err)
+	}
+
+	_, err = r.supabaseClient.
+		From(r.table).
+		Select("*", "", false).
+		Or(
+			fmt.Sprintf("username.ilike.%%%s%%", query),
+			fmt.Sprintf("email.ilike.%%%s%%", query),
+		).
+		ExecuteTo(&userProfiles)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to execute search user profiles: %w", err)
+	}
+
+	return userProfiles, int(count), nil
+}

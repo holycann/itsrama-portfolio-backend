@@ -17,10 +17,14 @@ import (
 	"github.com/holycann/cultour-backend/configs"
 	"github.com/holycann/cultour-backend/docs"
 	_ "github.com/holycann/cultour-backend/docs"
+	achievementRepo "github.com/holycann/cultour-backend/internal/achievement/repositories"
+	achievementSvc "github.com/holycann/cultour-backend/internal/achievement/services"
 	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/middleware"
 	"github.com/holycann/cultour-backend/internal/routes"
 	"github.com/holycann/cultour-backend/internal/supabase"
+	userRepo "github.com/holycann/cultour-backend/internal/users/repositories"
+	userSvc "github.com/holycann/cultour-backend/internal/users/services"
 )
 
 // @title           Cultour API
@@ -85,7 +89,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	routeMiddleware := middleware.NewMiddleware(supabaseAuth.GetClient(), jwks)
+	userRepository := userRepo.NewUserBadgeRepository(supabaseClient.GetClient())
+	userService := userSvc.NewUserBadgeService(userRepository)
+
+	badgeRepository := achievementRepo.NewBadgeRepository(supabaseClient.GetClient())
+	badgeService := achievementSvc.NewBadgeService(badgeRepository)
+
+	routeMiddleware := middleware.NewMiddleware(supabaseAuth.GetClient(), jwks, userService, badgeService)
 
 	// Create router
 	router := createRouter(appLogger)
@@ -201,7 +211,7 @@ func registerApplicationRoutes(
 	// Setup Gemini routes
 	routes.SetupRouter(router)
 	routes.SetupGeminiRoutes(router, config, supabaseClient.GetClient(), supabaseAuth.GetClient(), supabaseStorage, appLogger)
-	routes.RegisterEventRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
+	routes.RegisterEventRoutes(router, appLogger, supabaseClient, supabaseStorage, routeMiddleware)
 	routes.RegisterLocationRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 	routes.RegisterUserRoutes(router, supabaseAuth, routeMiddleware)
 	routes.RegisterUserProfileRoutes(router, supabaseClient, supabaseAuth, supabaseStorage, routeMiddleware)
@@ -209,7 +219,7 @@ func registerApplicationRoutes(
 	routes.RegisterBadgeRoutes(router, supabaseClient.GetClient(), routeMiddleware, appLogger)
 	routes.RegisterCityRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 	routes.RegisterProvinceRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
-	routes.RegisterLocalStoryRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
+	routes.RegisterLocalStoryRoutes(router, appLogger, supabaseClient, routeMiddleware)
 	routes.RegisterMessageRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 	routes.RegisterThreadRoutes(router, appLogger, supabaseClient.GetClient(), routeMiddleware)
 }

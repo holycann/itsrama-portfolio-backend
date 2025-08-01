@@ -25,10 +25,10 @@ func NewLocationRepository(supabaseClient *supabase.Client) LocationRepository {
 }
 
 func (r *locationRepository) Create(ctx context.Context, location *models.Location) error {
-	_, err := r.supabaseClient.
+	_, _, err := r.supabaseClient.
 		From(r.table).
 		Insert(location, false, "", "minimal", "").
-		ExecuteTo(&location)
+		Execute()
 	return err
 }
 
@@ -151,4 +151,44 @@ func (r *locationRepository) FindLocationsByProximity(ctx context.Context, latit
 		// Add geospatial filtering logic here
 		ExecuteTo(&locations)
 	return locations, err
+}
+
+func (r *locationRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.Location, int, error) {
+	var locations []models.Location
+
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply search query if provided
+	if opts.SearchQuery != "" {
+		query = query.Or(
+			fmt.Sprintf("name.ilike.%%%s%%", opts.SearchQuery),
+			fmt.Sprintf("description.ilike.%%%s%%", opts.SearchQuery),
+		)
+	}
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Execute query to get results
+	_, err := query.ExecuteTo(&locations)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to search locations: %w", err)
+	}
+
+	// Count total matching records
+	_, count, err := query.Execute()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count locations: %w", err)
+	}
+
+	return locations, int(count), nil
 }

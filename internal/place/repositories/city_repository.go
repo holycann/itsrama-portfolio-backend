@@ -152,3 +152,43 @@ func (r *cityRepository) FindCityByName(ctx context.Context, name string) (*mode
 	}
 	return &cities[0], nil
 }
+
+func (r *cityRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.City, int, error) {
+	var cities []models.City
+
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply search query if provided
+	if opts.SearchQuery != "" {
+		query = query.Or(
+			fmt.Sprintf("name.ilike.%%%s%%", opts.SearchQuery),
+			fmt.Sprintf("province_id.ilike.%%%s%%", opts.SearchQuery),
+		)
+	}
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Execute query to get results
+	_, err := query.ExecuteTo(&cities)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to search cities: %w", err)
+	}
+
+	// Count total matching records
+	_, count, err := query.Execute()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count cities: %w", err)
+	}
+
+	return cities, int(count), nil
+}

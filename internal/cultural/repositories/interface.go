@@ -10,27 +10,22 @@ import (
 
 // EventRepository defines methods for event-related database operations
 type EventRepository interface {
-	repository.BaseRepository[models.Event]
-
-	// Advanced search and filtering methods
-	Search(ctx context.Context, filter repository.ListOptions) ([]models.Event, int, error)
-	GetEventWithViews(ctx context.Context, id string) (*models.ResponseEvent, error)
+	repository.BaseRepository[models.Event, models.ResponseEvent]
 
 	// Specialized query methods
-	FindPopularEvents(ctx context.Context, limit int) ([]models.Event, error)
-	FindRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.Event, error)
-	FindRecentEvents(ctx context.Context, limit int) ([]models.Event, error)
-	FindEventsByLocation(ctx context.Context, locationID uuid.UUID) ([]models.Event, error)
+	FindPopularEvents(ctx context.Context, limit int) ([]models.ResponseEvent, error)
+	FindRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.ResponseEvent, error)
+	FindRecentEvents(ctx context.Context, limit int) ([]models.ResponseEvent, error)
+	FindEventsByLocation(ctx context.Context, locationID uuid.UUID) ([]models.ResponseEvent, error)
 	UpdateViews(ctx context.Context, id string) string
+	GetEventViews(ctx context.Context, id string) (int, error)
 }
 
 // LocalStoryRepository defines methods for local story-related database operations
 type LocalStoryRepository interface {
-	repository.BaseRepository[models.LocalStory]
+	repository.BaseRepository[models.LocalStory, models.LocalStory]
 
 	// Specialized methods for local stories
-	FindStoriesByLocation(ctx context.Context, locationID uuid.UUID) ([]models.LocalStory, error)
-	FindStoriesByOriginCulture(ctx context.Context, culture string) ([]models.LocalStory, error)
-	FindByID(ctx context.Context, id string) (*models.LocalStory, error)
-	Delete(ctx context.Context, id string) error
+	FindStoriesByLocation(ctx context.Context, locationID uuid.UUID) ([]*models.LocalStory, error)
+	FindStoriesByOriginCulture(ctx context.Context, culture string) ([]*models.LocalStory, error)
 }

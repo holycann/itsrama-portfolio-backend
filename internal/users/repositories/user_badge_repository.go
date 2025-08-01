@@ -18,7 +18,7 @@ type userBadgeRepository struct {
 func NewUserBadgeRepository(client *supabase.Client) UserBadgeRepository {
 	return &userBadgeRepository{
 		client: client,
-		table:  "user_badges",
+		table:  "users_badge",
 	}
 }
 
@@ -139,6 +139,7 @@ func (r *userBadgeRepository) FindByField(ctx context.Context, field string, val
 // Specialized methods for user badges
 func (r *userBadgeRepository) FindUserBadgesByUser(ctx context.Context, userID string) ([]models.UserBadge, error) {
 	var badges []models.UserBadge
+
 	_, err := r.client.
 		From(r.table).
 		Select("*", "", false).
@@ -155,4 +156,36 @@ func (r *userBadgeRepository) FindUserBadgesByBadge(ctx context.Context, badgeID
 		Eq("badge_id", badgeID).
 		ExecuteTo(&badges)
 	return badges, err
+}
+
+func (r *userBadgeRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.UserBadge, int, error) {
+	var userBadges []models.UserBadge
+
+	query := r.client.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Execute query to get results
+	_, err := query.ExecuteTo(&userBadges)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to search user badges: %w", err)
+	}
+
+	// Count total matching records
+	_, count, err := query.Execute()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count user badges: %w", err)
+	}
+
+	return userBadges, int(count), nil
 }

@@ -108,7 +108,7 @@ func (s *localStoryService) CountLocalStories(ctx context.Context, filters []rep
 	return s.localStoryRepo.Count(ctx, filters)
 }
 
-func (s *localStoryService) GetLocalStoriesByLocation(ctx context.Context, locationID string) ([]models.LocalStory, error) {
+func (s *localStoryService) GetLocalStoriesByLocation(ctx context.Context, locationID string) ([]*models.LocalStory, error) {
 	// Convert string to UUID
 	locUUID, err := uuid.Parse(locationID)
 	if err != nil {
@@ -118,7 +118,7 @@ func (s *localStoryService) GetLocalStoriesByLocation(ctx context.Context, locat
 	return s.localStoryRepo.FindStoriesByLocation(ctx, locUUID)
 }
 
-func (s *localStoryService) GetLocalStoriesByOriginCulture(ctx context.Context, culture string) ([]models.LocalStory, error) {
+func (s *localStoryService) GetLocalStoriesByOriginCulture(ctx context.Context, culture string) ([]*models.LocalStory, error) {
 	return s.localStoryRepo.FindStoriesByOriginCulture(ctx, culture)
 }
 

@@ -45,7 +45,7 @@ func (s *messageService) CreateMessage(ctx context.Context, message *models.Mess
 	return s.messageRepo.Create(ctx, message)
 }
 
-func (s *messageService) GetMessageByID(ctx context.Context, id string) (*models.Message, error) {
+func (s *messageService) GetMessageByID(ctx context.Context, id string) (*models.ResponseMessage, error) {
 	// Validate ID
 	if id == "" {
 		return nil, fmt.Errorf("message ID cannot be empty")
@@ -55,7 +55,7 @@ func (s *messageService) GetMessageByID(ctx context.Context, id string) (*models
 	return s.messageRepo.FindByID(ctx, id)
 }
 
-func (s *messageService) ListMessages(ctx context.Context, opts repository.ListOptions) ([]models.Message, error) {
+func (s *messageService) ListMessages(ctx context.Context, opts repository.ListOptions) ([]models.ResponseMessage, error) {
 	// Set default values if not provided
 	if opts.Limit <= 0 {
 		opts.Limit = 10
@@ -99,22 +99,22 @@ func (s *messageService) CountMessages(ctx context.Context, filters []repository
 	return s.messageRepo.Count(ctx, filters)
 }
 
-func (s *messageService) GetMessagesByThread(ctx context.Context, threadID string) ([]models.Message, error) {
+func (s *messageService) GetMessagesByThread(ctx context.Context, threadID string) ([]models.ResponseMessage, error) {
 	return s.messageRepo.FindMessagesByThread(ctx, threadID)
 }
 
-func (s *messageService) GetMessagesByUser(ctx context.Context, userID string) ([]models.Message, error) {
+func (s *messageService) GetMessagesByUser(ctx context.Context, userID string) ([]models.ResponseMessage, error) {
 	return s.messageRepo.FindMessagesByUser(ctx, userID)
 }
 
-func (s *messageService) GetRecentMessages(ctx context.Context, limit int) ([]models.Message, error) {
+func (s *messageService) GetRecentMessages(ctx context.Context, limit int) ([]models.ResponseMessage, error) {
 	if limit <= 0 {
 		limit = 10
 	}
 	return s.messageRepo.FindRecentMessages(ctx, limit)
 }
 
-func (s *messageService) SearchMessages(ctx context.Context, query string, opts repository.ListOptions) ([]models.Message, error) {
+func (s *messageService) SearchMessages(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseMessage, error) {
 	// Set default values if not provided
 	if opts.Limit <= 0 {
 		opts.Limit = 10

@@ -22,13 +22,13 @@ type ThreadService interface {
 
 type MessageService interface {
 	CreateMessage(ctx context.Context, message *models.Message) error
-	GetMessageByID(ctx context.Context, id string) (*models.Message, error)
-	ListMessages(ctx context.Context, opts repository.ListOptions) ([]models.Message, error)
+	GetMessageByID(ctx context.Context, id string) (*models.ResponseMessage, error)
+	ListMessages(ctx context.Context, opts repository.ListOptions) ([]models.ResponseMessage, error)
 	UpdateMessage(ctx context.Context, message *models.Message) error
 	DeleteMessage(ctx context.Context, id string) error
 	CountMessages(ctx context.Context, filters []repository.FilterOption) (int, error)
-	GetMessagesByThread(ctx context.Context, threadID string) ([]models.Message, error)
-	GetMessagesByUser(ctx context.Context, userID string) ([]models.Message, error)
-	GetRecentMessages(ctx context.Context, limit int) ([]models.Message, error)
-	SearchMessages(ctx context.Context, query string, opts repository.ListOptions) ([]models.Message, error)
+	GetMessagesByThread(ctx context.Context, threadID string) ([]models.ResponseMessage, error)
+	GetMessagesByUser(ctx context.Context, userID string) ([]models.ResponseMessage, error)
+	GetRecentMessages(ctx context.Context, limit int) ([]models.ResponseMessage, error)
+	SearchMessages(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseMessage, error)
 }

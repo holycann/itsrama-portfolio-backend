@@ -163,3 +163,43 @@ func (r *threadRepository) FindActiveThreads(ctx context.Context, limit int) ([]
 		ExecuteTo(&threads)
 	return threads, err
 }
+
+func (r *threadRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.Thread, int, error) {
+	var threads []models.Thread
+
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply search query if provided
+	if opts.SearchQuery != "" {
+		query = query.Or(
+			fmt.Sprintf("title.ilike.%%%s%%", opts.SearchQuery),
+			fmt.Sprintf("description.ilike.%%%s%%", opts.SearchQuery),
+		)
+	}
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Execute query to get results
+	_, err := query.ExecuteTo(&threads)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to search threads: %w", err)
+	}
+
+	// Count total matching records
+	_, count, err := query.Execute()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count threads: %w", err)
+	}
+
+	return threads, int(count), nil
+}

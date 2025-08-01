@@ -7,17 +7,22 @@ import (
 	"github.com/holycann/cultour-backend/internal/cultural/services"
 	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/middleware"
-	"github.com/supabase-community/supabase-go"
+	placeRepo "github.com/holycann/cultour-backend/internal/place/repositories"
+	placeSvc "github.com/holycann/cultour-backend/internal/place/services"
+	"github.com/holycann/cultour-backend/internal/supabase"
 )
 
 func RegisterEventRoutes(
 	r *gin.Engine,
 	appLogger *logger.Logger,
-	supabaseClient *supabase.Client,
+	supabaseClient *supabase.SupabaseClient,
+	supabaseStorage *supabase.SupabaseStorage,
 	routeMiddleware *middleware.Middleware,
 ) {
-	eventRepository := repositories.NewEventRepository(supabaseClient)
-	eventService := services.NewEventService(eventRepository)
+	eventRepository := repositories.NewEventRepository(supabaseClient.GetClient())
+	placeRepository := placeRepo.NewLocationRepository(supabaseClient.GetClient())
+	placeService := placeSvc.NewLocationService(placeRepository)
+	eventService := services.NewEventService(eventRepository, placeService, supabaseStorage)
 	eventHandler := handlers.NewEventHandler(eventService, appLogger)
 
 	event := r.Group("/events")
@@ -31,7 +36,8 @@ func RegisterEventRoutes(
 		event.GET("", eventHandler.ListEvent)
 		event.GET("/search", eventHandler.SearchEvents)
 		event.GET("/trending", eventHandler.TrendingEvents)
-		event.GET("/:id", eventHandler.GetEventByID) // detail by id
+		event.GET("/:id", eventHandler.GetEventByID)
+		event.POST("/:id/views", eventHandler.UpdateEventViews)
 		event.PUT("/:id",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
@@ -48,10 +54,10 @@ func RegisterEventRoutes(
 func RegisterLocalStoryRoutes(
 	r *gin.Engine,
 	appLogger *logger.Logger,
-	supabaseClient *supabase.Client,
+	supabaseClient *supabase.SupabaseClient,
 	routeMiddleware *middleware.Middleware,
 ) {
-	localStoryRepository := repositories.NewLocalStoryRepository(supabaseClient)
+	localStoryRepository := repositories.NewLocalStoryRepository(supabaseClient.GetClient())
 	localStoryService := services.NewLocalStoryService(localStoryRepository)
 	localStoryHandler := handlers.NewLocalStoryHandler(localStoryService, appLogger)
 

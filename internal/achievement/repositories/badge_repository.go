@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/holycann/cultour-backend/internal/achievement/models"
 	"github.com/holycann/cultour-backend/pkg/repository"
@@ -157,4 +158,51 @@ func (r *badgeRepository) FindPopularBadges(ctx context.Context, limit int) ([]m
 		Limit(limit, "").
 		ExecuteTo(&badges)
 	return badges, err
+}
+
+func (r *badgeRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.Badge, int, error) {
+	var badges []models.Badge
+	query := r.client.
+		From(r.table).
+		Select("*", "", false)
+
+	// Apply search query if provided
+	if opts.SearchQuery != "" {
+		escapedQuery := strings.ReplaceAll(strings.ReplaceAll(opts.SearchQuery, "%", "\\%"), "_", "\\_")
+		likeQuery := "%" + escapedQuery + "%"
+		query = query.Or(fmt.Sprintf("name.ilike.%s,description.ilike.%s", likeQuery, likeQuery), "")
+	}
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case "=":
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case "like":
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Apply sorting
+	if opts.SortBy != "" {
+		ascending := opts.SortOrder == repository.SortAscending
+		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
+	}
+
+	// Apply pagination
+	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+
+	// Execute query
+	_, err := query.ExecuteTo(&badges)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get total count
+	count, err := r.Count(ctx, opts.Filters)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return badges, count, nil
 }
