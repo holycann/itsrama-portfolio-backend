@@ -24,4 +24,5 @@ type RequestCity struct {
 // ResponseCity is used for returning city data to the client
 type ResponseCity struct {
 	City
+	Province *Province `json:"province"`
 }

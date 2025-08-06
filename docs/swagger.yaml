@@ -703,13 +703,6 @@ definitions:
       message:
         type: string
     type: object
-  internal_gemini.EventDescriptionResponse:
-    description: Response containing an AI-generated description for an event
-    properties:
-      description:
-        description: Comprehensive description of the event
-        type: string
-    type: object
   internal_gemini.SendMessageRequest:
     description: Request to send a message to the AI
     properties:
@@ -812,36 +805,6 @@ paths:
           schema:
             $ref: '#/definitions/internal_gemini.ErrorResponse'
       summary: Create a new chat session
-      tags:
-      - AI
-  /ai/event/{eventID}/description:
-    get:
-      description: Generates a comprehensive AI-powered description for a specific
-        event
-      parameters:
-      - description: Event ID
-        in: path
-        name: eventID
-        required: true
-        type: string
-      responses:
-        "200":
-          description: Successfully generated event description
-          schema:
-            $ref: '#/definitions/internal_gemini.EventDescriptionResponse'
-        "403":
-          description: Feature not supported
-          schema:
-            $ref: '#/definitions/internal_gemini.ErrorResponse'
-        "404":
-          description: Event not found
-          schema:
-            $ref: '#/definitions/internal_gemini.ErrorResponse'
-        "500":
-          description: Error generating description
-          schema:
-            $ref: '#/definitions/internal_gemini.ErrorResponse'
-      summary: Generate an AI event description
       tags:
       - AI
   /badges:
@@ -1384,6 +1347,14 @@ paths:
         description: Sort order (asc/desc)
         in: query
         name: sort_order
+        type: string
+      - description: Filter events by city ID
+        in: query
+        name: city_id
+        type: string
+      - description: Filter events by province ID
+        in: query
+        name: province_id
         type: string
       produces:
       - application/json
@@ -3805,6 +3776,46 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Assign a badge to a user
+      tags:
+      - User Badges
+  /users/badges/{user_id}:
+    get:
+      description: Retrieve all badges associated with a given user ID
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        type: string
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User badges retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserBadge'
+                  type: array
+              type: object
+        "400":
+          description: Invalid user ID
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get badges for a specific user
       tags:
       - User Badges
   /users/badges/count:

@@ -285,41 +285,157 @@ func (h *EventHandler) SearchEvents(c *gin.Context) {
 // @Summary Update an event
 // @Description Update an existing cultural event's details
 // @Tags Events
-// @Accept json
+// @Accept multipart/form-data
 // @Produce json
 // @Security ApiKeyAuth
 // @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Event ID"
-// @Param event body models.RequestEvent true "Event Update Details"
+// @Param name formData string true "Event Name"
+// @Param description formData string true "Event Description"
+// @Param city_id formData string true "City ID"
+// @Param province_id formData string true "Province ID"
+// @Param location formData string true "Location object as JSON (name, latitude, longitude)"
+// @Param start_date formData string true "Start Date (RFC3339 or YYYY-MM-DD)"
+// @Param end_date formData string true "End Date (RFC3339 or YYYY-MM-DD)"
+// @Param is_kid_friendly formData bool false "Is Kid Friendly"
+// @Param image formData file false "Event Image"
 // @Success 200 {object} response.APIResponse{data=models.ResponseEvent} "Event updated successfully"
 // @Failure 400 {object} response.APIResponse "Invalid event update details"
 // @Failure 404 {object} response.APIResponse "Event not found"
 // @Failure 500 {object} response.APIResponse "Internal server error"
 // @Router /events/{id} [put]
 func (h *EventHandler) UpdateEvent(c *gin.Context) {
+	// Parse multipart form data
+	if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
+		h.logger.Error("Error parsing multipart form: %v", err)
+		response.BadRequest(c, "Invalid multipart form data", err.Error(), "")
+		return
+	}
+
 	// Get event ID from path parameter
-	eventID := c.Param("id")
-	if eventID == "" {
+	eventIDStr := c.Param("id")
+	if eventIDStr == "" {
+		h.logger.Error("Event ID is required")
 		response.BadRequest(c, "Event ID is required", "Missing event ID", "")
+		return
+	}
+	eventID, err := uuid.Parse(eventIDStr)
+	if err != nil {
+		h.logger.Error("Invalid event ID: %v", err)
+		response.BadRequest(c, "Invalid event ID format", err.Error(), "")
+		return
+	}
+
+	// Get event ID from path parameter
+	userID := c.GetString("user_id")
+	if userID == "" {
+		h.logger.Error("User ID is required")
+		response.BadRequest(c, "User ID is required", "Missing user ID", "")
+		return
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		h.logger.Error("Invalid user ID: %v", err)
+		response.BadRequest(c, "Invalid user ID format", err.Error(), "")
 		return
 	}
 
 	var eventInput models.RequestEvent
-	if err := c.ShouldBindJSON(&eventInput); err != nil {
-		h.logger.Error("Error binding event: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+	eventInput.ID = eventID
+	eventInput.UserID = userUUID
+
+	// Extract fields from form
+	eventInput.Name = c.PostForm("name")
+	eventInput.Description = c.PostForm("description")
+
+	cityIDStr := c.PostForm("city_id")
+	if cityIDStr == "" {
+		h.logger.Error("city_id field is required")
+		response.BadRequest(c, "city_id field is required", "Missing city_id", "")
 		return
 	}
-
-	// Set the ID from path parameter
-	parsedID, err := uuid.Parse(eventID)
+	cityID, err := uuid.Parse(cityIDStr)
 	if err != nil {
-		response.BadRequest(c, "Invalid Event ID", "Invalid UUID format", "")
+		h.logger.Error("Invalid city_id: %v", err)
+		response.BadRequest(c, "Invalid city_id format", err.Error(), "")
 		return
 	}
-	eventInput.ID = parsedID
+	eventInput.CityID = cityID
 
-	if err := h.eventService.UpdateEvent(c.Request.Context(), &eventInput); err != nil {
+	provinceIDStr := c.PostForm("province_id")
+	if provinceIDStr == "" {
+		h.logger.Error("province_id field is required")
+		response.BadRequest(c, "province_id field is required", "Missing province_id", "")
+		return
+	}
+	provinceID, err := uuid.Parse(provinceIDStr)
+	if err != nil {
+		h.logger.Error("Invalid province_id: %v", err)
+		response.BadRequest(c, "Invalid province_id format", err.Error(), "")
+		return
+	}
+	eventInput.ProvinceID = provinceID
+
+	eventInput.IsKidFriendly = c.PostForm("is_kid_friendly") == "true"
+
+	// Parse start_date and end_date (support both "2006-01-02" and RFC3339)
+	startDateStr := c.PostForm("start_date")
+	endDateStr := c.PostForm("end_date")
+	if startDateStr == "" {
+		h.logger.Error("start_date field is required")
+		response.BadRequest(c, "start_date field is required", "Missing start_date", "")
+		return
+	}
+	if endDateStr == "" {
+		h.logger.Error("end_date field is required")
+		response.BadRequest(c, "end_date field is required", "Missing end_date", "")
+		return
+	}
+
+	startDate, err := time.Parse(time.RFC3339, startDateStr)
+	if err != nil {
+		startDate, err = time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			h.logger.Error("Invalid start_date format: %v", err)
+			response.BadRequest(c, "Invalid start_date format", err.Error(), "")
+			return
+		}
+	}
+	eventInput.StartDate = startDate
+
+	endDate, err := time.Parse(time.RFC3339, endDateStr)
+	if err != nil {
+		endDate, err = time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			h.logger.Error("Invalid end_date format: %v", err)
+			response.BadRequest(c, "Invalid end_date format", err.Error(), "")
+			return
+		}
+	}
+	eventInput.EndDate = endDate
+
+	// Parse location
+	locationStr := c.PostForm("location")
+	if locationStr == "" {
+		h.logger.Error("location field is required")
+		response.BadRequest(c, "location field is required", "Missing location", "")
+		return
+	}
+
+	var location placeModel.Location
+	if err := json.Unmarshal([]byte(locationStr), &location); err != nil {
+		h.logger.Error("Invalid location format: %v", err)
+		response.BadRequest(c, "Invalid location format", err.Error(), "")
+		return
+	}
+	eventInput.Location = &location
+
+	// Get image file if uploaded
+	var image *multipart.FileHeader
+	image, _ = c.FormFile("image")
+
+	// Call service to update event
+	if err := h.eventService.UpdateEvent(c.Request.Context(), &eventInput, image); err != nil {
 		h.logger.Error("Error updating event: %v", err)
 		response.InternalServerError(c, "Failed to update event", err.Error(), "")
 		return
@@ -369,6 +485,8 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 // @Param offset query int false "Number of events to skip" default(0)
 // @Param sort_by query string false "Field to sort by" default("created_at")
 // @Param sort_order query string false "Sort order (asc/desc)" default("desc")
+// @Param city_id query string false "Filter events by city ID"
+// @Param province_id query string false "Filter events by province ID"
 // @Success 200 {object} response.APIResponse{data=[]models.ResponseEvent} "Events retrieved successfully"
 // @Failure 500 {object} response.APIResponse "Failed to list events"
 // @Router /events [get]
@@ -407,6 +525,25 @@ func (h *EventHandler) ListEvent(c *gin.Context) {
 			Value:    isKidFriendly,
 		})
 	}
+
+	// Filter by city ID
+	if cityID := c.Query("city_id"); cityID != "" {
+		filters = append(filters, repository.FilterOption{
+			Field:    "city_id",
+			Operator: "=",
+			Value:    cityID,
+		})
+	}
+
+	// Filter by province ID
+	if provinceID := c.Query("province_id"); provinceID != "" {
+		filters = append(filters, repository.FilterOption{
+			Field:    "province_id",
+			Operator: "=",
+			Value:    provinceID,
+		})
+	}
+
 	listOptions.Filters = filters
 
 	// Retrieve events
@@ -516,14 +653,14 @@ func (h *EventHandler) UpdateEventViews(c *gin.Context) {
 	}
 
 	// Get user ID from context (assuming it's set by middleware)
-	userID, exists := c.Get("user_id")
-	if !exists {
+	userID := c.GetString("user_id")
+	if userID == "" {
 		response.BadRequest(c, "User ID is required", "Missing user ID", "")
 		return
 	}
 
 	// Update event views
-	result := h.eventService.UpdateEventViews(c.Request.Context(), userID.(string), eventID)
+	result := h.eventService.UpdateEventViews(c.Request.Context(), userID, eventID)
 	if result != "" {
 		h.logger.Error("Error updating event views: %s", result)
 		response.BadRequest(c, "Failed to update event views", result, "")

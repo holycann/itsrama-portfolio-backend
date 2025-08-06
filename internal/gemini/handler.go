@@ -234,7 +234,7 @@ func (h *GeminiHandler) SendMessage(c *gin.Context) {
 		eventContext = AIInteractionContext{
 			UserProfile:  userProfile,
 			Event:        &event.Event,
-			City:         city,
+			City:         &city.City,
 			Conversation: session.Messages,
 		}
 	} else {

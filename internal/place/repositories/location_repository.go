@@ -142,16 +142,15 @@ func (r *locationRepository) FindLocationsByCity(ctx context.Context, cityID str
 	return locations, err
 }
 
-func (r *locationRepository) FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error) {
-	// Note: This is a placeholder. Actual implementation would depend on Supabase's geospatial query capabilities
-	var locations []models.Location
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select("*", "", false).
-		// Add geospatial filtering logic here
-		ExecuteTo(&locations)
-	return locations, err
-}
+// func (r *locationRepository) FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error) {
+// 	var locations []models.Location
+// 	_, err := r.supabaseClient.
+// 		From(r.table).
+// 		Select("*", "", false).
+// 		Or(fmt.Sprintf("(6371 * acos(cos(radians(%f)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%f)) + sin(radians(%f)) * sin(radians(latitude)))) <= %f", latitude, longitude, latitude, radius), "").
+// 		ExecuteTo(&locations)
+// 	return locations, err
+// }
 
 func (r *locationRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.Location, int, error) {
 	var locations []models.Location

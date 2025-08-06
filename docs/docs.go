@@ -128,50 +128,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/ai/event/{eventID}/description": {
-            "get": {
-                "description": "Generates a comprehensive AI-powered description for a specific event",
-                "tags": [
-                    "AI"
-                ],
-                "summary": "Generate an AI event description",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Event ID",
-                        "name": "eventID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully generated event description",
-                        "schema": {
-                            "$ref": "#/definitions/internal_gemini.EventDescriptionResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Feature not supported",
-                        "schema": {
-                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Event not found",
-                        "schema": {
-                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Error generating description",
-                        "schema": {
-                            "$ref": "#/definitions/internal_gemini.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/badges": {
             "get": {
                 "security": [
@@ -1058,6 +1014,18 @@ const docTemplate = `{
                         "default": "\"desc\"",
                         "description": "Sort order (asc/desc)",
                         "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter events by city ID",
+                        "name": "city_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter events by province ID",
+                        "name": "province_id",
                         "in": "query"
                     }
                 ],
@@ -4831,6 +4799,73 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/badges/{user_id}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Retrieve all badges associated with a given user ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Badges"
+                ],
+                "summary": "Get badges for a specific user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header"
+                    },
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User badges retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserBadge"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users/search": {
             "get": {
                 "security": [
@@ -6029,16 +6064,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_gemini.EventDescriptionResponse": {
-            "description": "Response containing an AI-generated description for an event",
-            "type": "object",
-            "properties": {
-                "description": {
-                    "description": "Comprehensive description of the event",
                     "type": "string"
                 }
             }

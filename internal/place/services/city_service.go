@@ -42,7 +42,7 @@ func (s *cityService) CreateCity(ctx context.Context, city *models.City) error {
 	return s.cityRepo.Create(ctx, city)
 }
 
-func (s *cityService) GetCityByID(ctx context.Context, id string) (*models.City, error) {
+func (s *cityService) GetCityByID(ctx context.Context, id string) (*models.ResponseCity, error) {
 	// Validate ID
 	if id == "" {
 		return nil, fmt.Errorf("city ID cannot be empty")
@@ -52,7 +52,7 @@ func (s *cityService) GetCityByID(ctx context.Context, id string) (*models.City,
 	return s.cityRepo.FindByID(ctx, id)
 }
 
-func (s *cityService) ListCities(ctx context.Context, opts repository.ListOptions) ([]models.City, error) {
+func (s *cityService) ListCities(ctx context.Context, opts repository.ListOptions) ([]models.ResponseCity, error) {
 	// Set default values if not provided
 	if opts.Limit <= 0 {
 		opts.Limit = 10
@@ -96,11 +96,11 @@ func (s *cityService) CountCities(ctx context.Context, filters []repository.Filt
 	return s.cityRepo.Count(ctx, filters)
 }
 
-func (s *cityService) GetCityByName(ctx context.Context, name string) (*models.City, error) {
+func (s *cityService) GetCityByName(ctx context.Context, name string) (*models.ResponseCity, error) {
 	return s.cityRepo.FindCityByName(ctx, name)
 }
 
-func (s *cityService) GetCitiesByProvince(ctx context.Context, provinceID string) ([]models.City, error) {
+func (s *cityService) GetCitiesByProvince(ctx context.Context, provinceID string) ([]models.ResponseCity, error) {
 	// Convert string to UUID
 	provUUID, err := uuid.Parse(provinceID)
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *cityService) GetCitiesByProvince(ctx context.Context, provinceID string
 	return s.cityRepo.FindCitiesByProvince(ctx, provUUID.String())
 }
 
-func (s *cityService) SearchCities(ctx context.Context, query string, opts repository.ListOptions) ([]models.City, error) {
+func (s *cityService) SearchCities(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseCity, error) {
 	// Set default values if not provided
 	if opts.Limit <= 0 {
 		opts.Limit = 10

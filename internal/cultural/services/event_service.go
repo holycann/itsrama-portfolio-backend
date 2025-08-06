@@ -3,12 +3,15 @@ package services
 import (
 	"context"
 	"fmt"
+	"math"
 	"mime/multipart"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/cultural/models"
 	"github.com/holycann/cultour-backend/internal/cultural/repositories"
+	placeModels "github.com/holycann/cultour-backend/internal/place/models"
 	"github.com/holycann/cultour-backend/internal/place/services"
 	"github.com/holycann/cultour-backend/internal/supabase"
 	"github.com/holycann/cultour-backend/pkg/repository"
@@ -58,21 +61,39 @@ func (s *eventService) CreateEvent(ctx context.Context, event *models.RequestEve
 		return fmt.Errorf("end_date is required")
 	}
 
-	// Cek apakah lokasi dengan nama tersebut sudah ada, jika belum ada maka create location
-	location, err := s.locationService.GetLocationByName(ctx, event.Location.Name)
-	if err != nil || location == nil {
-		// Location not found, create new location
-		if event.Location != nil {
-			err := s.locationService.CreateLocation(ctx, event.Location)
-			if err != nil {
-				return fmt.Errorf("failed to create location: %v", err)
-			}
-			location = event.Location
-		} else {
-			return fmt.Errorf("location data is required")
+	tolerance := 0.0001
+	existingLocations, err := s.locationService.ListLocations(ctx, repository.ListOptions{
+		Filters: []repository.FilterOption{
+			{
+				Field:    "name",
+				Operator: "eq",
+				Value:    event.Location.Name,
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to check existing locations: %v", err)
+	}
+
+	var matchedLocation *placeModels.Location
+	for _, loc := range existingLocations {
+		if math.Abs(loc.Latitude-event.Location.Latitude) <= tolerance &&
+			math.Abs(loc.Longitude-event.Location.Longitude) <= tolerance {
+			matchedLocation = &loc
+			break
 		}
 	}
-	event.Location = location
+
+	if matchedLocation == nil {
+		event.Location.ID = uuid.New()
+		event.Location.CityID = event.CityID
+		if err := s.locationService.CreateLocation(ctx, event.Location); err != nil {
+			return fmt.Errorf("failed to create new location: %v", err)
+		}
+
+	} else {
+		event.Location = matchedLocation
+	}
 
 	eventData := models.Event{
 		ID:            uuid.New(),
@@ -95,6 +116,8 @@ func (s *eventService) CreateEvent(ctx context.Context, event *models.RequestEve
 	}
 
 	eventData.ImageURL = imageUrl
+	event.ImageURL = imageUrl
+	event.ID = eventData.ID
 
 	// Call repository to create event
 	return s.eventRepo.Create(ctx, &eventData)
@@ -146,6 +169,14 @@ func (s *eventService) uploadEventImage(ctx context.Context, eventID string, fil
 	return url.SignedURL, nil
 }
 
+func (s *eventService) deleteEventImage(ctx context.Context, path string) error {
+	_, err := s.storage.GetClient().RemoveFile(s.storage.GetBucketID(), []string{path})
+	if err != nil {
+		return fmt.Errorf("failed to delete event image: %v", err)
+	}
+	return nil
+}
+
 func (s *eventService) GetEventByID(ctx context.Context, id string) (*models.ResponseEvent, error) {
 	if id == "" {
 		return nil, fmt.Errorf("event ID cannot be empty")
@@ -173,30 +204,129 @@ func (s *eventService) ListEvents(ctx context.Context, opts repository.ListOptio
 	return events, nil
 }
 
-func (s *eventService) UpdateEvent(ctx context.Context, event *models.RequestEvent) error {
+func (s *eventService) UpdateEvent(ctx context.Context, event *models.RequestEvent, image *multipart.FileHeader) error {
 	// Validate event object
 	if event == nil {
 		return fmt.Errorf("event cannot be nil")
 	}
 
 	// Validate required fields
-	if event.ID == uuid.Nil {
-		return fmt.Errorf("event ID is required for update")
+	if event.ID == uuid.Nil || event.UserID == uuid.Nil {
+		return fmt.Errorf("event ID and user ID are required for update")
+	}
+
+	existingEvent, err := s.eventRepo.FindByID(ctx, event.ID.String())
+	if err != nil {
+		return fmt.Errorf("failed to get existing event: %v", err)
 	}
 
 	// Convert RequestEvent to Event
 	eventData := models.Event{
-		ID:            event.ID,
-		UserID:        event.UserID,
-		LocationID:    event.Location.ID,
-		CityID:        event.CityID,
-		ProvinceID:    event.ProvinceID,
-		Name:          event.Name,
-		Description:   event.Description,
-		StartDate:     event.StartDate,
-		EndDate:       event.EndDate,
-		IsKidFriendly: event.IsKidFriendly,
-		UpdatedAt:     time.Now(),
+		ID:     event.ID,
+		UserID: event.UserID,
+		CityID: func() uuid.UUID {
+			if event.CityID != uuid.Nil && event.CityID != existingEvent.CityID {
+				return event.CityID
+			}
+			return existingEvent.CityID
+		}(),
+		ProvinceID: func() uuid.UUID {
+			if event.ProvinceID != uuid.Nil && event.ProvinceID != existingEvent.ProvinceID {
+				return event.ProvinceID
+			}
+			return existingEvent.ProvinceID
+		}(),
+		Name: func() string {
+			if event.Name != "" && event.Name != existingEvent.Name {
+				return event.Name
+			}
+			return existingEvent.Name
+		}(),
+		Description: func() string {
+			if event.Description != "" && event.Description != existingEvent.Description {
+				return event.Description
+			}
+			return existingEvent.Description
+		}(),
+		StartDate: func() time.Time {
+			if !event.StartDate.IsZero() && event.StartDate != existingEvent.StartDate {
+				return event.StartDate
+			}
+			return existingEvent.StartDate
+		}(),
+		EndDate: func() time.Time {
+			if !event.EndDate.IsZero() && event.EndDate != existingEvent.EndDate {
+				return event.EndDate
+			}
+			return existingEvent.EndDate
+		}(),
+		IsKidFriendly: func() bool {
+			if event.IsKidFriendly != existingEvent.IsKidFriendly {
+				return event.IsKidFriendly
+			}
+			return existingEvent.IsKidFriendly
+		}(),
+		UpdatedAt: time.Now(),
+		ImageURL:  existingEvent.ImageURL,
+	}
+
+	if image != nil {
+		var imagePath string
+		parts := strings.SplitN(existingEvent.ImageURL, "public/cultour/", 2)
+		if len(parts) == 2 {
+			imagePath = parts[1]
+		} else {
+			return fmt.Errorf("prefix not found")
+		}
+
+		err := s.deleteEventImage(ctx, imagePath)
+		if err != nil {
+			return fmt.Errorf("failed to delete existing event image: %v", err)
+		}
+		imageUrl, err := s.uploadEventImage(ctx, eventData.ID.String(), image)
+		if err != nil {
+			return fmt.Errorf("failed to upload event image: %v", err)
+		}
+		eventData.ImageURL = imageUrl
+	}
+
+	tolerance := 0.0001
+
+	if event.Location == nil {
+		return fmt.Errorf("location data is required for updating LocationID")
+	}
+
+	existingLocations, err := s.locationService.ListLocations(ctx, repository.ListOptions{
+		Filters: []repository.FilterOption{
+			{
+				Field:    "name",
+				Operator: "eq",
+				Value:    event.Location.Name,
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to check existing location: %v", err)
+	}
+
+	var matchedLocation *placeModels.Location
+	for _, loc := range existingLocations {
+		if math.Abs(loc.Latitude-event.Location.Latitude) <= tolerance &&
+			math.Abs(loc.Longitude-event.Location.Longitude) <= tolerance {
+			matchedLocation = &loc
+			break
+		}
+	}
+
+	if matchedLocation == nil {
+		event.Location.ID = uuid.New()
+		event.Location.CityID = event.CityID
+		if err := s.locationService.CreateLocation(ctx, event.Location); err != nil {
+			return fmt.Errorf("failed to create new location: %v", err)
+		}
+		eventData.LocationID = event.Location.ID
+	} else {
+		eventData.LocationID = matchedLocation.ID
 	}
 
 	// Call repository to update event

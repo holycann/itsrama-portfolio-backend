@@ -20,14 +20,14 @@ type ProvinceService interface {
 
 type CityService interface {
 	CreateCity(ctx context.Context, city *models.City) error
-	GetCityByID(ctx context.Context, id string) (*models.City, error)
-	GetCityByName(ctx context.Context, name string) (*models.City, error)
-	GetCitiesByProvince(ctx context.Context, provinceID string) ([]models.City, error)
-	ListCities(ctx context.Context, opts repository.ListOptions) ([]models.City, error)
+	GetCityByID(ctx context.Context, id string) (*models.ResponseCity, error)
+	GetCityByName(ctx context.Context, name string) (*models.ResponseCity, error)
+	GetCitiesByProvince(ctx context.Context, provinceID string) ([]models.ResponseCity, error)
+	ListCities(ctx context.Context, opts repository.ListOptions) ([]models.ResponseCity, error)
 	UpdateCity(ctx context.Context, city *models.City) error
 	DeleteCity(ctx context.Context, id string) error
 	CountCities(ctx context.Context, filters []repository.FilterOption) (int, error)
-	SearchCities(ctx context.Context, query string, opts repository.ListOptions) ([]models.City, error)
+	SearchCities(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseCity, error)
 }
 
 type LocationService interface {
@@ -35,7 +35,7 @@ type LocationService interface {
 	GetLocationByID(ctx context.Context, id string) (*models.Location, error)
 	GetLocationByName(ctx context.Context, name string) (*models.Location, error)
 	GetLocationsByCity(ctx context.Context, cityID string) ([]models.Location, error)
-	GetLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error)
+	// GetLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error)
 	ListLocations(ctx context.Context, opts repository.ListOptions) ([]models.Location, error)
 	UpdateLocation(ctx context.Context, location *models.Location) error
 	DeleteLocation(ctx context.Context, id string) error

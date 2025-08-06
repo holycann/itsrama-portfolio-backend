@@ -125,9 +125,9 @@ func (s *locationService) GetLocationsByCity(ctx context.Context, cityID string)
 	return s.locationRepo.FindLocationsByCity(ctx, cityUUID.String())
 }
 
-func (s *locationService) GetLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error) {
-	return s.locationRepo.FindLocationsByProximity(ctx, latitude, longitude, radius)
-}
+// func (s *locationService) GetLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error) {
+// 	return s.locationRepo.FindLocationsByProximity(ctx, latitude, longitude, radius)
+// }
 
 func (s *locationService) SearchLocations(ctx context.Context, query string, opts repository.ListOptions) ([]models.Location, error) {
 	// Set default values if not provided

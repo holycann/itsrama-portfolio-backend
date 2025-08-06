@@ -410,14 +410,7 @@ func (h *ThreadHandler) GetThreadByEvent(c *gin.Context) {
 	// Call service to get thread by event ID
 	thread, err := h.threadService.GetThreadByEvent(c.Request.Context(), eventID)
 	if err != nil {
-		h.logger.Error("Error retrieving thread by event ID: %v", err)
-		response.InternalServerError(c, "Failed to retrieve thread", err.Error(), "")
-		return
-	}
-
-	// If no thread found, return 404
-	if thread == nil {
-		response.NotFound(c, "Thread not found", "No thread exists for the given event", "")
+		response.NotFound(c, "Thread Belum Di Buat Silahkan Anda Untuk Membuat Thread", "No thread found for this event", "")
 		return
 	}
 

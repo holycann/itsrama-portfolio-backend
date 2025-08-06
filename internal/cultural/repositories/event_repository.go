@@ -53,8 +53,8 @@ func (r *eventRepository) FindByID(ctx context.Context, id string) (*models.Resp
 func (r *eventRepository) Update(ctx context.Context, event *models.Event) error {
 	_, _, err := r.supabaseClient.
 		From(r.table).
-		Update(*event, "minimal", "").
-		Eq("id", (*event).ID.String()).
+		Update(event, "minimal", "").
+		Eq("id", event.ID.String()).
 		Execute()
 	return err
 }

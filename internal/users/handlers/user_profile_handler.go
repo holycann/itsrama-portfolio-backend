@@ -213,6 +213,7 @@ func (h *UserProfileHandler) GetAuthenticatedUserProfile(c *gin.Context) {
 	// Retrieve user profile by user_id
 	userProfile, err := h.userProfileService.GetProfileByUserID(c.Request.Context(), userIDStr)
 	if err != nil {
+		logger.DefaultLogger().Error("ERROR:", err.Error())
 		if err.Error() == "user profile not found" {
 			response.NotFound(c, "User profile not found", err.Error(), "")
 			return

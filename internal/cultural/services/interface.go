@@ -12,7 +12,7 @@ type EventService interface {
 	CreateEvent(ctx context.Context, event *models.RequestEvent, image *multipart.FileHeader) error
 	GetEventByID(ctx context.Context, id string) (*models.ResponseEvent, error)
 	ListEvents(ctx context.Context, opts repository.ListOptions) ([]models.ResponseEvent, error)
-	UpdateEvent(ctx context.Context, event *models.RequestEvent) error
+	UpdateEvent(ctx context.Context, event *models.RequestEvent, image *multipart.FileHeader) error
 	DeleteEvent(ctx context.Context, id string) error
 	CountEvents(ctx context.Context, filters []repository.FilterOption) (int, error)
 	UpdateEventViews(ctx context.Context, userID, eventID string) string

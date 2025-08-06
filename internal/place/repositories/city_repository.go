@@ -32,11 +32,11 @@ func (r *cityRepository) Create(ctx context.Context, city *models.City) error {
 	return err
 }
 
-func (r *cityRepository) FindByID(ctx context.Context, id string) (*models.City, error) {
-	var city *models.City
+func (r *cityRepository) FindByID(ctx context.Context, id string) (*models.ResponseCity, error) {
+	var city *models.ResponseCity
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, province:provinces(*)", "", false).
 		Eq("id", id).
 		Single().
 		ExecuteTo(&city)
@@ -61,11 +61,11 @@ func (r *cityRepository) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-func (r *cityRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.City, error) {
-	var cities []models.City
+func (r *cityRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.ResponseCity, error) {
+	var cities []models.ResponseCity
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false)
+		Select("*, province:provinces(*)", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
@@ -121,28 +121,28 @@ func (r *cityRepository) Exists(ctx context.Context, id string) (bool, error) {
 	return true, nil
 }
 
-func (r *cityRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.City, error) {
-	var cities []models.City
+func (r *cityRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ResponseCity, error) {
+	var cities []models.ResponseCity
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, province:provinces(*)", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
 		ExecuteTo(&cities)
 	return cities, err
 }
 
 // Specialized methods for cities
-func (r *cityRepository) FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.City, error) {
-	var cities []models.City
+func (r *cityRepository) FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.ResponseCity, error) {
+	var cities []models.ResponseCity
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, province:provinces(*)", "", false).
 		Eq("province_id", provinceID).
 		ExecuteTo(&cities)
 	return cities, err
 }
 
-func (r *cityRepository) FindCityByName(ctx context.Context, name string) (*models.City, error) {
+func (r *cityRepository) FindCityByName(ctx context.Context, name string) (*models.ResponseCity, error) {
 	cities, err := r.FindByField(ctx, "name", name)
 	if err != nil {
 		return nil, err
@@ -153,12 +153,12 @@ func (r *cityRepository) FindCityByName(ctx context.Context, name string) (*mode
 	return &cities[0], nil
 }
 
-func (r *cityRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.City, int, error) {
-	var cities []models.City
+func (r *cityRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.ResponseCity, int, error) {
+	var cities []models.ResponseCity
 
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false)
+		Select("*, province:provinces(*)", "", false)
 
 	// Apply search query if provided
 	if opts.SearchQuery != "" {

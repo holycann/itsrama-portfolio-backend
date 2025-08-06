@@ -13,13 +13,13 @@ type ProvinceRepository interface {
 }
 
 type CityRepository interface {
-	repository.BaseRepository[models.City, models.City]
-	FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.City, error)
-	FindCityByName(ctx context.Context, name string) (*models.City, error)
+	repository.BaseRepository[models.City, models.ResponseCity]
+	FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.ResponseCity, error)
+	FindCityByName(ctx context.Context, name string) (*models.ResponseCity, error)
 }
 
 type LocationRepository interface {
 	repository.BaseRepository[models.Location, models.Location]
 	FindLocationsByCity(ctx context.Context, cityID string) ([]models.Location, error)
-	FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error)
+	// FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error)
 }

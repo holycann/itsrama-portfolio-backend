@@ -15,8 +15,8 @@ WITH provinces AS (
   SELECT id, name FROM public.provinces
 )
 INSERT INTO public.cities (id, name, province_id, image_url) VALUES 
-  (gen_random_uuid(), 'Denpasar', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://plcahold.co/600x400?text=Denpasar'),
-  (gen_random_uuid(), 'Jakarta Selatan', (SELECT id FROM provinces WHERE name = 'Jakarta'), 'https://plcahold.co/600x400?text=Jakarta+Selatan'),
-  (gen_random_uuid(), 'Semarang', (SELECT id FROM provinces WHERE name = 'Jawa Tengah'), 'https://plcahold.co/600x400?text=Semarang'),
-  (gen_random_uuid(), 'Surabaya', (SELECT id FROM provinces WHERE name = 'Jawa Timur'), 'https://plcahold.co/600x400?text=Surabaya'),
-  (gen_random_uuid(), 'Medan', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://plcahold.co/600x400?text=Medan');
+  (gen_random_uuid(), 'Denpasar', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://placehold.co/600x400.jpg?text=Denpasar'),
+  (gen_random_uuid(), 'Jakarta Selatan', (SELECT id FROM provinces WHERE name = 'Jakarta'), 'https://placehold.co/600x400.jpg?text=Jakarta+Selatan'),
+  (gen_random_uuid(), 'Semarang', (SELECT id FROM provinces WHERE name = 'Jawa Tengah'), 'https://placehold.co/600x400.jpg?text=Semarang'),
+  (gen_random_uuid(), 'Surabaya', (SELECT id FROM provinces WHERE name = 'Jawa Timur'), 'https://placehold.co/600x400.jpg?text=Surabaya'),
+  (gen_random_uuid(), 'Medan', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://placehold.co/600x400.jpg?text=Medan');
