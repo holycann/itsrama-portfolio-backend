@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 // User represents the user account information
 // @Description User account details with authentication and metadata
@@ -19,12 +21,12 @@ type User struct {
 
 	// User's phone number
 	// @example "+1234567890"
-	Phone string `json:"phone" db:"phone" example:"+1234567890"`
+	Phone string `json:"phone" db:"phone" validate:"omitempty,e164" example:"+1234567890"`
 
 	// User's role in the system
 	// @example "user"
 	// @enums "user","admin","moderator"
-	Role string `json:"role" db:"role" enums:"user,admin,moderator" example:"user"`
+	Role string `json:"role" db:"role" validate:"required,oneof=user admin moderator" enums:"user,admin,moderator" example:"user"`
 
 	// Timestamp of the last user sign-in
 	LastSignInAt *time.Time `json:"last_sign_in_at" db:"last_sign_in_at"`
@@ -48,12 +50,16 @@ type UserCreate struct {
 
 	// User's password
 	// @example "securePassword123!"
-	Password string `json:"password" validate:"required,min=8" example:"admin123"`
+	Password string `json:"password" validate:"required,min=8,max=72,password" example:"admin123"`
+
+	// User's phone number (optional)
+	// @example "+1234567890"
+	Phone string `json:"phone,omitempty" validate:"omitempty,e164" example:"+1234567890"`
 
 	// User's role in the system
 	// @example "user"
 	// @enums "user","admin","moderator"
-	Role string `json:"role" enums:"user,admin,moderator" example:"user"`
+	Role string `json:"role" validate:"required,oneof=user admin moderator" enums:"user,admin,moderator" example:"user"`
 }
 
 // UserUpdate represents the payload for updating user details
@@ -63,8 +69,12 @@ type UserUpdate struct {
 	// @example "newemail@example.com"
 	Email string `json:"email,omitempty" validate:"omitempty,email" example:"newemail@example.com"`
 
+	// User's phone number (optional)
+	// @example "+1234567890"
+	Phone string `json:"phone,omitempty" validate:"omitempty,e164" example:"+1234567890"`
+
 	// User's role in the system (optional)
 	// @example "admin"
 	// @enums "user","admin","moderator"
-	Role string `json:"role,omitempty" enums:"user,admin,moderator" example:"admin"`
+	Role string `json:"role,omitempty" validate:"omitempty,oneof=user admin moderator" enums:"user,admin,moderator" example:"admin"`
 }

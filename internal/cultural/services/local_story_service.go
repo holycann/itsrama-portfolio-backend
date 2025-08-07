@@ -9,6 +9,7 @@ import (
 	"github.com/holycann/cultour-backend/internal/cultural/models"
 	"github.com/holycann/cultour-backend/internal/cultural/repositories"
 	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/validator"
 )
 
 type localStoryService struct {
@@ -27,9 +28,20 @@ func (s *localStoryService) CreateLocalStory(ctx context.Context, localStory *mo
 		return fmt.Errorf("local story cannot be nil")
 	}
 
-	// Validate required fields
-	if localStory.Title == "" {
-		return fmt.Errorf("local story title is required")
+	// Use centralized validator
+	if err := validator.ValidateStruct(localStory); err != nil {
+		return err
+	}
+
+	// Additional specific validations
+	if err := validator.ValidateString(localStory.Title, "Title", 3, 100); err != nil {
+		return err
+	}
+	if err := validator.ValidateString(localStory.Summary, "Summary", 10, 500); err != nil {
+		return err
+	}
+	if err := validator.ValidateString(localStory.StoryText, "StoryText", 50, 5000); err != nil {
+		return err
 	}
 
 	// Set default values

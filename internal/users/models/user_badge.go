@@ -50,9 +50,9 @@ type UserBadgeSearch struct {
 
 	// Pagination limit
 	// @example 10
-	Limit int `json:"limit,omitempty" default:"10"`
+	Limit int `json:"limit,omitempty" default:"10" validate:"omitempty,min=1,max=100"`
 
 	// Pagination offset
 	// @example 0
-	Offset int `json:"offset,omitempty" default:"0"`
+	Offset int `json:"offset,omitempty" default:"0" validate:"omitempty,min=0"`
 }

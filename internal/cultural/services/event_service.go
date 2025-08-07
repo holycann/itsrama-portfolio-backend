@@ -15,6 +15,7 @@ import (
 	"github.com/holycann/cultour-backend/internal/place/services"
 	"github.com/holycann/cultour-backend/internal/supabase"
 	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/validator"
 	storage_go "github.com/supabase-community/storage-go"
 )
 
@@ -38,22 +39,12 @@ func (s *eventService) CreateEvent(ctx context.Context, event *models.RequestEve
 		return fmt.Errorf("event cannot be nil")
 	}
 
-	// Validate all required fields
-	if event.UserID == uuid.Nil {
-		return fmt.Errorf("user_id is required")
+	// Use centralized validator
+	if err := validator.ValidateStruct(event); err != nil {
+		return err
 	}
-	if event.CityID == uuid.Nil {
-		return fmt.Errorf("city_id is required")
-	}
-	if event.ProvinceID == uuid.Nil {
-		return fmt.Errorf("province_id is required")
-	}
-	if event.Name == "" {
-		return fmt.Errorf("name is required")
-	}
-	if event.Description == "" {
-		return fmt.Errorf("description is required")
-	}
+
+	// Additional specific validations
 	if event.StartDate.IsZero() {
 		return fmt.Errorf("start_date is required")
 	}
