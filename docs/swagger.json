@@ -1410,14 +1410,14 @@
                     },
                     {
                         "type": "string",
-                        "default": "\"created_at",
+                        "default": "\"created_at\"",
                         "description": "Field to sort events by",
                         "name": "sort_by",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "default": "\"desc",
+                        "default": "\"desc\"",
                         "description": "Sort direction",
                         "name": "sort_order",
                         "in": "query"
@@ -1644,14 +1644,14 @@
                     },
                     {
                         "type": "string",
-                        "default": "\"relevance",
+                        "default": "\"created_at\"",
                         "description": "Field to sort search results",
                         "name": "sort_by",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "default": "\"desc",
+                        "default": "\"desc\"",
                         "description": "Sort direction",
                         "name": "sort_order",
                         "in": "query"
@@ -3196,6 +3196,78 @@
             }
         },
         "/messages/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Allows message sender or thread administrator to remove a specific message\nPermanently deletes the message from the discussion thread",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Messages"
+                ],
+                "summary": "Delete a message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Unique Message Identifier",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message successfully deleted",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid message ID format",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - insufficient deletion privileges",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Message not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during message deletion",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/messages/{thread_id}/{id}": {
             "put": {
                 "security": [
                     {
@@ -3284,76 +3356,6 @@
                     },
                     "500": {
                         "description": "Internal server error during message update",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Allows message sender or thread administrator to remove a specific message\nPermanently deletes the message from the discussion thread",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Messages"
-                ],
-                "summary": "Delete a message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "JWT Token (without 'Bearer ' prefix)",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Unique Message Identifier",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Message successfully deleted",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid message ID format",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Authentication required",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden - insufficient deletion privileges",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Message not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error during message deletion",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
                         }
@@ -6684,10 +6686,6 @@
                 },
                 "event_id": {
                     "description": "Reference to the related event\n@Description Unique identifier linking the thread to a specific event\n@Description Required for thread context and organization\n@Example \"event_456\"\n@Format uuid",
-                    "type": "string"
-                },
-                "id": {
-                    "description": "Unique identifier for the thread (optional for creation)\n@Description Optional UUID for the thread during creation or update\n@Description Used to identify specific threads during updates\n@Example \"thread_123\"\n@Format uuid",
                     "type": "string"
                 },
                 "status": {

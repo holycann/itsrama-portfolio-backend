@@ -1,3 +1,8 @@
+-- Migration for creating cities table with updated image URLs
+-- Updated cities include: Banda Aceh, Langsa, Lhokseumawe, Sabang, 
+-- Medan, Binjai, Pematangsiantar, Jakarta (all districts), Bandung, Yogyakarta, 
+-- Surabaya, Jayapura, Merauke, Manokwari, Sorong, Selat, Jovepura, and others
+
 CREATE TABLE public.cities (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     name character varying(100) NOT NULL,
@@ -17,10 +22,10 @@ WITH provinces AS (
 )
 INSERT INTO public.cities (id, name, province_id, image_url) VALUES 
   -- ACEH
-  (gen_random_uuid(), 'Banda Aceh', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Banda+Aceh'),
-  (gen_random_uuid(), 'Langsa', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Langsa'),
-  (gen_random_uuid(), 'Lhokseumawe', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Lhokseumawe'),
-  (gen_random_uuid(), 'Sabang', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Sabang'),
+  (gen_random_uuid(), 'Banda Aceh', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/banda.png'),
+  (gen_random_uuid(), 'Langsa', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/langsa.png'),
+  (gen_random_uuid(), 'Lhokseumawe', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/ilokseumawe.png'),
+  (gen_random_uuid(), 'Sabang', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/sabang.png'),
   (gen_random_uuid(), 'Subulussalam', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Subulussalam'),
   (gen_random_uuid(), 'Aceh Besar', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Aceh+Besar'),
   (gen_random_uuid(), 'Aceh Barat', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Aceh+Barat'),
@@ -36,12 +41,14 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   (gen_random_uuid(), 'Simeulue', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Simeulue'),
   (gen_random_uuid(), 'Aceh Jaya', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Aceh+Jaya'),
   (gen_random_uuid(), 'Nagan Raya', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Nagan+Raya'),
+  (gen_random_uuid(), 'Selat', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/selat.png'),
+  (gen_random_uuid(), 'Jovepura', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/jovepura.png'),
 
   -- SUMATERA UTARA
-  (gen_random_uuid(), 'Medan', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://placehold.co/600x400.jpg?text=Medan'),
-  (gen_random_uuid(), 'Binjai', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://placehold.co/600x400.jpg?text=Binjai'),
+  (gen_random_uuid(), 'Medan', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/ilokseumawe.png'),
+  (gen_random_uuid(), 'Binjai', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/binjai.png'),
   (gen_random_uuid(), 'Tebing Tinggi', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://placehold.co/600x400.jpg?text=Tebing+Tinggi'),
-  (gen_random_uuid(), 'Pematangsiantar', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://placehold.co/600x400.jpg?text=Pematangsiantar'),
+  (gen_random_uuid(), 'Pematangsiantar', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/pamatang.png'),
   (gen_random_uuid(), 'Tanjungbalai', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://placehold.co/600x400.jpg?text=Tanjungbalai'),
   (gen_random_uuid(), 'Sibolga', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://placehold.co/600x400.jpg?text=Sibolga'),
   (gen_random_uuid(), 'Padang Sidimpuan', (SELECT id FROM provinces WHERE name = 'Sumatera Utara'), 'https://placehold.co/600x400.jpg?text=Padang+Sidimpuan'),
@@ -86,7 +93,7 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   (gen_random_uuid(), 'Tanah Datar', (SELECT id FROM provinces WHERE name = 'Sumatera Barat'), 'https://placehold.co/600x400.jpg?text=Tanah+Datar'),
 
   -- RIAU
-  (gen_random_uuid(), 'Pekanbaru', (SELECT id FROM provinces WHERE name = 'Riau'), 'https://placehold.co/600x400.jpg?text=Pekanbaru'),
+  (gen_random_uuid(), 'Pekanbaru', (SELECT id FROM provinces WHERE name = 'Riau'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/pekanbaru.png'),
   (gen_random_uuid(), 'Dumai', (SELECT id FROM provinces WHERE name = 'Riau'), 'https://placehold.co/600x400.jpg?text=Dumai'),
   (gen_random_uuid(), 'Kampar', (SELECT id FROM provinces WHERE name = 'Riau'), 'https://placehold.co/600x400.jpg?text=Kampar'),
   (gen_random_uuid(), 'Rokan Hulu', (SELECT id FROM provinces WHERE name = 'Riau'), 'https://placehold.co/600x400.jpg?text=Rokan+Hulu'),
@@ -124,7 +131,7 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   (gen_random_uuid(), 'Bungo', (SELECT id FROM provinces WHERE name = 'Jambi'), 'https://placehold.co/600x400.jpg?text=Bungo'),
 
   -- SUMATERA SELATAN
-  (gen_random_uuid(), 'Palembang', (SELECT id FROM provinces WHERE name = 'Sumatera Selatan'), 'https://placehold.co/600x400.jpg?text=Palembang'),
+  (gen_random_uuid(), 'Palembang', (SELECT id FROM provinces WHERE name = 'Sumatera Selatan'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/palembang.png'),
   (gen_random_uuid(), 'Prabumulih', (SELECT id FROM provinces WHERE name = 'Sumatera Selatan'), 'https://placehold.co/600x400.jpg?text=Prabumulih'),
   (gen_random_uuid(), 'Pagar Alam', (SELECT id FROM provinces WHERE name = 'Sumatera Selatan'), 'https://placehold.co/600x400.jpg?text=Pagar+Alam'),
   (gen_random_uuid(), 'Lubuklinggau', (SELECT id FROM provinces WHERE name = 'Sumatera Selatan'), 'https://placehold.co/600x400.jpg?text=Lubuklinggau'),
@@ -175,15 +182,15 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   (gen_random_uuid(), 'Belitung Timur', (SELECT id FROM provinces WHERE name = 'Kepulauan Bangka Belitung'), 'https://placehold.co/600x400.jpg?text=Belitung+Timur'),
 
   -- DKI JAKARTA
-  (gen_random_uuid(), 'Jakarta Pusat', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://placehold.co/600x400.jpg?text=Jakarta+Pusat'),
-  (gen_random_uuid(), 'Jakarta Utara', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://placehold.co/600x400.jpg?text=Jakarta+Utara'),
-  (gen_random_uuid(), 'Jakarta Barat', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://placehold.co/600x400.jpg?text=Jakarta+Barat'),
-  (gen_random_uuid(), 'Jakarta Selatan', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://placehold.co/600x400.jpg?text=Jakarta+Selatan'),
-  (gen_random_uuid(), 'Jakarta Timur', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://placehold.co/600x400.jpg?text=Jakarta+Timur'),
+  (gen_random_uuid(), 'Jakarta Pusat', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/jakarta.png'),
+  (gen_random_uuid(), 'Jakarta Utara', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/jakarta.png'),
+  (gen_random_uuid(), 'Jakarta Barat', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/jakarta.png'),
+  (gen_random_uuid(), 'Jakarta Selatan', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/jakarta.png'),
+  (gen_random_uuid(), 'Jakarta Timur', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/jakarta.png'),
   (gen_random_uuid(), 'Kepulauan Seribu', (SELECT id FROM provinces WHERE name = 'DKI Jakarta'), 'https://placehold.co/600x400.jpg?text=Kepulauan+Seribu'),
 
   -- JAWA BARAT
-  (gen_random_uuid(), 'Bandung', (SELECT id FROM provinces WHERE name = 'Jawa Barat'), 'https://placehold.co/600x400.jpg?text=Bandung'),
+  (gen_random_uuid(), 'Bandung', (SELECT id FROM provinces WHERE name = 'Jawa Barat'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/bandung.png'),
   (gen_random_uuid(), 'Bogor', (SELECT id FROM provinces WHERE name = 'Jawa Barat'), 'https://placehold.co/600x400.jpg?text=Bogor'),
   (gen_random_uuid(), 'Bekasi', (SELECT id FROM provinces WHERE name = 'Jawa Barat'), 'https://placehold.co/600x400.jpg?text=Bekasi'),
   (gen_random_uuid(), 'Depok', (SELECT id FROM provinces WHERE name = 'Jawa Barat'), 'https://placehold.co/600x400.jpg?text=Depok'),
@@ -231,14 +238,14 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   (gen_random_uuid(), 'Sragen', (SELECT id FROM provinces WHERE name = 'Jawa Tengah'), 'https://placehold.co/600x400.jpg?text=Sragen'),
 
   -- DI YOGYAKARTA
-  (gen_random_uuid(), 'Yogyakarta', (SELECT id FROM provinces WHERE name = 'DI Yogyakarta'), 'https://placehold.co/600x400.jpg?text=Yogyakarta'),
+  (gen_random_uuid(), 'Yogyakarta', (SELECT id FROM provinces WHERE name = 'DI Yogyakarta'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/jogja.png'),
   (gen_random_uuid(), 'Sleman', (SELECT id FROM provinces WHERE name = 'DI Yogyakarta'), 'https://placehold.co/600x400.jpg?text=Sleman'),
   (gen_random_uuid(), 'Bantul', (SELECT id FROM provinces WHERE name = 'DI Yogyakarta'), 'https://placehold.co/600x400.jpg?text=Bantul'),
   (gen_random_uuid(), 'Kulon Progo', (SELECT id FROM provinces WHERE name = 'DI Yogyakarta'), 'https://placehold.co/600x400.jpg?text=Kulon+Progo'),
   (gen_random_uuid(), 'Gunung Kidul', (SELECT id FROM provinces WHERE name = 'DI Yogyakarta'), 'https://placehold.co/600x400.jpg?text=Gunung+Kidul'),
 
-  -- JAWA TIMUR (continued from where it was cut off)
-  (gen_random_uuid(), 'Surabaya', (SELECT id FROM provinces WHERE name = 'Jawa Timur'), 'https://placehold.co/600x400.jpg?text=Surabaya'),
+  -- JAWA TIMUR
+  (gen_random_uuid(), 'Surabaya', (SELECT id FROM provinces WHERE name = 'Jawa Timur'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/surabaya.png'),
   (gen_random_uuid(), 'Malang', (SELECT id FROM provinces WHERE name = 'Jawa Timur'), 'https://placehold.co/600x400.jpg?text=Malang'),
   (gen_random_uuid(), 'Kediri', (SELECT id FROM provinces WHERE name = 'Jawa Timur'), 'https://placehold.co/600x400.jpg?text=Kediri'),
   (gen_random_uuid(), 'Blitar', (SELECT id FROM provinces WHERE name = 'Jawa Timur'), 'https://placehold.co/600x400.jpg?text=Blitar'),
@@ -275,7 +282,7 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   (gen_random_uuid(), 'Lebak', (SELECT id FROM provinces WHERE name = 'Banten'), 'https://placehold.co/600x400.jpg?text=Lebak'),
 
   -- BALI
-  (gen_random_uuid(), 'Denpasar', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://placehold.co/600x400.jpg?text=Denpasar'),
+  (gen_random_uuid(), 'Denpasar', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/denpasar.png'),
   (gen_random_uuid(), 'Badung', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://placehold.co/600x400.jpg?text=Badung'),
   (gen_random_uuid(), 'Gianyar', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://placehold.co/600x400.jpg?text=Gianyar'),
   (gen_random_uuid(), 'Tabanan', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://placehold.co/600x400.jpg?text=Tabanan'),
@@ -464,8 +471,8 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   (gen_random_uuid(), 'Pulau Taliabu', (SELECT id FROM provinces WHERE name = 'Maluku Utara'), 'https://placehold.co/600x400.jpg?text=Pulau+Taliabu'),
 
   -- PAPUA BARAT
-  (gen_random_uuid(), 'Manokwari', (SELECT id FROM provinces WHERE name = 'Papua Barat'), 'https://placehold.co/600x400.jpg?text=Manokwari'),
-  (gen_random_uuid(), 'Sorong', (SELECT id FROM provinces WHERE name = 'Papua Barat'), 'https://placehold.co/600x400.jpg?text=Sorong'),
+  (gen_random_uuid(), 'Manokwari', (SELECT id FROM provinces WHERE name = 'Papua Barat'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/sorong.png'),
+  (gen_random_uuid(), 'Sorong', (SELECT id FROM provinces WHERE name = 'Papua Barat'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/sorong.png'),
   (gen_random_uuid(), 'Fakfak', (SELECT id FROM provinces WHERE name = 'Papua Barat'), 'https://placehold.co/600x400.jpg?text=Fakfak'),
   (gen_random_uuid(), 'Kaimana', (SELECT id FROM provinces WHERE name = 'Papua Barat'), 'https://placehold.co/600x400.jpg?text=Kaimana'),
   (gen_random_uuid(), 'Manokwari Selatan', (SELECT id FROM provinces WHERE name = 'Papua Barat'), 'https://placehold.co/600x400.jpg?text=Manokwari+Selatan'),
@@ -476,11 +483,11 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   (gen_random_uuid(), 'Tambrauw', (SELECT id FROM provinces WHERE name = 'Papua Barat'), 'https://placehold.co/600x400.jpg?text=Tambrauw'),
 
   -- PAPUA
-  (gen_random_uuid(), 'Jayapura', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://placehold.co/600x400.jpg?text=Jayapura'),
+  (gen_random_uuid(), 'Jayapura', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/morauke.png'),
   (gen_random_uuid(), 'Biak Numfor', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://placehold.co/600x400.jpg?text=Biak+Numfor'),
   (gen_random_uuid(), 'Nabire', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://placehold.co/600x400.jpg?text=Nabire'),
   (gen_random_uuid(), 'Kepulauan Yapen', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://placehold.co/600x400.jpg?text=Kepulauan+Yapen'),
-  (gen_random_uuid(), 'Merauke', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://placehold.co/600x400.jpg?text=Merauke'),
+  (gen_random_uuid(), 'Merauke', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/morauke.png'),
   (gen_random_uuid(), 'Jayawijaya', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://placehold.co/600x400.jpg?text=Jayawijaya'),
   (gen_random_uuid(), 'Yahukimo', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://placehold.co/600x400.jpg?text=Yahukimo'),
   (gen_random_uuid(), 'Tolikara', (SELECT id FROM provinces WHERE name = 'Papua'), 'https://placehold.co/600x400.jpg?text=Tolikara'),

@@ -48,14 +48,94 @@ VALUES (
             SELECT id
             FROM locations
             WHERE
+                name = 'Lhokseumawe City Center'
+        ),
+        'Aceh Perkusi',
+        'Pertunjukan musik perkusi tradisional Aceh',
+        '2025-08-22 00:00:00+07',
+        '2025-08-24 23:59:59+07',
+        true,
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/aceh.jpg'
+    ),
+    (
+        gen_random_uuid(),
+        '120060ef-7c2e-4457-a677-c8f839e8e2a7',
+        (
+            SELECT id
+            FROM locations
+            WHERE
+                name = 'Jalan Asia Afrika'
+        ),
+        'Asia Afrika Festival',
+        'Perayaan sejarah Konferensi Asia-Afrika dengan parade budaya, pertunjukan seni tradisional dan kontemporer sepanjang Jalan Asia-Afrika, menghadirkan rasa persatuan antarnegara Asia dan Afrika.',
+        '2025-08-10 10:00:00+07',
+        '2025-08-10 18:00:00+07',
+        true,
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/Asia.jpg'
+    ),
+    (
+        gen_random_uuid(),
+        '34be7296-a530-41b0-872f-f6946441f49f',
+        (
+            SELECT id
+            FROM locations
+            WHERE
+                name = 'Dieng Plateau'
+        ),
+        'Dieng Culture Festival 2025',
+        'Festival budaya tahunan di dataran tinggi Dieng—menampilkan seni tradisi, ritual pencukuran rambut gimbal anak-anak Dieng, konser jazz, pelepasan lampion, dan bazar UMKM.',
+        '2025-08-23 00:00:00+07',
+        '2025-08-24 23:59:59+07',
+        true,
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/Dieng.jpg'
+    ),
+    (
+        gen_random_uuid(),
+        '120060ef-7c2e-4457-a677-c8f839e8e2a7',
+        (
+            SELECT id
+            FROM locations
+            WHERE
+                name = 'Gandoriah Beach'
+        ),
+        'Festival Tabuik 2026',
+        'Perayaan tradisi masyarakat Pariaman yang memperingati Asyura dengan prosesi mengarak Tabuik ke pantai dan pelepasan ke laut.',
+        '2026-08-01 00:00:00+07',
+        '2026-08-02 23:59:59+07',
+        true,
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/tabuik.jpg'
+    ),
+    (
+        gen_random_uuid(),
+        '0244478e-d0d7-4cfe-b868-aa608afc126b',
+        (
+            SELECT id
+            FROM locations
+            WHERE
+                name = 'Ubud Cultural Center'
+        ),
+        'Ubud Writers & Readers Festival 2025',
+        'Festival sastra internasional menghadirkan penulis, pembaca, dan seniman dari berbagai negara untuk diskusi, pertunjukan, dan lokakarya.',
+        '2025-10-29 00:00:00+07',
+        '2025-11-02 23:59:59+07',
+        false,
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/ubud.jpg'
+    ),
+    (
+        gen_random_uuid(),
+        '0244478e-d0d7-4cfe-b868-aa608afc126b',
+        (
+            SELECT id
+            FROM locations
+            WHERE
                 name = 'Tanah Lot Temple'
         ),
         'Bali Cultural Festival',
-        'A vibrant festival celebrating Balinese culture and traditions',
-        NOW() + INTERVAL '1 month',
-        NOW() + INTERVAL '1 month 3 days',
+        'Festival budaya tahunan di Bali yang menampilkan berbagai kesenian tradisional dari seluruh Pulau Bali.',
+        '2025-08-09 14:00:00+07',
+        '2025-08-11 22:00:00+07',
         true,
-        'https://placehold.co/400x300.png?text=Bali+Festival'
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/bali.jpg'
     ),
     (
         gen_random_uuid(),
@@ -67,11 +147,11 @@ VALUES (
                 name = 'Monas'
         ),
         'Jakarta Heritage Walk',
-        'Guided walking tour exploring Jakarta''s historical landmarks',
-        NOW() + INTERVAL '2 weeks',
-        NOW() + INTERVAL '2 weeks 1 day',
-        false,
-        'https://placehold.co/400x300.png?text=Jakarta+Walk'
+        'Tur sejarah berkeliling pusat kota Jakarta, mengunjungi landmark bersejarah dan museum.',
+        '2025-09-15 08:00:00+07',
+        '2025-09-15 16:00:00+07',
+        true,
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/jakarta.jpg'
     ),
     (
         gen_random_uuid(),
@@ -83,11 +163,11 @@ VALUES (
                 name = 'Lawang Sewu'
         ),
         'Semarang Night Heritage Tour',
-        'Evening tour of historical sites in Semarang',
-        NOW() + INTERVAL '3 weeks',
-        NOW() + INTERVAL '3 weeks 1 day',
+        'Tur malam menelusuri bangunan bersejarah di Semarang, dengan pemandu yang berpakaian kostum era kolonial.',
+        '2025-10-18 19:00:00+07',
+        '2025-10-18 23:00:00+07',
         false,
-        'https://placehold.co/400x300.png?text=Semarang+Tour'
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/semarang.jpg'
     );
 
 -- Verify the insertion

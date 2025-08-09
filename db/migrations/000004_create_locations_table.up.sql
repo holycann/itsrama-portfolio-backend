@@ -55,8 +55,24 @@ SELECT
 WHERE NOT EXISTS (SELECT 1 FROM public.locations WHERE name = 'Surabaya North Quay')
 UNION ALL
 SELECT 
-  gen_random_uuid(), 'Istana Maimun', (SELECT id FROM cities WHERE name = 'Medan'), 3.5952, 98.6722
-WHERE NOT EXISTS (SELECT 1 FROM public.locations WHERE name = 'Istana Maimun');
+  gen_random_uuid(), 'Lhokseumawe City Center', (SELECT id FROM cities WHERE name = 'Lhokseumawe'), 5.1808, 97.1426
+WHERE NOT EXISTS (SELECT 1 FROM public.locations WHERE name = 'Lhokseumawe City Center')
+UNION ALL
+SELECT 
+  gen_random_uuid(), 'Jalan Asia Afrika', (SELECT id FROM cities WHERE name = 'Bandung'), -6.9175, 107.6191
+WHERE NOT EXISTS (SELECT 1 FROM public.locations WHERE name = 'Jalan Asia Afrika')
+UNION ALL
+SELECT 
+  gen_random_uuid(), 'Dieng Plateau', (SELECT id FROM cities WHERE name = 'Banjarnegara'), -7.2028, 109.8920
+WHERE NOT EXISTS (SELECT 1 FROM public.locations WHERE name = 'Dieng Plateau')
+UNION ALL
+SELECT 
+  gen_random_uuid(), 'Gandoriah Beach', (SELECT id FROM cities WHERE name = 'Pariaman'), -0.6228, 100.1206
+WHERE NOT EXISTS (SELECT 1 FROM public.locations WHERE name = 'Gandoriah Beach')
+UNION ALL
+SELECT 
+  gen_random_uuid(), 'Ubud Cultural Center', (SELECT id FROM cities WHERE name = 'Gianyar'), -8.5194, 115.2644
+WHERE NOT EXISTS (SELECT 1 FROM public.locations WHERE name = 'Ubud Cultural Center');
 
 -- Verify the insertion
 SELECT COUNT(*) as total_locations FROM public.locations;

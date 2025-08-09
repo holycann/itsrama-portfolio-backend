@@ -351,14 +351,6 @@ definitions:
           @Example "event_456"
           @Format uuid
         type: string
-      id:
-        description: |-
-          Unique identifier for the thread (optional for creation)
-          @Description Optional UUID for the thread during creation or update
-          @Description Used to identify specific threads during updates
-          @Example "thread_123"
-          @Format uuid
-        type: string
       status:
         description: |-
           Thread status
@@ -2518,12 +2510,12 @@ paths:
         minimum: 1
         name: per_page
         type: integer
-      - default: '"created_at'
+      - default: '"created_at"'
         description: Field to sort events by
         in: query
         name: sort_by
         type: string
-      - default: '"desc'
+      - default: '"desc"'
         description: Sort direction
         in: query
         name: sort_order
@@ -2963,12 +2955,12 @@ paths:
         minimum: 1
         name: per_page
         type: integer
-      - default: '"relevance'
+      - default: '"created_at"'
         description: Field to sort search results
         in: query
         name: sort_by
         type: string
-      - default: '"desc'
+      - default: '"desc"'
         description: Sort direction
         in: query
         name: sort_order
@@ -3616,6 +3608,7 @@ paths:
       summary: Delete a message
       tags:
       - Messages
+  /messages/{thread_id}/{id}:
     put:
       consumes:
       - application/json

@@ -20,48 +20,24 @@ WITH
     threads AS (
         SELECT id
         FROM public.threads
+        LIMIT 10  -- Ensure we have enough threads
+    ),
+    users AS (
+        SELECT id
+        FROM auth.users
+        LIMIT 3
     )
 INSERT INTO
     public.messages (
-        id,
         thread_id,
         sender_id,
         content,
         type
     )
-VALUES (
-        gen_random_uuid (),
-        (
-            SELECT id
-            FROM threads
-            LIMIT 1
-        ),
-        '0244478e-d0d7-4cfe-b868-aa608afc126b',
-        'The Bali Cultural Festival was an incredible experience! The traditional dances were mesmerizing.',
-        'discussion'
-    ),
-    (
-        gen_random_uuid (),
-        (
-            SELECT id
-            FROM threads
-            LIMIT 1 OFFSET 1
-        ),
-        '120060ef-7c2e-4457-a677-c8f839e8e2a7',
-        'I learned so much about Jakarta''s history during this walking tour. The guide was incredibly knowledgeable.',
-        'discussion'
-    ),
-    (
-        gen_random_uuid (),
-        (
-            SELECT id
-            FROM threads
-            LIMIT 1 OFFSET 2
-        ),
-        '34be7296-a530-41b0-872f-f6946441f49f',
-        'Lawang Sewu at night is both beautiful and haunting. Such a rich historical site!',
-        'discussion'
-    );
-
--- Verify the insertion
-SELECT COUNT(*) as total_messages FROM public.messages;
+SELECT 
+    threads.id,
+    (SELECT id FROM users ORDER BY RANDOM() LIMIT 1),
+    'Hei, ada yang tahu jam mulai acara ini?',
+    'discussion'
+FROM threads
+LIMIT 8;

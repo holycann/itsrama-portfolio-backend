@@ -12,56 +12,27 @@ CREATE TABLE public.threads (
 );
 
 -- Insert sample threads for initial events
+WITH 
+    events_with_ids AS (
+        SELECT id, name 
+        FROM events 
+        WHERE name IN ('Bali Cultural Festival', 'Jakarta Heritage Walk', 'Semarang Night Heritage Tour')
+    ),
+    admin_user AS (
+        SELECT id 
+        FROM auth.users 
+        WHERE email = 'admin@gmail.com' 
+        LIMIT 1
+    )
 INSERT INTO
     public.threads (id, event_id, creator_id, status)
-VALUES (
-        gen_random_uuid(),
-        (
-            SELECT id
-            FROM events
-            WHERE name = 'Bali Cultural Festival'
-            LIMIT 1
-        ),
-        (
-            SELECT id 
-            FROM auth.users 
-            WHERE email = 'admin@gmail.com' 
-            LIMIT 1
-        ),
-        'active'
-    ),
-    (
-        gen_random_uuid(),
-        (
-            SELECT id
-            FROM events
-            WHERE name = 'Jakarta Heritage Walk'
-            LIMIT 1
-        ),
-        (
-            SELECT id 
-            FROM auth.users 
-            WHERE email = 'admin@gmail.com' 
-            LIMIT 1
-        ),
-        'active'
-    ),
-    (
-        gen_random_uuid(),
-        (
-            SELECT id
-            FROM events
-            WHERE name = 'Semarang Night Heritage Tour'
-            LIMIT 1
-        ),
-        (
-            SELECT id 
-            FROM auth.users 
-            WHERE email = 'admin@gmail.com' 
-            LIMIT 1
-        ),
-        'active'
-    );
+SELECT 
+    gen_random_uuid(),
+    id,
+    (SELECT id FROM admin_user),
+    'active'
+FROM 
+    events_with_ids;
 
 -- Verify the insertion
 SELECT COUNT(*) as total_threads FROM public.threads;
