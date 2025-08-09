@@ -10,7 +10,7 @@ import (
 // Thread-related service methods for managing discussion threads
 type ThreadService interface {
 	// Thread creation and retrieval methods
-	CreateThread(ctx context.Context, thread *models.Thread) (*models.Thread, error)
+	CreateThread(ctx context.Context, thread *models.CreateThread) (*models.Thread, error)
 	GetThreadByID(ctx context.Context, id string) (*models.ThreadDTO, error)
 	GetThreadByEvent(ctx context.Context, eventID string) (*models.ThreadDTO, error)
 	GetActiveThreads(ctx context.Context, limit int) ([]models.ThreadDTO, error)
@@ -51,6 +51,7 @@ type ParticipantService interface {
 	CreateParticipant(ctx context.Context, participant *models.Participant) (*models.Participant, error)
 	GetParticipantByID(ctx context.Context, id string) (*models.ParticipantDTO, error)
 	GetParticipantsByThread(ctx context.Context, threadID string) ([]models.ParticipantDTO, error)
+	GetParticipantByThread(ctx context.Context, userID, threadID string) (*models.ParticipantDTO, error)
 	GetThreadParticipants(ctx context.Context, threadID string) ([]models.ParticipantDTO, error)
 
 	// Participant listing and search methods

@@ -159,17 +159,15 @@ func (h *ProvinceHandler) SearchProvinces(c *gin.Context) {
 	}
 
 	// Perform search
-	provinces, _, err := h.provinceService.SearchProvinces(c.Request.Context(), listOptions)
+	provinces, total, err := h.provinceService.SearchProvinces(c.Request.Context(), listOptions)
 	if err != nil {
 		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to search provinces"))
 		return
 	}
 
-	// Create pagination
-	data, pagination := base.PaginateResults(provinces, listOptions.Page, listOptions.PerPage)
-
-	h.HandleSuccess(c, data, "Provinces retrieved successfully",
-		response.WithPagination(pagination.Total, pagination.Page, pagination.PerPage))
+	// Attach pagination based on total and requested options
+	h.HandleSuccess(c, provinces, "Provinces retrieved successfully",
+		response.WithPagination(total, listOptions.Page, listOptions.PerPage))
 }
 
 // UpdateProvince godoc

@@ -72,6 +72,7 @@ func (h *MessageHandler) CreateMessage(c *gin.Context) {
 	}
 
 	message.SenderID = parsedUserID
+	message.Type = "discussion"
 
 	// Validate required fields
 	if message.ThreadID == uuid.Nil || message.SenderID == uuid.Nil || message.Content == "" {
@@ -264,7 +265,7 @@ func (h *MessageHandler) SearchMessages(c *gin.Context) {
 // @Failure 403 {object} response.APIResponse "Forbidden - can only update own messages"
 // @Failure 404 {object} response.APIResponse "Message not found"
 // @Failure 500 {object} response.APIResponse "Internal server error during message update"
-// @Router /messages/{id} [put]
+// @Router /messages/{thread_id}/{id} [put]
 func (h *MessageHandler) UpdateMessage(c *gin.Context) {
 	// Get message ID from path parameter
 	messageID := c.Param("id")
@@ -273,6 +274,17 @@ func (h *MessageHandler) UpdateMessage(c *gin.Context) {
 			errors.ErrValidation,
 			"Message ID is required",
 			nil,
+		))
+		return
+	}
+
+	// Extract user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, errors.New(
+			errors.ErrAuthentication,
+			"Failed to retrieve user context",
+			err,
 		))
 		return
 	}
@@ -294,6 +306,12 @@ func (h *MessageHandler) UpdateMessage(c *gin.Context) {
 		return
 	}
 	message.ID = parsedID
+	message.Type = "discussion"
+	message.SenderID, err = h.ValidateUUID(userID, "User ID")
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
 
 	updatedMessage, err := h.messageService.UpdateMessage(c.Request.Context(), &message)
 	if err != nil {

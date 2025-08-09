@@ -118,13 +118,6 @@ func (t *Thread) ToDTO() ThreadDTO {
 // @Description Supports flexible input for thread initialization and modification
 // @Tags Discussion Threads
 type CreateThread struct {
-	// Unique identifier for the thread (optional for creation)
-	// @Description Optional UUID for the thread during creation or update
-	// @Description Used to identify specific threads during updates
-	// @Example "thread_123"
-	// @Format uuid
-	ID uuid.UUID `json:"id,omitempty" validate:"omitempty"`
-
 	// Reference to the related event
 	// @Description Unique identifier linking the thread to a specific event
 	// @Description Required for thread context and organization

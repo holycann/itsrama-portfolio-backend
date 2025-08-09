@@ -27,7 +27,7 @@ VALUES (
         '0244478e-d0d7-4cfe-b868-aa608afc126b',
         'Budi Santoso',
         'Passionate about Indonesian culture and travel',
-        'https://placehold.co/100x100.png?text=Budi',
+        'https://placehold.co/100x100/FF6B6B/FFFFFF.png?text=BS',
         NULL
     ),
     (
@@ -35,7 +35,7 @@ VALUES (
         '120060ef-7c2e-4457-a677-c8f839e8e2a7',
         'Ani Widya',
         'Local storyteller and culture enthusiast',
-        'https://placehold.co/100x100.png?text=Ani',
+        'https://placehold.co/100x100/4ECDC4/FFFFFF.png?text=AW',
         NULL
     ),
     (
@@ -43,7 +43,7 @@ VALUES (
         '34be7296-a530-41b0-872f-f6946441f49f',
         'Rudi Hartono',
         'Explorer of hidden gems across Indonesia',
-        'https://placehold.co/100x100.png?text=Rudi',
+        'https://placehold.co/100x100/45B7D1/FFFFFF.png?text=RH',
         NULL
     ),
     (
@@ -51,7 +51,7 @@ VALUES (
         '609ae64c-78e7-4d49-9300-803ffcab4547',
         'Siti Nurhaliza',
         'Cultural researcher and event organizer',
-        'https://placehold.co/100x100.png?text=Siti',
+        'https://placehold.co/100x100/FFA07A/FFFFFF.png?text=SN',
         NULL
     ),
     (
@@ -59,6 +59,6 @@ VALUES (
         'b0bd223b-d25b-477b-8350-d582b8fb12f1',
         'Eko Prasetyo',
         'Travel blogger documenting Indonesian heritage',
-        'https://placehold.co/100x100.png?text=Eko',
+        'https://placehold.co/100x100/9C27B0/FFFFFF.png?text=EP',
         NULL
     );

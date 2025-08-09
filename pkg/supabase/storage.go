@@ -98,14 +98,10 @@ func (s *SupabaseStorage) Upload(
 	}
 	defer src.Close()
 
-	// Generate unique filename
-	ext := filepath.Ext(file.Filename)
-	uniqueName := path + ext
-
 	// Construct full path
 	fullPath := filepath.ToSlash(filepath.Join(
 		s.config.DefaultFolder,
-		uniqueName,
+		path,
 	))
 
 	// Prepare file options
@@ -204,12 +200,15 @@ func (s *SupabaseStorage) ListFiles(
 
 // GetPublicURL generates a public URL for a file
 func (s *SupabaseStorage) GetPublicURL(
-	filepath string,
+	path string,
 	transformOpts ...storage_go.UrlOptions,
 ) (string, error) {
 	resp := s.client.GetPublicUrl(
 		s.config.BucketID,
-		filepath,
+		filepath.ToSlash(filepath.Join(
+			s.config.DefaultFolder,
+			path,
+		)),
 		transformOpts...,
 	)
 	return resp.SignedURL, nil

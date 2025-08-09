@@ -173,3 +173,42 @@ type CreateMessage struct {
 	// @Example "discussion"
 	Type MessageType `json:"type,omitempty" validate:"omitempty,oneof=discussion ai"`
 }
+
+// CreateMessage represents the payload for creating or updating a message
+// @Description Structured payload for message creation and update operations
+// @Description Supports flexible input for different message types
+// @Tags Discussion Messages
+type UpdateMessage struct {
+	// Unique identifier for the message (optional for creation)
+	// @Description Optional UUID for the message during creation or update
+	// @Description Used to identify specific messages during updates
+	// @Example "message_123"
+	// @Format uuid
+	ID uuid.UUID `json:"id,omitempty" validate:"omitempty"`
+
+	// Reference to the user who sent the message
+	// @Description Optional user ID for message sender
+	// @Description Typically set automatically during message creation
+	// @Example "user_789"
+	// @Format uuid
+	SenderID uuid.UUID `json:"sender_id,omitempty" validate:"omitempty"`
+
+	// Message content
+	// @Description Actual text content of the message
+	// @Description Must be provided during message creation
+	// @Example "Hello, this is a discussion message"
+	// @MaxLength 1000
+	Content string `json:"content" validate:"required,max=1000"`
+
+	// Type of message
+	// @Description Optional message type specification
+	// @Description Defaults to discussion type if not specified
+	// @Example "discussion"
+	Type MessageType `json:"type,omitempty" validate:"omitempty,oneof=discussion ai"`
+
+	// Timestamp when the message was last updated
+	// @Description Precise timestamp of the last modification to the message in UTC
+	// @Description Indicates when message content was edited
+	// @Format date-time
+	UpdatedAt *time.Time `json:"updated_at,omitempty" validate:"omitempty"`
+}

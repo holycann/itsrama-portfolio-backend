@@ -134,6 +134,7 @@ func (r *cityRepository) FindByField(ctx context.Context, field string, value in
 
 func (r *cityRepository) Search(ctx context.Context, opts base.ListOptions) ([]models.CityDTO, int, error) {
 	var cities []models.CityDTO
+	var totalCount int
 
 	query := r.supabaseClient.
 		From(r.table).
@@ -157,19 +158,52 @@ func (r *cityRepository) Search(ctx context.Context, opts base.ListOptions) ([]m
 		}
 	}
 
-	// Execute query to get results
-	_, err := query.ExecuteTo(&cities)
+	// Apply sorting
+	if opts.SortBy != "" {
+		ascending := opts.SortOrder == base.SortAscending
+		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
+	}
+
+	// First, get total count
+	countQuery := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", false)
+
+	// Apply same filters to count query
+	if opts.Search != "" {
+		countQuery = countQuery.Or(
+			fmt.Sprintf("name.ilike.%%%s%%", opts.Search),
+			fmt.Sprintf("province_id.ilike.%%%s%%", opts.Search),
+		)
+	}
+
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case base.OperatorEqual:
+			countQuery = countQuery.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case base.OperatorLike:
+			countQuery = countQuery.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Execute count query
+	_, count, err := countQuery.Execute()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count cities: %w", err)
+	}
+	totalCount = int(count)
+
+	// Apply pagination
+	limit, offset := opts.LimitOffset()
+	query = query.Range(offset, offset+limit-1, "")
+
+	// Execute query to get paginated results
+	_, err = query.ExecuteTo(&cities)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to search cities: %w", err)
 	}
 
-	// Count total matching records
-	_, count, err := query.Execute()
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count cities: %w", err)
-	}
-
-	return cities, int(count), nil
+	return cities, totalCount, nil
 }
 
 func (r *cityRepository) BulkCreate(ctx context.Context, cities []*models.City) ([]models.City, error) {

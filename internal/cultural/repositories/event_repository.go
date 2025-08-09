@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/holycann/cultour-backend/internal/cultural/models"
 	"github.com/holycann/cultour-backend/pkg/base"
@@ -36,6 +37,7 @@ func (r *eventRepository) Create(ctx context.Context, event *models.Event) (*mod
 
 func (r *eventRepository) FindByID(ctx context.Context, id string) (*models.EventDTO, error) {
 	var eventDTO models.EventDTO
+
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false).
@@ -228,12 +230,28 @@ func (r *eventRepository) FindPopularEvents(ctx context.Context, limit int) ([]m
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false).
-		Order("views", &postgrest.OrderOpts{Ascending: true}).
 		Limit(limit, "").
 		ExecuteTo(&events)
 	if err != nil {
 		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find popular events")
 	}
+
+	// Sort events manually by views in descending order
+	sort.Slice(events, func(i, j int) bool {
+		viewsI := 0
+		viewsJ := 0
+
+		if events[i].Views != nil {
+			viewsI = events[i].Views["views"]
+		}
+
+		if events[j].Views != nil {
+			viewsJ = events[j].Views["views"]
+		}
+
+		return viewsI > viewsJ
+	})
+
 	return events, nil
 }
 
@@ -241,7 +259,7 @@ func (r *eventRepository) Search(ctx context.Context, opts base.ListOptions) ([]
 	var events []models.EventDTO
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)!inner.views", "", false)
+		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false)
 
 	// Apply search if provided
 	if opts.Search != "" {

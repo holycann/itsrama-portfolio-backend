@@ -119,6 +119,7 @@ type Repositories struct {
 	EventRepository       culturalRepositories.EventRepository
 	ThreadRepository      discussionRepositories.ThreadRepository
 	MessageRepository     discussionRepositories.MessageRepository
+	ParticipantRepository discussionRepositories.ParticipantRepository
 	ProvinceRepository    placeRepositories.ProvinceRepository
 	CityRepository        placeRepositories.CityRepository
 	LocationRepository    placeRepositories.LocationRepository
@@ -244,6 +245,7 @@ func initializeRepositories(infra *Infrastructure) *Repositories {
 		EventRepository:       culturalRepositories.NewEventRepository(infra.SupabaseClient),
 		ThreadRepository:      discussionRepositories.NewThreadRepository(infra.SupabaseClient),
 		MessageRepository:     discussionRepositories.NewMessageRepository(infra.SupabaseClient),
+		ParticipantRepository: discussionRepositories.NewParticipantRepository(infra.SupabaseClient),
 		ProvinceRepository:    placeRepositories.NewProvinceRepository(infra.SupabaseClient),
 		CityRepository:        placeRepositories.NewCityRepository(infra.SupabaseClient),
 		LocationRepository:    placeRepositories.NewLocationRepository(infra.SupabaseClient),
@@ -258,15 +260,18 @@ func initializeServices(repos *Repositories, infra *Infrastructure) *Services {
 	locationService := placeServices.NewLocationService(repos.LocationRepository)
 	badgeService := achievementServices.NewBadgeService(repos.BadgeRepository)
 	userBadgeService := userServices.NewUserBadgeService(repos.UserBadgeRepository)
+	participantServices := discussionServices.NewParticipantService(repos.ParticipantRepository)
+	threadService := discussionServices.NewThreadService(repos.ThreadRepository, participantServices)
 
 	return &Services{
 		BadgeService: badgeService,
 		EventService: culturalServices.NewEventService(
 			repos.EventRepository,
 			locationService,
-			*infra.SupabaseStorage, // Dereference the pointer to match the function signature
+			*infra.SupabaseStorage,
+			threadService,
 		),
-		ThreadService:   discussionServices.NewThreadService(repos.ThreadRepository),
+		ThreadService:   threadService,
 		MessageService:  discussionServices.NewMessageService(repos.MessageRepository),
 		ProvinceService: placeServices.NewProvinceService(repos.ProvinceRepository),
 		CityService:     placeServices.NewCityService(repos.CityRepository),

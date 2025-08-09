@@ -4,8 +4,8 @@ CREATE TABLE public.discussion_participants (
     joined_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     CONSTRAINT discussion_participants_pkey PRIMARY KEY (thread_id, user_id),
-    CONSTRAINT discussion_participants_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads (id),
-    CONSTRAINT discussion_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users (id)
+    CONSTRAINT discussion_participants_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads (id) ON DELETE CASCADE,
+    CONSTRAINT discussion_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users (id) ON DELETE CASCADE
 );
 
 -- Trigger to automatically update the updated_at timestamp

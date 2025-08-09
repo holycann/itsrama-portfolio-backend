@@ -43,7 +43,7 @@ func (r *threadRepository) FindByID(ctx context.Context, id string) (*models.Thr
 	// Use join to fetch thread and participant in a single query
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*), creator:users(id,username,profile_picture)", "", false).
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false).
 		Eq("id", id).
 		Single().
 		ExecuteTo(&threadDTO)
@@ -82,7 +82,7 @@ func (r *threadRepository) List(ctx context.Context, opts base.ListOptions) ([]m
 
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*), creator:users(id,username,profile_picture)", "", false)
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
@@ -136,11 +136,16 @@ func (r *threadRepository) Count(ctx context.Context, filters []base.FilterOptio
 }
 
 func (r *threadRepository) Exists(ctx context.Context, id string) (bool, error) {
-	_, err := r.FindByID(ctx, id)
+	_, count, err := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", true).
+		Eq("id", id).
+		Limit(1, "").
+		Execute()
 	if err != nil {
 		return false, err
 	}
-	return true, nil
+	return count > 0, nil
 }
 
 func (r *threadRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ThreadDTO, error) {
@@ -148,7 +153,7 @@ func (r *threadRepository) FindByField(ctx context.Context, field string, value 
 
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*), creator:users(id,username,profile_picture)", "", false).
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
 		ExecuteTo(&threads)
 	if err != nil {
@@ -163,7 +168,7 @@ func (r *threadRepository) FindThreadByEvent(ctx context.Context, eventID string
 
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*), creator:users(id,username,profile_picture)", "", false).
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false).
 		Eq("event_id", eventID).
 		Single().
 		ExecuteTo(&thread)
@@ -180,7 +185,7 @@ func (r *threadRepository) FindActiveThreads(ctx context.Context, limit int) ([]
 
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*), creator:users(id,username,profile_picture)", "", false).
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false).
 		Eq("status", "active").
 		Limit(limit, "").
 		ExecuteTo(&threads)
@@ -196,7 +201,7 @@ func (r *threadRepository) Search(ctx context.Context, opts base.ListOptions) ([
 
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*), creator:users(id,username,profile_picture)", "", false)
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false)
 
 	// Apply search query if provided
 	if opts.Search != "" {
@@ -230,28 +235,6 @@ func (r *threadRepository) Search(ctx context.Context, opts base.ListOptions) ([
 
 	return threads, int(count), nil
 }
-
-func (r *threadRepository) JoinThread(ctx context.Context, threadID, userID string) error {
-	// Prepare the data for insertion into discussion_participants table
-	data := map[string]interface{}{
-		"thread_id": threadID,
-		"user_id":   userID,
-	}
-
-	// Insert the participant into the discussion_participants table
-	_, _, err := r.supabaseClient.
-		From("discussion_participants").
-		Insert(data, false, "", "minimal", "").
-		Execute()
-
-	if err != nil {
-		return fmt.Errorf("failed to join thread: %w", err)
-	}
-
-	return nil
-}
-
-// Additional methods to satisfy EnhancedRepository interface
 
 func (r *threadRepository) BulkCreate(ctx context.Context, threads []*models.Thread) ([]models.Thread, error) {
 	var createdThreads []models.Thread

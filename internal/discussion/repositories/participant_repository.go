@@ -8,6 +8,7 @@ import (
 
 	"github.com/holycann/cultour-backend/internal/discussion/models"
 	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
 	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
@@ -30,7 +31,11 @@ func (r *participantRepository) Create(ctx context.Context, participant *models.
 		Insert(participant, false, "", "minimal", "").
 		Execute()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to create participant",
+		)
 	}
 
 	return participant, nil
@@ -40,7 +45,7 @@ func (r *participantRepository) FindByID(ctx context.Context, id string) (*model
 	var participantDTO models.ParticipantDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, user:users(id,username,profile_picture)", "", false).
+		Select("*, user:user_view!discussion_participants_user_id_fkey(*)", "", false).
 		Eq("id", id).
 		Single().
 		ExecuteTo(&participantDTO)
@@ -73,7 +78,7 @@ func (r *participantRepository) List(ctx context.Context, opts base.ListOptions)
 	var participants []models.ParticipantDTO
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*, user:users(id,username,profile_picture)", "", false)
+		Select("*, user:user_view!discussion_participants_user_id_fkey(*)", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
@@ -123,17 +128,24 @@ func (r *participantRepository) Count(ctx context.Context, filters []base.Filter
 }
 
 func (r *participantRepository) Exists(ctx context.Context, id string) (bool, error) {
-	count, err := r.Count(ctx, []base.FilterOption{
-		{Field: "id", Operator: base.OperatorEqual, Value: id},
-	})
-	return count > 0, err
+	query := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", false).
+		Eq("id", id)
+
+	_, count, err := query.Execute()
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 func (r *participantRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ParticipantDTO, error) {
 	var participants []models.ParticipantDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, user:users(id,username,profile_picture)", "", false).
+		Select("*, user:user_view!discussion_participants_user_id_fkey(*)", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
 		ExecuteTo(&participants)
 	return participants, err
@@ -143,10 +155,31 @@ func (r *participantRepository) FindParticipantsByThread(ctx context.Context, th
 	var participants []models.ParticipantDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, user:users(id,username,profile_picture)", "", false).
+		Select("*, user:users_view!discussion_participants_user_id_fkey(*)", "", false).
 		Eq("thread_id", threadID).
 		ExecuteTo(&participants)
 	return participants, err
+}
+
+func (r *participantRepository) FindParticipantByThread(ctx context.Context, userID, threadID string) (*models.ParticipantDTO, error) {
+	var participants []models.ParticipantDTO
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*, user:users_view!discussion_participants_user_id_fkey(*)", "", false).
+		Eq("thread_id", threadID).
+		Eq("user_id", userID).
+		Limit(1, "").
+		ExecuteTo(&participants)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(participants) == 0 {
+		return nil, nil
+	}
+
+	return &participants[0], nil
 }
 
 func (r *participantRepository) FindThreadParticipants(ctx context.Context, threadID string) ([]models.ParticipantDTO, error) {
@@ -171,7 +204,7 @@ func (r *participantRepository) Search(ctx context.Context, opts base.ListOption
 	var participants []models.ParticipantDTO
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*, user:users(id,username,profile_picture)", "", false)
+		Select("*, user:user_view!discussion_participants_user_id_fkey(*)", "", false)
 
 	// Apply search query if provided
 	if opts.Search != "" {

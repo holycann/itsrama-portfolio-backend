@@ -143,7 +143,7 @@ func (h *LocationHandler) SearchLocations(c *gin.Context) {
 		return
 	}
 
-	// Handle pagination
+	// Handle pagination (todo: return accurate total from service)
 	h.HandlePagination(c, locations, len(locations), listOptions)
 }
 
@@ -295,7 +295,7 @@ func (h *LocationHandler) ListLocations(c *gin.Context) {
 		return
 	}
 
-	// Handle pagination
+	// Handle pagination (todo: return accurate total from service)
 	h.HandlePagination(c, locations, len(locations), listOptions)
 }
 

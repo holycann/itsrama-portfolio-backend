@@ -36,11 +36,11 @@ func (s *participantService) CreateParticipant(ctx context.Context, participant 
 		return nil, err
 	}
 
-	// Set default values
+	// Validate thread and user IDs
 	if participant.ThreadID == uuid.Nil {
 		return nil, errors.New(
 			errors.ErrValidation,
-			"Thread ID is required",
+			"Thread ID is required and must be a valid UUID",
 			nil,
 		)
 	}
@@ -48,17 +48,46 @@ func (s *participantService) CreateParticipant(ctx context.Context, participant 
 	if participant.UserID == uuid.Nil {
 		return nil, errors.New(
 			errors.ErrValidation,
-			"User ID is required",
+			"User ID is required and must be a valid UUID",
 			nil,
 		)
 	}
 
-	now := time.Now()
+	// Perform an atomic check for existing participant
+	existingParticipant, err := s.GetParticipantByThread(ctx, participant.ThreadID.String(), participant.UserID.String())
+	if err != nil {
+		return nil, errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to check existing participant",
+		)
+	}
+
+	// If participant already exists, return an error
+	if existingParticipant != nil {
+		return nil, errors.New(
+			errors.ErrConflict,
+			"User is already a participant in this thread",
+			nil,
+		)
+	}
+
+	// Set timestamps
+	now := time.Now().UTC()
 	participant.JoinedAt = &now
 	participant.UpdatedAt = &now
 
-	// Call repository to create participant
-	return s.participantRepo.Create(ctx, participant)
+	// Attempt to create participant
+	createdParticipant, err := s.participantRepo.Create(ctx, participant)
+	if err != nil {
+		return nil, errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to create participant",
+		)
+	}
+
+	return createdParticipant, nil
 }
 
 func (s *participantService) GetParticipantByID(ctx context.Context, id string) (*models.ParticipantDTO, error) {
@@ -134,6 +163,28 @@ func (s *participantService) GetParticipantsByThread(ctx context.Context, thread
 	}
 
 	return s.participantRepo.FindParticipantsByThread(ctx, threadID)
+}
+
+func (s *participantService) GetParticipantByThread(ctx context.Context, threadID, userID string) (*models.ParticipantDTO, error) {
+	// Validate thread ID
+	if threadID == "" {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread ID cannot be empty",
+			nil,
+		)
+	}
+
+	// Validate user ID
+	if userID == "" {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"User ID cannot be empty",
+			nil,
+		)
+	}
+
+	return s.participantRepo.FindParticipantByThread(ctx, threadID, userID)
 }
 
 func (s *participantService) GetThreadParticipants(ctx context.Context, threadID string) ([]models.ParticipantDTO, error) {

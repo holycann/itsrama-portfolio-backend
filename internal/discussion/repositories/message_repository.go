@@ -5,6 +5,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/discussion/models"
@@ -53,9 +54,16 @@ func (r *messageRepository) FindByID(ctx context.Context, id string) (*models.Me
 }
 
 func (r *messageRepository) Update(ctx context.Context, message *models.Message) (*models.Message, error) {
+	updateMessage := map[string]interface{}{
+		"sender_id":  message.SenderID,
+		"content":    message.Content,
+		"updated_at": message.UpdatedAt,
+		"type":       message.Type,
+	}
+
 	_, _, err := r.supabaseClient.
 		From(r.table).
-		Update(message, "minimal", "").
+		Update(updateMessage, "minimal", "").
 		Eq("id", message.ID.String()).
 		Execute()
 	if err != nil {
@@ -252,7 +260,13 @@ func (r *messageRepository) FindMessagesByThread(ctx context.Context, threadID s
 		Eq("thread_id", threadID).
 		Order("created_at", &postgrest.OrderOpts{Ascending: true}).
 		ExecuteTo(&messages)
-	return messages, err
+
+	// If no messages found, return empty slice instead of error
+	if err != nil && !strings.Contains(err.Error(), "no rows") {
+		return nil, err
+	}
+
+	return messages, nil
 }
 
 func (r *messageRepository) FindMessagesByUser(ctx context.Context, userID string) ([]models.MessageDTO, error) {

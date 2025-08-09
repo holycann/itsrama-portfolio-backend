@@ -16,6 +16,7 @@ import (
 	"github.com/holycann/cultour-backend/pkg/base"
 	"github.com/holycann/cultour-backend/pkg/errors"
 	"github.com/holycann/cultour-backend/pkg/logger"
+	"github.com/holycann/cultour-backend/pkg/response"
 	_ "github.com/holycann/cultour-backend/pkg/response"
 )
 
@@ -152,8 +153,6 @@ func (h *EventHandler) validateAndExtractEventInput(c *gin.Context, eventInput *
 		)
 	}
 
-	fmt.Println("locationStr:", locationStr)
-
 	var loc placeModel.LocationCreate
 	if err := json.Unmarshal([]byte(locationStr), &loc); err != nil {
 		return errors.New(
@@ -163,6 +162,8 @@ func (h *EventHandler) validateAndExtractEventInput(c *gin.Context, eventInput *
 		)
 	}
 	eventInput.Location = &loc
+
+	eventInput.Location.CityID = uuid.MustParse(c.PostForm("city_id"))
 
 	return nil
 }
@@ -295,8 +296,8 @@ func (h *EventHandler) GetEventByID(c *gin.Context) {
 // @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
 // @Param page query int false "Page number for pagination" default(1) minimum(1)
 // @Param per_page query int false "Number of events per page" default(10) minimum(1) maximum(100)
-// @Param sort_by query string false "Field to sort events by" default("created_at)" Enum(created_at,start_date,name)
-// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param sort_by query string false "Field to sort events by" default("created_at") Enum(created_at,start_date,name)
+// @Param sort_order query string false "Sort direction" default("desc") Enum(asc,desc)
 // @Param is_kid_friendly query bool false "Filter events by kid-friendliness"
 // @Success 200 {object} response.APIResponse{data=[]models.EventDTO} "Successfully retrieved events list"
 // @Success 204 {object} response.APIResponse "No events found"
@@ -315,13 +316,13 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 		return
 	}
 
-	events, err := h.eventService.ListEvents(c.Request.Context(), opts)
+	events, total, err := h.eventService.ListEvents(c.Request.Context(), opts)
 	if err != nil {
 		h.HandleError(c, err)
 		return
 	}
 
-	h.HandleSuccess(c, events, "Events retrieved successfully")
+	h.HandleSuccess(c, events, "Events retrieved successfully", response.WithPagination(total, opts.Page, opts.PerPage))
 }
 
 // UpdateEvent godoc
@@ -351,6 +352,35 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 func (h *EventHandler) UpdateEvent(c *gin.Context) {
 	var eventInput models.EventPayload
 
+	// Extract event ID from path parameter
+	eventIDStr := c.Param("id")
+	eventID, err := uuid.Parse(eventIDStr)
+	if err != nil {
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Invalid event ID",
+			err,
+		))
+		return
+	}
+
+	// Set the ID in the payload
+	eventInput.ID = eventID
+
+	// Get user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, errors.New(
+			errors.ErrAuthentication,
+			"Failed to retrieve user context",
+			err,
+		))
+		return
+	}
+
+	// Set the user ID in the payload
+	eventInput.UserID = uuid.MustParse(userID)
+
 	// Parse and validate input
 	if err := h.validateAndExtractEventInput(c, &eventInput); err != nil {
 		h.HandleError(c, err)
@@ -359,7 +389,7 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 
 	// Get image file
 	var fileHeader *multipart.FileHeader
-	fileHeader, err := h.extractImageFile(c)
+	fileHeader, err = h.extractImageFile(c)
 	if err != nil {
 		h.HandleError(c, err)
 		return
@@ -462,8 +492,8 @@ func (h *EventHandler) GetRelatedEvents(c *gin.Context) {
 // @Param query query string true "Search term for finding events" minlength(2)
 // @Param page query int false "Page number for pagination" default(1) minimum(1)
 // @Param per_page query int false "Number of search results per page" default(10) minimum(1) maximum(100)
-// @Param sort_by query string false "Field to sort search results" default("relevance)" Enum(relevance,created_at,start_date)
-// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param sort_by query string false "Field to sort search results" default("created_at") Enum(created_at,start_date,name)
+// @Param sort_order query string false "Sort direction" default("desc") Enum(asc,desc)
 // @Success 200 {object} response.APIResponse{data=[]models.EventDTO} "Successfully completed event search"
 // @Success 204 {object} response.APIResponse "No events match the search query"
 // @Failure 400 {object} response.APIResponse "Invalid search parameters"
@@ -482,13 +512,13 @@ func (h *EventHandler) SearchEvents(c *gin.Context) {
 		return
 	}
 
-	events, err := h.eventService.SearchEvents(c.Request.Context(), query, opts)
+	events, total, err := h.eventService.SearchEvents(c.Request.Context(), query, opts)
 	if err != nil {
 		h.HandleError(c, err)
 		return
 	}
 
-	h.HandleSuccess(c, events, "Events search completed successfully")
+	h.HandleSuccess(c, events, "Events search completed successfully", response.WithPagination(total, opts.Page, opts.PerPage))
 }
 
 // UpdateEventViews godoc

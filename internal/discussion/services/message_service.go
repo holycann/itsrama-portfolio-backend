@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,13 +37,51 @@ func (s *messageService) CreateMessage(ctx context.Context, message *models.Mess
 		return nil, err
 	}
 
+	// Additional message content validation
+	if len(message.Content) == 0 {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Message content cannot be empty",
+			nil,
+		)
+	}
+
+	if len(message.Content) > 1000 {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Message content exceeds maximum length of 1000 characters",
+			nil,
+		)
+	}
+
+	// Sanitize message content (remove excessive whitespace)
+	message.Content = strings.TrimSpace(message.Content)
+
+	// Validate thread and sender
+	if message.ThreadID == uuid.Nil {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread ID is required",
+			nil,
+		)
+	}
+
+	if message.SenderID == uuid.Nil {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Sender ID is required",
+			nil,
+		)
+	}
+
 	// Set default values
 	if message.ID == uuid.Nil {
 		message.ID = uuid.New()
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	message.CreatedAt = &now
+	message.UpdatedAt = &now
 
 	// Set default type if not provided
 	if message.Type == "" {

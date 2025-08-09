@@ -11,7 +11,6 @@ type ThreadRepository interface {
 	base.BaseRepository[models.Thread, models.ThreadDTO]
 	FindThreadByEvent(ctx context.Context, eventID string) (*models.ThreadDTO, error)
 	FindActiveThreads(ctx context.Context, limit int) ([]models.ThreadDTO, error)
-	JoinThread(ctx context.Context, threadID, userID string) error
 }
 
 type MessageRepository interface {
@@ -24,6 +23,7 @@ type MessageRepository interface {
 type ParticipantRepository interface {
 	base.BaseRepository[models.Participant, models.ParticipantDTO]
 	FindParticipantsByThread(ctx context.Context, threadID string) ([]models.ParticipantDTO, error)
+	FindParticipantByThread(ctx context.Context, userID, threadID string) (*models.ParticipantDTO, error)
 	FindThreadParticipants(ctx context.Context, threadID string) ([]models.ParticipantDTO, error)
 	RemoveParticipant(ctx context.Context, threadID, userID string) error
 }

@@ -17,8 +17,8 @@ type EventService interface {
 
 	// Event Retrieval Operations
 	GetEventByID(ctx context.Context, id string) (*models.EventDTO, error)
-	ListEvents(ctx context.Context, opts base.ListOptions) ([]models.EventDTO, error)
-	SearchEvents(ctx context.Context, query string, opts base.ListOptions) ([]models.EventDTO, error)
+	ListEvents(ctx context.Context, opts base.ListOptions) ([]models.EventDTO, int, error)
+	SearchEvents(ctx context.Context, query string, opts base.ListOptions) ([]models.EventDTO, int, error)
 
 	// Specialized Event Operations
 	GetTrendingEvents(ctx context.Context, limit int) ([]models.EventDTO, error)

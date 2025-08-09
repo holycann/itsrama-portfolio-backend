@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,16 +13,18 @@ import (
 )
 
 type threadService struct {
-	threadRepo repositories.ThreadRepository
+	threadRepo         repositories.ThreadRepository
+	participantService ParticipantService
 }
 
-func NewThreadService(threadRepo repositories.ThreadRepository) ThreadService {
+func NewThreadService(threadRepo repositories.ThreadRepository, participantService ParticipantService) ThreadService {
 	return &threadService{
-		threadRepo: threadRepo,
+		threadRepo:         threadRepo,
+		participantService: participantService,
 	}
 }
 
-func (s *threadService) CreateThread(ctx context.Context, thread *models.Thread) (*models.Thread, error) {
+func (s *threadService) CreateThread(ctx context.Context, thread *models.CreateThread) (*models.Thread, error) {
 	// Validate thread object
 	if thread == nil {
 		return nil, errors.New(
@@ -36,21 +39,45 @@ func (s *threadService) CreateThread(ctx context.Context, thread *models.Thread)
 		return nil, err
 	}
 
-	// Set default values
-	if thread.ID == uuid.Nil {
-		thread.ID = uuid.New()
+	// Additional validation for event ID
+	if thread.EventID == uuid.Nil {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Event ID is required and must be a valid UUID",
+			nil,
+		)
 	}
 
-	now := time.Now()
-	thread.CreatedAt = &now
+	// Check if thread for event already exists
+	existingThreads, _ := s.threadRepo.FindByField(ctx, "event_id", thread.EventID.String())
+
+	// If thread already exists, return an error with more context
+	if len(existingThreads) > 0 {
+		return nil, errors.New(
+			errors.ErrConflict,
+			fmt.Sprintf("A discussion thread already exists for event %s", thread.EventID),
+			nil,
+		)
+	}
 
 	// Set default status if not provided
 	if thread.Status == "" {
 		thread.Status = "active"
 	}
 
+	// Prepare thread model for creation
+	now := time.Now().UTC()
+	threadModel := &models.Thread{
+		ID:        uuid.New(),
+		EventID:   thread.EventID,
+		CreatorID: thread.CreatorID,
+		Status:    thread.Status,
+		CreatedAt: &now,
+		UpdatedAt: &now,
+	}
+
 	// Call repository to create thread
-	return s.threadRepo.Create(ctx, thread)
+	return s.threadRepo.Create(ctx, threadModel)
 }
 
 func (s *threadService) GetThreadByID(ctx context.Context, id string) (*models.ThreadDTO, error) {
@@ -206,21 +233,90 @@ func (s *threadService) SearchThreads(ctx context.Context, query string, opts ba
 
 func (s *threadService) JoinThread(ctx context.Context, threadID, userID string) error {
 	// Validate input parameters
-	if threadID == "" {
+	threadUUID, err := uuid.Parse(threadID)
+	if err != nil {
 		return errors.New(
 			errors.ErrValidation,
-			"Thread ID cannot be empty",
-			nil,
-		)
-	}
-	if userID == "" {
-		return errors.New(
-			errors.ErrValidation,
-			"User ID cannot be empty",
+			"Invalid thread ID format",
 			nil,
 		)
 	}
 
-	// Call repository to join thread
-	return s.threadRepo.JoinThread(ctx, threadID, userID)
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return errors.New(
+			errors.ErrValidation,
+			"Invalid user ID format",
+			nil,
+		)
+	}
+
+	// Retrieve the thread to ensure it exists and is active
+	thread, err := s.threadRepo.FindByID(ctx, threadID)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			errors.ErrNotFound,
+			"Thread not found",
+		)
+	}
+
+	// Check thread status
+	if thread.Status != "active" {
+		return errors.New(
+			errors.ErrValidation,
+			"Cannot join an inactive thread",
+			nil,
+		)
+	}
+
+	// Create a participant model for validation
+	participant := &models.Participant{
+		ThreadID: threadUUID,
+		UserID:   userUUID,
+	}
+
+	// Validate the model
+	if err := base.ValidateModel(participant); err != nil {
+		return err
+	}
+
+	// Check if participant already exists (atomic operation)
+	existingParticipant, err := s.participantService.GetParticipantByThread(ctx, userID, threadID)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to check existing participant",
+		)
+	}
+
+	if existingParticipant != nil {
+		return errors.New(
+			errors.ErrConflict,
+			"User is already a participant in this thread",
+			nil,
+		)
+	}
+
+	// Create new participant with proper timestamps
+	now := time.Now().UTC()
+	newParticipant := &models.Participant{
+		ThreadID:  threadUUID,
+		UserID:    userUUID,
+		JoinedAt:  &now,
+		UpdatedAt: &now,
+	}
+
+	// Attempt to create participant
+	_, err = s.participantService.CreateParticipant(ctx, newParticipant)
+	if err != nil {
+		return errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to join thread",
+		)
+	}
+
+	return nil
 }

@@ -201,32 +201,63 @@ func IsZero(v interface{}) bool {
 	}
 }
 
+// ParsePaginationParams supports both page/per_page and limit/offset styles and normalizes to ListOptions
 func ParsePaginationParams(c *gin.Context) (ListOptions, error) {
-	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	if err != nil || limit <= 0 {
-		return ListOptions{}, fmt.Errorf("invalid limit")
-	}
+	// Prefer page/per_page if present
+	pageStr := c.Query("page")
+	perPageStr := c.Query("per_page")
 
-	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	if err != nil || offset < 0 {
-		return ListOptions{}, fmt.Errorf("invalid offset")
+	var page, perPage int
+	var err error
+
+	if pageStr != "" || perPageStr != "" {
+		// Use provided or defaults
+		if pageStr == "" {
+			page = 1
+		} else {
+			page, err = strconv.Atoi(pageStr)
+			if err != nil || page < 1 {
+				return ListOptions{}, fmt.Errorf("invalid page")
+			}
+		}
+		if perPageStr == "" {
+			perPage = 10
+		} else {
+			perPage, err = strconv.Atoi(perPageStr)
+			if err != nil || perPage < 1 {
+				return ListOptions{}, fmt.Errorf("invalid per_page")
+			}
+		}
+	} else {
+		// Fallback to limit/offset
+		limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+		if err != nil || limit <= 0 {
+			return ListOptions{}, fmt.Errorf("invalid limit")
+		}
+
+		offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))
+		if err != nil || offset < 0 {
+			return ListOptions{}, fmt.Errorf("invalid offset")
+		}
+		perPage = limit
+		page = (offset / limit) + 1
 	}
 
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
 
-	listOptions := ListOptions{
-		Page:      (offset / limit) + 1,
-		PerPage:   limit,
+	opts := ListOptions{
+		Page:      page,
+		PerPage:   perPage,
 		SortBy:    sortBy,
-		SortOrder: sortOrder, // Default to descending
+		SortOrder: sortOrder,
 	}
 
 	if strings.ToLower(sortOrder) == "asc" {
-		listOptions.SortOrder = SortAscending
+		opts.SortOrder = SortAscending
 	} else {
-		listOptions.SortOrder = SortDescending
+		opts.SortOrder = SortDescending
 	}
 
-	return listOptions, nil
+	return opts, nil
 }

@@ -25,10 +25,10 @@ func NewLocationRepository(supabaseClient *supabase.Client) LocationRepository {
 }
 
 func (r *locationRepository) Create(ctx context.Context, location *models.Location) (*models.Location, error) {
-	_, err := r.supabaseClient.
+	_, _, err := r.supabaseClient.
 		From(r.table).
 		Insert(location, false, "", "minimal", "").
-		ExecuteTo(&location)
+		Execute()
 	return location, err
 }
 

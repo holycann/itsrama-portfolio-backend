@@ -7,7 +7,8 @@ CREATE TABLE public.threads (
     updated_at timestamp with time zone NULL,
     CONSTRAINT threads_pkey PRIMARY KEY (id),
     CONSTRAINT threads_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events (id) ON DELETE CASCADE,
-    CONSTRAINT threads_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users (id) ON DELETE CASCADE
+    CONSTRAINT threads_creator_id_fkey FOREIGN KEY (creator_id) REFERENCES auth.users (id) ON DELETE CASCADE,
+    CONSTRAINT unique_event_thread UNIQUE (event_id)
 );
 
 -- Insert sample threads for initial events

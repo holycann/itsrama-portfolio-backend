@@ -126,11 +126,9 @@ func (h *CityHandler) SearchCities(c *gin.Context) {
 		return
 	}
 
-	// Create pagination
-	data, pagination := base.PaginateResults(cities, listOptions.Page, listOptions.PerPage)
-
-	h.HandleSuccess(c, data, "Cities retrieved successfully",
-		response.WithPagination(total, pagination.Page, pagination.PerPage))
+	// Respond with pagination based on total and requested options
+	h.HandleSuccess(c, cities, "Cities retrieved successfully",
+		response.WithPagination(total, listOptions.Page, listOptions.PerPage))
 }
 
 // UpdateCity godoc
@@ -280,11 +278,9 @@ func (h *CityHandler) ListCities(c *gin.Context) {
 		return
 	}
 
-	// Create pagination
-	data, pagination := base.PaginateResults(cities, listOptions.Page, listOptions.PerPage)
-
-	h.HandleSuccess(c, data, "Cities retrieved successfully",
-		response.WithPagination(total, pagination.Page, pagination.PerPage))
+	// Respond with pagination based on total and requested options
+	h.HandleSuccess(c, cities, "Cities retrieved successfully",
+		response.WithPagination(total, listOptions.Page, listOptions.PerPage))
 }
 
 // GetCityByID godoc

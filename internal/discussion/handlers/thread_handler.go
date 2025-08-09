@@ -48,7 +48,7 @@ func NewThreadHandler(
 // @Failure 500 {object} response.APIResponse "Internal server error during thread creation"
 // @Router /threads [post]
 func (h *ThreadHandler) CreateThread(c *gin.Context) {
-	var thread models.Thread
+	var thread models.CreateThread
 	if err := c.ShouldBindJSON(&thread); err != nil {
 		h.HandleError(c, errors.New(errors.ErrValidation, "Invalid request payload", err))
 		return
@@ -268,7 +268,7 @@ func (h *ThreadHandler) ListThreads(c *gin.Context) {
 		return
 	}
 
-	data, pagination := base.PaginateResults(threads, listOptions.PerPage, listOptions.Page)
+	data, pagination := base.PaginateResults(threads, listOptions.Page, listOptions.PerPage)
 
 	// Respond with threads and pagination
 	h.HandleSuccess(c, data, "Threads retrieved successfully", response.WithPagination(pagination.Total, pagination.Page, pagination.PerPage))
@@ -356,9 +356,14 @@ func (h *ThreadHandler) GetThreadByID(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse "Internal server error during thread joining"
 // @Router /threads/{id}/join [post]
 func (h *ThreadHandler) JoinThread(c *gin.Context) {
-	// Parse thread ID
-	threadID, err := h.ValidateUUID("id", "Thread ID")
-	if err != nil {
+	// Parse thread ID from path parameter
+	threadID := c.Param("id")
+	if threadID == "" {
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Thread ID is required or invalid",
+			nil,
+		))
 		return
 	}
 
@@ -370,7 +375,7 @@ func (h *ThreadHandler) JoinThread(c *gin.Context) {
 	}
 
 	// Join thread
-	if err := h.threadService.JoinThread(c.Request.Context(), threadID.String(), userID); err != nil {
+	if err := h.threadService.JoinThread(c.Request.Context(), threadID, userID); err != nil {
 		h.HandleError(c, err)
 		return
 	}
@@ -394,17 +399,20 @@ func (h *ThreadHandler) JoinThread(c *gin.Context) {
 // @Failure 500 {object} response.APIResponse "Internal server error during event thread retrieval"
 // @Router /threads/event/{event_id} [get]
 func (h *ThreadHandler) GetThreadByEvent(c *gin.Context) {
-	// Parse event ID
-	eventID, err := h.ValidateUUID("event_id", "Event ID")
-	if err != nil {
+	eventID := c.Param("event_id")
+	if eventID == "" {
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Event ID is required or invalid",
+			nil,
+		))
 		return
 	}
 
 	// Retrieve thread by event
-	thread, err := h.threadService.GetThreadByEvent(c.Request.Context(), eventID.String())
+	thread, err := h.threadService.GetThreadByEvent(c.Request.Context(), eventID)
 	if err != nil {
-		// Custom handling for no thread found
-		response.NotFound(c, "Thread Belum Di Buat Silahkan Anda Untuk Membuat Thread", "No thread found for this event", "")
+		h.HandleError(c, err)
 		return
 	}
 
