@@ -2,144 +2,159 @@ package handlers
 
 import (
 	"encoding/json"
-	"math"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/discussion/models"
 	"github.com/holycann/cultour-backend/internal/discussion/services"
-	"github.com/holycann/cultour-backend/internal/logger"
-	"github.com/holycann/cultour-backend/internal/response"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/internal/middleware"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/logger"
+	"github.com/holycann/cultour-backend/pkg/response"
 )
 
 // MessageHandler handles HTTP requests related to messages
 type MessageHandler struct {
+	base.BaseHandler
 	messageService services.MessageService
-	logger         *logger.Logger
 }
 
 // NewMessageHandler creates a new instance of message handler
-func NewMessageHandler(messageService services.MessageService, logger *logger.Logger) *MessageHandler {
+func NewMessageHandler(
+	messageService services.MessageService,
+	logger *logger.Logger,
+) *MessageHandler {
 	return &MessageHandler{
+		BaseHandler:    *base.NewBaseHandler(logger),
 		messageService: messageService,
-		logger:         logger,
 	}
 }
 
 // CreateMessage godoc
 // @Summary Create a new message
-// @Description Add a new message to the system
+// @Description Allows authenticated users to send a message in a specific discussion thread
+// @Description Supports creating different types of messages (discussion, AI-generated)
 // @Tags Messages
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param message body models.Message true "Message Information"
-// @Success 201 {object} response.APIResponse{data=models.ResponseMessage} "Message created successfully"
-// @Failure 400 {object} response.APIResponse "Invalid message creation details"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param message body models.CreateMessage true "Message Creation Details"
+// @Success 201 {object} response.APIResponse{data=models.MessageDTO} "Message successfully created"
+// @Failure 400 {object} response.APIResponse "Invalid message creation payload or validation error"
+// @Failure 401 {object} response.APIResponse "Authentication required - missing or invalid token"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient thread access privileges"
+// @Failure 500 {object} response.APIResponse "Internal server error during message creation"
 // @Router /messages [post]
 func (h *MessageHandler) CreateMessage(c *gin.Context) {
 	var message models.Message
 	if err := c.ShouldBindJSON(&message); err != nil {
-		h.logger.Error("Error binding message: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "Invalid request payload", err))
 		return
 	}
 
-	userID := c.GetString("user_id")
-	if userID == "" {
-		h.logger.Error("Unauthorized: No user ID found")
-		response.Unauthorized(c, "Authentication required", "No user ID found in context", "")
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
 	parsedUserID, err := uuid.Parse(userID)
 	if err != nil {
-		h.logger.Error("Invalid user ID format")
-		response.Unauthorized(c, "Authentication required", "Invalid user ID format", "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Invalid user ID format",
+			err,
+		))
 		return
 	}
 
-	message.UserID = parsedUserID
+	message.SenderID = parsedUserID
 
 	// Validate required fields
-	if message.ThreadID == uuid.Nil || message.UserID == uuid.Nil || message.Content == "" {
-		// Convert map to JSON string for error details
+	if message.ThreadID == uuid.Nil || message.SenderID == uuid.Nil || message.Content == "" {
 		details, _ := json.Marshal(map[string]interface{}{
 			"thread_id": message.ThreadID == uuid.Nil,
-			"user_id":   message.UserID == uuid.Nil,
+			"sender_id": message.SenderID == uuid.Nil,
 			"content":   message.Content == "",
 		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Missing required fields",
+			nil,
+			errors.WithContext("details", string(details)),
+		))
 		return
 	}
 
-	if err := h.messageService.CreateMessage(c.Request.Context(), &message); err != nil {
-		h.logger.Error("Error creating message: %v", err)
-		response.InternalServerError(c, "Failed to create message", err.Error(), "")
+	createdMessage, err := h.messageService.CreateMessage(c.Request.Context(), &message)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessCreated(c, message, "Message created successfully")
+	response.SuccessCreated(c, createdMessage, "Message created successfully")
 }
 
 // ListMessages godoc
-// @Summary List messages
-// @Description Retrieve a list of messages with pagination and filtering
+// @Summary Retrieve messages list
+// @Description Fetches a paginated list of messages with optional filtering and sorting
+// @Description Supports advanced querying with flexible pagination and filtering options
 // @Tags Messages
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param limit query int false "Number of messages to retrieve" default(10)
-// @Param offset query int false "Number of messages to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.ResponseMessage} "Messages retrieved successfully"
-// @Failure 500 {object} response.APIResponse "Failed to list messages"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of messages per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort messages by" default("created_at)" Enum(created_at,sender_id)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param thread_id query string false "Filter messages by specific thread"
+// @Param sender_id query string false "Filter messages by specific sender"
+// @Success 200 {object} response.APIResponse{data=[]models.MessageDTO} "Successfully retrieved messages list"
+// @Success 204 {object} response.APIResponse "No messages found"
+// @Failure 400 {object} response.APIResponse "Invalid query parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during messages retrieval"
 // @Router /messages [get]
 func (h *MessageHandler) ListMessages(c *gin.Context) {
 	// Parse pagination parameters with defaults
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
 
 	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
+	if page <= 0 {
+		page = 1
 	}
-	if offset < 0 {
-		offset = 0
+	if perPage <= 0 {
+		perPage = 10
 	}
 
 	// Prepare list options
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
+	listOptions := base.ListOptions{
+		Page:      page,
+		PerPage:   perPage,
 		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+		SortOrder: sortOrder,
 	}
 
 	// Optional filtering
-	filters := []repository.FilterOption{}
+	filters := []base.FilterOption{}
 	if threadID := c.Query("thread_id"); threadID != "" {
-		filters = append(filters, repository.FilterOption{
+		filters = append(filters, base.FilterOption{
 			Field:    "thread_id",
-			Operator: "=",
+			Operator: base.OperatorEqual,
 			Value:    threadID,
 		})
 	}
-	if userID := c.Query("user_id"); userID != "" {
-		filters = append(filters, repository.FilterOption{
-			Field:    "user_id",
-			Operator: "=",
-			Value:    userID,
+	if senderID := c.Query("sender_id"); senderID != "" {
+		filters = append(filters, base.FilterOption{
+			Field:    "sender_id",
+			Operator: base.OperatorEqual,
+			Value:    senderID,
 		})
 	}
 	listOptions.Filters = filters
@@ -147,188 +162,178 @@ func (h *MessageHandler) ListMessages(c *gin.Context) {
 	// Retrieve messages
 	messages, err := h.messageService.ListMessages(c.Request.Context(), listOptions)
 	if err != nil {
-		h.logger.Error("Error retrieving messages: %v", err)
-		response.InternalServerError(c, "Failed to retrieve messages", err.Error(), "")
-		return
-	}
-
-	// Count total messages for pagination
-	totalMessages, err := h.messageService.CountMessages(c.Request.Context(), filters)
-	if err != nil {
-		h.logger.Error("Error counting messages: %v", err)
-		response.InternalServerError(c, "Failed to count messages", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
 	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalMessages,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalMessages) / float64(limit))),
-		HasNextPage: offset+limit < totalMessages,
-	}
+	data, pagination := base.PaginateResults(messages, listOptions.PerPage, listOptions.Page)
 
 	// Respond with messages and pagination
-	response.SuccessOK(c, messages, "Messages retrieved successfully", pagination)
+	response.SuccessOK(c, data, "Messages retrieved successfully", response.WithPagination(pagination.Total, pagination.Page, pagination.PerPage))
 }
 
 // SearchMessages godoc
 // @Summary Search messages
-// @Description Search messages by various criteria
+// @Description Performs a full-text search across message content with advanced filtering
+// @Description Allows finding messages by keywords and other attributes
 // @Tags Messages
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param query query string true "Search query (content, etc.)"
-// @Param limit query int false "Number of results to retrieve" default(10)
-// @Param offset query int false "Number of results to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.ResponseMessage} "Messages found successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param query query string true "Search term for finding messages" minlength(2)
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of search results per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort search results" default("relevance)" Enum(relevance,created_at)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Success 200 {object} response.APIResponse{data=[]models.MessageDTO} "Successfully completed message search"
+// @Success 204 {object} response.APIResponse "No messages match the search query"
 // @Failure 400 {object} response.APIResponse "Invalid search parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during message search"
 // @Router /messages/search [get]
 func (h *MessageHandler) SearchMessages(c *gin.Context) {
 	// Get search query
 	query := c.Query("query")
 	if query == "" {
-		response.BadRequest(c, "Search query is required", "Empty search query", "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Search query is required",
+			nil,
+		))
 		return
 	}
 
 	// Parse pagination parameters
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
 
 	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
+	if page <= 0 {
+		page = 1
 	}
-	if offset < 0 {
-		offset = 0
+	if perPage <= 0 {
+		perPage = 10
 	}
 
 	// Prepare list options for search
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
+	listOptions := base.ListOptions{
+		Page:      page,
+		PerPage:   perPage,
 		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-		Filters: []repository.FilterOption{
+		SortOrder: sortOrder,
+		Filters: []base.FilterOption{
 			{
 				Field:    "content",
-				Operator: "like",
+				Operator: base.OperatorLike,
 				Value:    query,
 			},
 		},
 	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
-	}
 
 	// Search messages
-	messages, err := h.messageService.SearchMessages(c.Request.Context(), query, listOptions)
+	messages, _, err := h.messageService.SearchMessages(c.Request.Context(), query, listOptions)
 	if err != nil {
-		h.logger.Error("Error searching messages: %v", err)
-		response.InternalServerError(c, "Failed to search messages", err.Error(), "")
-		return
-	}
-
-	// Count total search results
-	totalMessages, err := h.messageService.CountMessages(c.Request.Context(), listOptions.Filters)
-	if err != nil {
-		h.logger.Error("Error counting search results: %v", err)
-		response.InternalServerError(c, "Failed to count search results", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
 	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalMessages,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalMessages) / float64(limit))),
-		HasNextPage: offset+limit < totalMessages,
-	}
+	data, pagination := base.PaginateResults(messages, listOptions.PerPage, listOptions.Page)
 
 	// Respond with messages and pagination
-	response.SuccessOK(c, messages, "Messages found successfully", pagination)
+	response.SuccessOK(c, data, "Messages found successfully", response.WithPagination(pagination.Total, pagination.Page, pagination.PerPage))
 }
 
 // UpdateMessage godoc
-// @Summary Update a message
-// @Description Update an existing message's details
+// @Summary Update an existing message
+// @Description Allows message sender to modify their own message content
+// @Description Supports partial updates with message type preservation
 // @Tags Messages
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Message ID"
-// @Param message body models.Message true "Message Update Details"
-// @Success 200 {object} response.APIResponse{data=models.ResponseMessage} "Message updated successfully"
-// @Failure 400 {object} response.APIResponse "Invalid message update details"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Message Identifier" format(uuid)
+// @Param message body models.CreateMessage true "Message Update Payload"
+// @Success 200 {object} response.APIResponse{data=models.MessageDTO} "Message successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid message update payload or ID"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - can only update own messages"
 // @Failure 404 {object} response.APIResponse "Message not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during message update"
 // @Router /messages/{id} [put]
 func (h *MessageHandler) UpdateMessage(c *gin.Context) {
 	// Get message ID from path parameter
 	messageID := c.Param("id")
 	if messageID == "" {
-		response.BadRequest(c, "Message ID is required", "Missing message ID", "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Message ID is required",
+			nil,
+		))
 		return
 	}
 
 	var message models.Message
 	if err := c.ShouldBindJSON(&message); err != nil {
-		h.logger.Error("Error binding message: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "Invalid request payload", err))
 		return
 	}
 
 	// Set the ID from path parameter
 	parsedID, err := uuid.Parse(messageID)
 	if err != nil {
-		response.BadRequest(c, "Invalid Message ID", "Invalid UUID format", "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Invalid Message ID",
+			err,
+		))
 		return
 	}
 	message.ID = parsedID
 
-	if err := h.messageService.UpdateMessage(c.Request.Context(), &message); err != nil {
-		h.logger.Error("Error updating message: %v", err)
-		response.InternalServerError(c, "Failed to update message", err.Error(), "")
+	updatedMessage, err := h.messageService.UpdateMessage(c.Request.Context(), &message)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessOK(c, message, "Message updated successfully")
+	response.SuccessOK(c, updatedMessage, "Message updated successfully")
 }
 
 // DeleteMessage godoc
 // @Summary Delete a message
-// @Description Remove a message from the system by its unique identifier
+// @Description Allows message sender or thread administrator to remove a specific message
+// @Description Permanently deletes the message from the discussion thread
 // @Tags Messages
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Message ID"
-// @Success 200 {object} response.APIResponse "Deleted successfully"
-// @Failure 400 {object} response.APIResponse "Invalid message ID"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Message Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse "Message successfully deleted"
+// @Failure 400 {object} response.APIResponse "Invalid message ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient deletion privileges"
 // @Failure 404 {object} response.APIResponse "Message not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during message deletion"
 // @Router /messages/{id} [delete]
 func (h *MessageHandler) DeleteMessage(c *gin.Context) {
 	// Get message ID from path parameter
 	messageID := c.Param("id")
 	if messageID == "" {
-		response.BadRequest(c, "Message ID is required", "Missing message ID", "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Message ID is required",
+			nil,
+		))
 		return
 	}
 
 	if err := h.messageService.DeleteMessage(c.Request.Context(), messageID); err != nil {
-		h.logger.Error("Error deleting message: %v", err)
-		response.InternalServerError(c, "Failed to delete message", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
@@ -336,30 +341,38 @@ func (h *MessageHandler) DeleteMessage(c *gin.Context) {
 }
 
 // GetMessagesByThread godoc
-// @Summary Get messages by thread
-// @Description Retrieve all messages for a specific thread
+// @Summary Retrieve messages for a specific thread
+// @Description Fetches all messages associated with a particular discussion thread
+// @Description Returns messages in chronological order, supporting thread context
 // @Tags Messages
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param thread_id path string true "Thread ID"
-// @Success 200 {object} response.APIResponse{data=[]models.ResponseMessage} "Messages retrieved successfully"
-// @Failure 400 {object} response.APIResponse "Invalid thread ID"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param thread_id path string true "Unique Thread Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=[]models.MessageDTO} "Successfully retrieved thread messages"
+// @Success 204 {object} response.APIResponse "No messages found in the thread"
+// @Failure 400 {object} response.APIResponse "Invalid thread ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient thread access privileges"
+// @Failure 404 {object} response.APIResponse "Thread not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during message retrieval"
 // @Router /messages/thread/{thread_id} [get]
 func (h *MessageHandler) GetMessagesByThread(c *gin.Context) {
 	// Get thread ID from path parameter
 	threadID := c.Param("thread_id")
 	if threadID == "" {
-		response.BadRequest(c, "Thread ID is required", "Missing thread ID", "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Thread ID is required",
+			nil,
+		))
 		return
 	}
 
 	// Retrieve messages for the specified thread
 	messages, err := h.messageService.GetMessagesByThread(c.Request.Context(), threadID)
 	if err != nil {
-		h.logger.Error("Error retrieving messages by thread: %v", err)
-		response.InternalServerError(c, "Failed to retrieve messages", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 

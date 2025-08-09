@@ -2,6 +2,7 @@ package response
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -108,37 +109,56 @@ func Success(c *gin.Context, statusCode int, data interface{}, message string, o
 
 // Error creates a standardized error response from a CustomError
 func Error(c *gin.Context, err *errors.CustomError, opts ...ResponseOption) {
+	errorMessage := err.Error()
+	var lastError string
+	if errorMessage != "" {
+		lastErrorParts := strings.Split(errorMessage, ";")
+		lastError = strings.TrimSpace(lastErrorParts[len(lastErrorParts)-1])
+
+		if lastError != "" {
+			lastErrorParts = strings.Split(lastError, ":")
+			lastError = strings.TrimSpace(lastErrorParts[len(lastErrorParts)-1])
+		}
+	}
+
 	resp := &APIResponse{
 		Success:   false,
 		RequestID: uuid.New(),
 		Timestamp: time.Now().UTC(),
-		Message:   err.Message,
+		Message:   lastError,
 		Metadata:  make(map[string]interface{}),
 	}
 
 	// Determine status code based on error type
 	var statusCode int
 	switch err.Type {
-	case errors.ErrValidation:
+	case errors.ErrValidation, errors.ErrBadRequest:
 		statusCode = http.StatusBadRequest
 	case errors.ErrNotFound:
 		statusCode = http.StatusNotFound
-	case errors.ErrAuthentication:
+	case errors.ErrAuthentication, errors.ErrUnauthorized:
 		statusCode = http.StatusUnauthorized
-	case errors.ErrAuthorization:
+	case errors.ErrAuthorization, errors.ErrForbidden:
 		statusCode = http.StatusForbidden
-	case errors.ErrDatabase, errors.ErrNetwork, errors.ErrConfiguration:
+	case errors.ErrDatabase,
+		errors.ErrNetwork,
+		errors.ErrConfiguration,
+		errors.ErrInternal,
+		errors.ErrTimeout,
+		errors.ErrCanceled:
 		statusCode = http.StatusInternalServerError
+	case errors.ErrConflict:
+		statusCode = http.StatusConflict
+	case errors.ErrMethodNotAllowed:
+		statusCode = http.StatusMethodNotAllowed
 	default:
 		statusCode = http.StatusInternalServerError
 	}
 
-	// Create error details
+	// Create comprehensive error details
 	resp.Error = &ErrorDetails{
-		Code:        string(err.Type),
-		Details:     err.Message,
-		Trace:       err.Trace,
-		Recoverable: err.Recoverable,
+		Code:    string(err.Type),
+		Details: err.Error(),
 	}
 
 	// Add any additional context from the error

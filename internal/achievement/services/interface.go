@@ -4,16 +4,25 @@ import (
 	"context"
 
 	"github.com/holycann/cultour-backend/internal/achievement/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
 )
 
+// BadgeService defines operations for managing badges
 type BadgeService interface {
-	CreateBadge(ctx context.Context, badgeCreate *models.BadgeCreate) error
-	GetBadgeByID(ctx context.Context, id string) (*models.Badge, error)
-	GetBadgeByName(ctx context.Context, name string) (*models.Badge, error)
-	ListBadges(ctx context.Context, opts repository.ListOptions) ([]models.Badge, error)
-	UpdateBadge(ctx context.Context, id string, badgeUpdate *models.BadgeCreate) error
+	// Badge Creation and Management
+	CreateBadge(ctx context.Context, badgeCreate *models.BadgeCreate) (*models.BadgeDTO, error)
+	UpdateBadge(ctx context.Context, id string, badgeUpdate *models.BadgeUpdate) (*models.BadgeDTO, error)
 	DeleteBadge(ctx context.Context, id string) error
-	CountBadges(ctx context.Context, filters []repository.FilterOption) (int, error)
-	GetPopularBadges(ctx context.Context, limit int) ([]models.Badge, error)
+
+	// Badge Retrieval Operations
+	GetBadgeByID(ctx context.Context, id string) (*models.BadgeDTO, error)
+	GetBadgeByName(ctx context.Context, name string) (*models.BadgeDTO, error)
+
+	// Listing and Searching
+	ListBadges(ctx context.Context, opts base.ListOptions) ([]models.BadgeDTO, int, error)
+	SearchBadges(ctx context.Context, opts base.ListOptions) ([]models.BadgeDTO, int, error)
+
+	// Utility Operations
+	CountBadges(ctx context.Context, filters []base.FilterOption) (int, error)
+	GetPopularBadges(ctx context.Context, limit int) ([]models.BadgeDTO, error)
 }

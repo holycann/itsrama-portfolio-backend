@@ -1,317 +1,305 @@
 package handlers
 
 import (
-	"encoding/json"
-	"math"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/discussion/models"
 	"github.com/holycann/cultour-backend/internal/discussion/services"
-	"github.com/holycann/cultour-backend/internal/logger"
-	"github.com/holycann/cultour-backend/internal/response"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/internal/middleware"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/logger"
+	"github.com/holycann/cultour-backend/pkg/response"
 )
 
 // ThreadHandler handles HTTP requests related to threads
 type ThreadHandler struct {
+	base.BaseHandler
 	threadService services.ThreadService
-	logger        *logger.Logger
 }
 
 // NewThreadHandler creates a new instance of thread handler
-func NewThreadHandler(threadService services.ThreadService, logger *logger.Logger) *ThreadHandler {
+func NewThreadHandler(
+	threadService services.ThreadService,
+	logger *logger.Logger,
+) *ThreadHandler {
 	return &ThreadHandler{
+		BaseHandler:   *base.NewBaseHandler(logger),
 		threadService: threadService,
-		logger:        logger,
 	}
 }
 
 // CreateThread godoc
-// @Summary Create a new thread
-// @Description Add a new discussion thread to the system
-// @Tags Threads
+// @Summary Create a new discussion thread
+// @Description Allows authenticated users to start a new discussion thread for a specific event
+// @Description Supports creating threads with optional initial status
+// @Tags Discussion Threads
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param thread body models.Thread true "Thread Information"
-// @Success 201 {object} response.APIResponse{data=models.Thread} "Thread created successfully"
-// @Failure 400 {object} response.APIResponse "Invalid thread creation details"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param thread body models.CreateThread true "Thread Creation Details"
+// @Success 201 {object} response.APIResponse{data=models.ThreadDTO} "Thread successfully created with full details"
+// @Failure 400 {object} response.APIResponse "Invalid thread creation payload or validation error"
+// @Failure 401 {object} response.APIResponse "Authentication required - missing or invalid token"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient event access privileges"
+// @Failure 500 {object} response.APIResponse "Internal server error during thread creation"
 // @Router /threads [post]
 func (h *ThreadHandler) CreateThread(c *gin.Context) {
 	var thread models.Thread
 	if err := c.ShouldBindJSON(&thread); err != nil {
-		h.logger.Error("Error binding thread: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "Invalid request payload", err))
 		return
 	}
 
-	// Validate required fields
-	if thread.EventID == uuid.Nil || thread.CreatorID == uuid.Nil {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"event_id":   thread.EventID == uuid.Nil,
-			"creator_id": thread.CreatorID == uuid.Nil,
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
+	// Get user context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	if err := h.threadService.CreateThread(c.Request.Context(), &thread); err != nil {
-		h.logger.Error("Error creating thread: %v", err)
-		response.InternalServerError(c, "Failed to create thread", err.Error(), "")
+	// Set creator ID if not provided
+	if thread.CreatorID == uuid.Nil {
+		thread.CreatorID, _ = uuid.Parse(userID)
+	}
+
+	// Validate thread
+	if err := base.ValidateModel(thread); err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessCreated(c, thread, "Thread created successfully")
+	// Create thread
+	threadData, err := h.threadService.CreateThread(c.Request.Context(), &thread)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	response.SuccessCreated(c, threadData, "Thread created successfully")
 }
 
 // SearchThreads godoc
-// @Summary Search threads
-// @Description Search discussion threads by various criteria
-// @Tags Threads
+// @Summary Search discussion threads
+// @Description Performs a full-text search across thread details with advanced filtering
+// @Description Allows finding threads by keywords, event, and other attributes
+// @Tags Discussion Threads
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param query query string true "Search query (title, etc.)"
-// @Param limit query int false "Number of results to retrieve" default(10)
-// @Param offset query int false "Number of results to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.Thread} "Threads found successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param query query string true "Search term for finding threads" minlength(2)
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of search results per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort search results" default("relevance)" Enum(relevance,created_at)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param status query string false "Filter threads by status" Enum(active,closed,archived)
+// @Success 200 {object} response.APIResponse{data=[]models.ThreadDTO} "Successfully completed thread search"
+// @Success 204 {object} response.APIResponse "No threads match the search query"
 // @Failure 400 {object} response.APIResponse "Invalid search parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during thread search"
 // @Router /threads/search [get]
 func (h *ThreadHandler) SearchThreads(c *gin.Context) {
+	// Prepare list options
+	listOptions := &base.ListOptions{
+		Page:      1,            // Default limit
+		PerPage:   10,           // Default offset
+		SortBy:    "created_at", // Default sort field
+		SortOrder: "desc",       // Default sort order
+	}
+
+	// Parse limit from query parameter
+	if perPageStr := c.Query("per_page"); perPageStr != "" {
+		if perPage, err := strconv.Atoi(perPageStr); err == nil {
+			listOptions.PerPage = perPage
+		}
+	}
+
+	// Parse offset from query parameter
+	if pageStr := c.Query("page"); pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil {
+			listOptions.Page = page
+		}
+	}
+
+	// Parse sort_by from query parameter
+	if sortBy := c.Query("sort_by"); sortBy != "" {
+		listOptions.SortBy = sortBy
+	}
+
+	// Parse sort_order from query parameter
+	if sortOrder := c.Query("sort_order"); sortOrder != "" {
+		listOptions.SortOrder = sortOrder
+	}
 	// Get search query
 	query := c.Query("query")
 	if query == "" {
-		response.BadRequest(c, "Search query is required", "Empty search query", "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Search query is required",
+			nil,
+		))
 		return
 	}
 
-	// Parse pagination parameters
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	sortBy := c.DefaultQuery("sort_by", "created_at")
-	sortOrder := c.DefaultQuery("sort_order", "desc")
-
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Prepare list options for search
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
-		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-		Filters: []repository.FilterOption{
-			{
-				Field:    "title",
-				Operator: "like",
-				Value:    query,
-			},
-		},
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
-	}
+	// Add title search filter
+	listOptions.Filters = append(listOptions.Filters, base.FilterOption{
+		Field:    "title",
+		Operator: base.OperatorLike,
+		Value:    query,
+	})
 
 	// Search threads
-	threads, err := h.threadService.SearchThreads(c.Request.Context(), query, listOptions)
+	threads, _, err := h.threadService.SearchThreads(c.Request.Context(), query, *listOptions)
 	if err != nil {
-		h.logger.Error("Error searching threads: %v", err)
-		response.InternalServerError(c, "Failed to search threads", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	// Count total search results
-	totalThreads, err := h.threadService.CountThreads(c.Request.Context(), listOptions.Filters)
-	if err != nil {
-		h.logger.Error("Error counting search results: %v", err)
-		response.InternalServerError(c, "Failed to count search results", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalThreads,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalThreads) / float64(limit))),
-		HasNextPage: offset+limit < totalThreads,
-	}
+	// Paginate results using base.PaginateResults
+	paginatedThreads, pagination := base.PaginateResults(threads, listOptions.PerPage, listOptions.Page)
 
 	// Respond with threads and pagination
-	response.SuccessOK(c, threads, "Threads found successfully", pagination)
+	h.HandleSuccess(c, paginatedThreads, "Threads found successfully", response.WithPagination(pagination.Total, pagination.Page, pagination.PerPage))
 }
 
 // UpdateThread godoc
-// @Summary Update a thread
-// @Description Update an existing discussion thread's details
-// @Tags Threads
+// @Summary Update an existing discussion thread
+// @Description Allows thread creator or event administrator to modify thread details
+// @Description Supports partial updates with thread status changes
+// @Tags Discussion Threads
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Thread ID"
-// @Param thread body models.Thread true "Thread Update Details"
-// @Success 200 {object} response.APIResponse{data=models.Thread} "Thread updated successfully"
-// @Failure 400 {object} response.APIResponse "Invalid thread update details"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Thread Identifier" format(uuid)
+// @Param thread body models.CreateThread true "Thread Update Payload"
+// @Success 200 {object} response.APIResponse{data=models.ThreadDTO} "Thread successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid thread update payload or ID"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient thread modification privileges"
 // @Failure 404 {object} response.APIResponse "Thread not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during thread update"
 // @Router /threads/{id} [put]
 func (h *ThreadHandler) UpdateThread(c *gin.Context) {
-	// Get thread ID from path parameter
-	threadID := c.Param("id")
-	if threadID == "" {
-		response.BadRequest(c, "Thread ID is required", "Missing thread ID", "")
+	// Parse thread ID
+	threadID, err := h.ValidateUUID("id", "Thread ID")
+	if err != nil {
 		return
 	}
 
 	var thread models.Thread
 	if err := c.ShouldBindJSON(&thread); err != nil {
-		h.logger.Error("Error binding thread: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "Invalid request payload", err))
 		return
 	}
 
 	// Set the ID from path parameter
-	parsedID, err := uuid.Parse(threadID)
+	thread.ID = threadID
+
+	// Validate thread
+	if err := base.ValidateModel(thread); err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Update thread
+	threadData, err := h.threadService.UpdateThread(c.Request.Context(), &thread)
 	if err != nil {
-		response.BadRequest(c, "Invalid Thread ID", "Invalid UUID format", "")
-		return
-	}
-	thread.ID = parsedID
-
-	if err := h.threadService.UpdateThread(c.Request.Context(), &thread); err != nil {
-		h.logger.Error("Error updating thread: %v", err)
-		response.InternalServerError(c, "Failed to update thread", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessOK(c, thread, "Thread updated successfully")
+	response.SuccessOK(c, threadData, "Thread updated successfully")
 }
 
 // ListThreads godoc
-// @Summary List threads
-// @Description Retrieve a list of discussion threads with pagination and filtering
-// @Tags Threads
+// @Summary Retrieve discussion threads list
+// @Description Fetches a paginated list of discussion threads with optional filtering and sorting
+// @Description Supports advanced querying with flexible pagination and filtering options
+// @Tags Discussion Threads
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param limit query int false "Number of threads to retrieve" default(10)
-// @Param offset query int false "Number of threads to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.Thread} "Threads retrieved successfully"
-// @Failure 500 {object} response.APIResponse "Failed to list threads"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of threads per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort threads by" default("created_at)" Enum(created_at,status)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param status query string false "Filter threads by status" Enum(active,closed,archived)
+// @Param event_id query string false "Filter threads by specific event"
+// @Success 200 {object} response.APIResponse{data=[]models.ThreadDTO} "Successfully retrieved threads list"
+// @Success 204 {object} response.APIResponse "No threads found"
+// @Failure 400 {object} response.APIResponse "Invalid query parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during threads retrieval"
 // @Router /threads [get]
 func (h *ThreadHandler) ListThreads(c *gin.Context) {
-	// Parse pagination parameters with defaults
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	sortBy := c.DefaultQuery("sort_by", "created_at")
-	sortOrder := c.DefaultQuery("sort_order", "desc")
-
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Prepare list options
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
-		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+	// Prepare list options with optional filters
+	listOptions := &base.ListOptions{
+		Page:      1,            // Default limit
+		PerPage:   10,           // Default offset
+		SortBy:    "created_at", // Default sort field
+		SortOrder: "desc",       // Default sort order
 	}
 
 	// Optional filtering
-	filters := []repository.FilterOption{}
 	if status := c.Query("status"); status != "" {
-		filters = append(filters, repository.FilterOption{
+		listOptions.Filters = append(listOptions.Filters, base.FilterOption{
 			Field:    "status",
-			Operator: "=",
+			Operator: base.OperatorEqual,
 			Value:    status,
 		})
 	}
 	if eventID := c.Query("event_id"); eventID != "" {
-		filters = append(filters, repository.FilterOption{
+		listOptions.Filters = append(listOptions.Filters, base.FilterOption{
 			Field:    "event_id",
-			Operator: "=",
+			Operator: base.OperatorEqual,
 			Value:    eventID,
 		})
 	}
-	listOptions.Filters = filters
 
 	// Retrieve threads
-	threads, err := h.threadService.ListThreads(c.Request.Context(), listOptions)
+	threads, err := h.threadService.ListThreads(c.Request.Context(), *listOptions)
 	if err != nil {
-		h.logger.Error("Error retrieving threads: %v", err)
-		response.InternalServerError(c, "Failed to retrieve threads", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	// Count total threads for pagination
-	totalThreads, err := h.threadService.CountThreads(c.Request.Context(), filters)
-	if err != nil {
-		h.logger.Error("Error counting threads: %v", err)
-		response.InternalServerError(c, "Failed to count threads", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalThreads,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalThreads) / float64(limit))),
-		HasNextPage: offset+limit < totalThreads,
-	}
+	data, pagination := base.PaginateResults(threads, listOptions.PerPage, listOptions.Page)
 
 	// Respond with threads and pagination
-	response.SuccessOK(c, threads, "Threads retrieved successfully", pagination)
+	h.HandleSuccess(c, data, "Threads retrieved successfully", response.WithPagination(pagination.Total, pagination.Page, pagination.PerPage))
 }
 
 // DeleteThread godoc
-// @Summary Delete a thread
-// @Description Remove a discussion thread from the system by its unique identifier
-// @Tags Threads
+// @Summary Delete a discussion thread
+// @Description Allows thread creator or event administrator to remove a specific thread
+// @Description Permanently deletes the thread and associated messages
+// @Tags Discussion Threads
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Thread ID"
-// @Success 200 {object} response.APIResponse "Deleted successfully"
-// @Failure 400 {object} response.APIResponse "Invalid thread ID"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Thread Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse "Thread successfully deleted"
+// @Failure 400 {object} response.APIResponse "Invalid thread ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient thread deletion privileges"
 // @Failure 404 {object} response.APIResponse "Thread not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during thread deletion"
 // @Router /threads/{id} [delete]
 func (h *ThreadHandler) DeleteThread(c *gin.Context) {
-	// Get thread ID from path parameter
-	threadID := c.Param("id")
-	if threadID == "" {
-		response.BadRequest(c, "Thread ID is required", "Missing thread ID", "")
+	// Parse thread ID
+	threadID, err := h.ValidateUUID("id", "Thread ID")
+	if err != nil {
 		return
 	}
 
-	if err := h.threadService.DeleteThread(c.Request.Context(), threadID); err != nil {
-		h.logger.Error("Error deleting thread: %v", err)
-		response.InternalServerError(c, "Failed to delete thread", err.Error(), "")
+	// Delete thread
+	if err := h.threadService.DeleteThread(c.Request.Context(), threadID.String()); err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
@@ -319,29 +307,31 @@ func (h *ThreadHandler) DeleteThread(c *gin.Context) {
 }
 
 // GetThreadByID godoc
-// @Summary Get thread by ID
-// @Description Retrieve a discussion thread's details by its unique identifier
-// @Tags Threads
+// @Summary Retrieve a specific discussion thread
+// @Description Fetches comprehensive details of a thread by its unique identifier
+// @Description Returns full thread information including creator, participants, and messages
+// @Tags Discussion Threads
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Thread ID"
-// @Success 200 {object} response.APIResponse{data=models.Thread} "Thread retrieved successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Thread Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=models.ThreadDTO} "Successfully retrieved thread details"
+// @Failure 400 {object} response.APIResponse "Invalid thread ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
 // @Failure 404 {object} response.APIResponse "Thread not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during thread retrieval"
 // @Router /threads/{id} [get]
 func (h *ThreadHandler) GetThreadByID(c *gin.Context) {
-	// Get thread ID from path parameter
-	threadID := c.Param("id")
-	if threadID == "" {
-		response.BadRequest(c, "Thread ID is required", "Missing thread ID", "")
+	// Parse thread ID
+	threadID, err := h.ValidateUUID("id", "Thread ID")
+	if err != nil {
 		return
 	}
 
-	thread, err := h.threadService.GetThreadByID(c.Request.Context(), threadID)
+	// Retrieve thread
+	thread, err := h.threadService.GetThreadByID(c.Request.Context(), threadID.String())
 	if err != nil {
-		h.logger.Error("Error finding thread by ID: %v", err)
-		response.NotFound(c, "Thread not found", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
@@ -349,67 +339,71 @@ func (h *ThreadHandler) GetThreadByID(c *gin.Context) {
 }
 
 // JoinThread godoc
-// @Summary Join a thread
-// @Description Allow a user to join an existing thread
-// @Tags Threads
+// @Summary Join a discussion thread
+// @Description Allows authenticated users to join an existing discussion thread
+// @Description Adds the current user as a participant in the thread
+// @Tags Discussion Threads
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param threadID path string true "Thread ID"
-// @Param userID query string true "User ID"
-// @Success 200 {object} response.APIResponse "Successfully joined thread"
-// @Failure 400 {object} response.APIResponse "Invalid input parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error"
-// @Router /threads/{threadID}/join [post]
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Thread Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=models.ThreadDTO} "Successfully joined thread"
+// @Failure 400 {object} response.APIResponse "Invalid thread ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - thread joining not allowed"
+// @Failure 404 {object} response.APIResponse "Thread not found"
+// @Failure 409 {object} response.APIResponse "User already a participant in the thread"
+// @Failure 500 {object} response.APIResponse "Internal server error during thread joining"
+// @Router /threads/{id}/join [post]
 func (h *ThreadHandler) JoinThread(c *gin.Context) {
-	// Get thread ID from path parameter
-	threadID := c.Param("id")
-	if threadID == "" {
-		response.BadRequest(c, "Thread ID is required", "Missing thread ID", "")
+	// Parse thread ID
+	threadID, err := h.ValidateUUID("id", "Thread ID")
+	if err != nil {
 		return
 	}
 
-	userID := c.GetString("user_id")
-
-	if userID == "" {
-		response.Unauthorized(c, "User authentication required", "Missing or invalid user ID", "")
+	// Get user context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	// Call service to join thread
-	if err := h.threadService.JoinThread(c.Request.Context(), threadID, userID); err != nil {
-		h.logger.Error("Error joining thread: %v", err)
-		response.InternalServerError(c, "Failed to join thread", err.Error(), "")
+	// Join thread
+	if err := h.threadService.JoinThread(c.Request.Context(), threadID.String(), userID); err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
 	response.SuccessOK(c, nil, "Successfully joined thread")
 }
 
-// GetThreadByEventID godoc
-// @Summary Get thread by event ID
-// @Description Retrieve a thread associated with a specific event
-// @Tags Threads
+// GetThreadByEvent godoc
+// @Summary Retrieve thread for a specific event
+// @Description Fetches the discussion thread associated with a particular event
+// @Description Returns the primary or most recent thread for the given event
+// @Tags Discussion Threads
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param event_id path string true "Event ID"
-// @Success 200 {object} response.APIResponse "Thread retrieved successfully"
-// @Failure 400 {object} response.APIResponse "Invalid event ID"
-// @Failure 404 {object} response.APIResponse "Thread not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param event_id path string true "Unique Event Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=models.ThreadDTO} "Successfully retrieved event thread"
+// @Failure 400 {object} response.APIResponse "Invalid event ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 404 {object} response.APIResponse "No thread found for the specified event"
+// @Failure 500 {object} response.APIResponse "Internal server error during event thread retrieval"
 // @Router /threads/event/{event_id} [get]
 func (h *ThreadHandler) GetThreadByEvent(c *gin.Context) {
-	// Get event ID from path parameter
-	eventID := c.Param("event_id")
-	if eventID == "" {
-		response.BadRequest(c, "Event ID is required", "Missing event ID", "")
+	// Parse event ID
+	eventID, err := h.ValidateUUID("event_id", "Event ID")
+	if err != nil {
 		return
 	}
 
-	// Call service to get thread by event ID
-	thread, err := h.threadService.GetThreadByEvent(c.Request.Context(), eventID)
+	// Retrieve thread by event
+	thread, err := h.threadService.GetThreadByEvent(c.Request.Context(), eventID.String())
 	if err != nil {
+		// Custom handling for no thread found
 		response.NotFound(c, "Thread Belum Di Buat Silahkan Anda Untuk Membuat Thread", "No thread found for this event", "")
 		return
 	}

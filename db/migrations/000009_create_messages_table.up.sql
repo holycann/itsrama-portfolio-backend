@@ -1,16 +1,18 @@
+-- Create message type enum
 CREATE TYPE public.message_type AS ENUM ('discussion', 'ai');
 
+-- Create messages table
 CREATE TABLE public.messages (
-    id uuid NOT NULL DEFAULT gen_random_uuid (),
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
     thread_id uuid NOT NULL,
-    user_id uuid NOT NULL,
+    sender_id uuid NOT NULL,
     content text NOT NULL,
     type public.message_type NOT NULL DEFAULT 'discussion',
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone NULL,
     CONSTRAINT messages_pkey PRIMARY KEY (id),
-    CONSTRAINT messages_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads (id),
-    CONSTRAINT messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users (id)
+    CONSTRAINT messages_thread_id_fkey FOREIGN KEY (thread_id) REFERENCES public.threads (id) ON DELETE CASCADE,
+    CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES auth.users (id) ON DELETE CASCADE
 );
 
 -- Dummy data for messages
@@ -23,7 +25,7 @@ INSERT INTO
     public.messages (
         id,
         thread_id,
-        user_id,
+        sender_id,
         content,
         type
     )
@@ -60,3 +62,6 @@ VALUES (
         'Lawang Sewu at night is both beautiful and haunting. Such a rich historical site!',
         'discussion'
     );
+
+-- Verify the insertion
+SELECT COUNT(*) as total_messages FROM public.messages;

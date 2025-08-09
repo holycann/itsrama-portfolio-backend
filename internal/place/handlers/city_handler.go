@@ -1,342 +1,320 @@
 package handlers
 
 import (
-	"encoding/json"
-	"math"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/place/models"
 	"github.com/holycann/cultour-backend/internal/place/services"
-	"github.com/holycann/cultour-backend/internal/response"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/logger"
+	"github.com/holycann/cultour-backend/pkg/response"
 )
 
 // CityHandler handles HTTP requests related to cities
 type CityHandler struct {
+	*base.BaseHandler
 	cityService services.CityService
-	logger      *logger.Logger
 }
 
 // NewCityHandler creates a new instance of city handler
 func NewCityHandler(cityService services.CityService, logger *logger.Logger) *CityHandler {
 	return &CityHandler{
+		BaseHandler: base.NewBaseHandler(logger),
 		cityService: cityService,
-		logger:      logger,
 	}
 }
 
 // CreateCity godoc
 // @Summary Create a new city
-// @Description Add a new city to the system
+// @Description Allows administrators to add a new city to the system
+// @Description Supports creating cities with detailed information and optional image
 // @Tags Cities
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param city body models.City true "City Information"
-// @Success 201 {object} response.APIResponse{data=models.City} "City created successfully"
-// @Failure 400 {object} response.APIResponse "Invalid city creation details"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param city body models.CityCreate true "City Creation Details"
+// @Success 201 {object} response.APIResponse{data=models.CityDTO} "City successfully created with full details"
+// @Failure 400 {object} response.APIResponse "Invalid city creation payload or validation error"
+// @Failure 401 {object} response.APIResponse "Authentication required - missing or invalid token"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges (admin role required)"
+// @Failure 500 {object} response.APIResponse "Internal server error during city creation"
 // @Router /cities [post]
 func (h *CityHandler) CreateCity(c *gin.Context) {
-	var city models.City
-	if err := c.ShouldBindJSON(&city); err != nil {
-		h.logger.Error("Error binding city: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+	var cityCreate models.CityCreate
+	if err := h.ValidateRequest(c, &cityCreate); err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	// Validate required fields
-	if city.Name == "" {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"name": city.Name == "",
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
+	// Convert CityCreate to City
+	city := &models.City{
+		Name:        cityCreate.Name,
+		Description: cityCreate.Description,
+		ProvinceID:  cityCreate.ProvinceID,
+		ImageURL:    cityCreate.ImageURL,
+	}
+
+	createdCity, err := h.cityService.CreateCity(c.Request.Context(), city)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to create city"))
 		return
 	}
 
-	if err := h.cityService.CreateCity(c.Request.Context(), &city); err != nil {
-		h.logger.Error("Error creating city: %v", err)
-		response.InternalServerError(c, "Failed to create city", err.Error(), "")
-		return
-	}
-
-	response.SuccessCreated(c, city, "City created successfully")
+	h.HandleSuccess(c, createdCity, "City created successfully")
 }
 
 // SearchCities godoc
 // @Summary Search cities
-// @Description Search cities by various criteria
+// @Description Performs a full-text search across city details with advanced filtering
+// @Description Allows finding cities by keywords, province, and other attributes
 // @Tags Cities
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param query query string true "Search query (name, etc.)"
-// @Param limit query int false "Number of results to retrieve" default(10)
-// @Param offset query int false "Number of results to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.City} "Cities found successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param query query string true "Search term for finding cities" minlength(2)
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of search results per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort search results" default("relevance)" Enum(relevance,name,created_at)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param province_id query string false "Filter cities by specific province"
+// @Success 200 {object} response.APIResponse{data=[]models.CityDTO} "Successfully completed city search"
+// @Success 204 {object} response.APIResponse "No cities match the search query"
 // @Failure 400 {object} response.APIResponse "Invalid search parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during city search"
 // @Router /cities/search [get]
 func (h *CityHandler) SearchCities(c *gin.Context) {
-	// Get search query
-	query := c.Query("query")
-	if query == "" {
-		response.BadRequest(c, "Search query is required", "Empty search query", "")
-		return
+	// Manually set list options with default values
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil {
+		page = 1
 	}
 
-	// Parse pagination parameters
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	perPage, err := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+	if err != nil {
+		perPage = 10
+	}
+
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
 
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Prepare list options for search
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
+	listOptions := base.ListOptions{
+		Page:      page,
+		PerPage:   perPage,
 		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-		Filters: []repository.FilterOption{
-			{
-				Field:    "name",
-				Operator: "like",
-				Value:    query,
-			},
-		},
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+		SortOrder: sortOrder,
+		Filters:   []base.FilterOption{},
 	}
 
-	// Search cities
-	cities, err := h.cityService.SearchCities(c.Request.Context(), query, listOptions)
+	// Add optional search filter
+	if query := c.Query("query"); query != "" {
+		listOptions.Filters = append(listOptions.Filters, base.FilterOption{
+			Field:    "name",
+			Operator: base.OperatorLike,
+			Value:    query,
+		})
+	}
+
+	// Perform search
+	cities, total, err := h.cityService.SearchCities(c.Request.Context(), listOptions)
 	if err != nil {
-		h.logger.Error("Error searching cities: %v", err)
-		response.InternalServerError(c, "Failed to search cities", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to search cities"))
 		return
 	}
 
-	// Count total search results
-	totalCities, err := h.cityService.CountCities(c.Request.Context(), listOptions.Filters)
-	if err != nil {
-		h.logger.Error("Error counting search results: %v", err)
-		response.InternalServerError(c, "Failed to count search results", err.Error(), "")
-		return
-	}
+	// Create pagination
+	data, pagination := base.PaginateResults(cities, listOptions.Page, listOptions.PerPage)
 
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalCities,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalCities) / float64(limit))),
-		HasNextPage: offset+limit < totalCities,
-	}
-
-	// Respond with cities and pagination
-	response.SuccessOK(c, cities, "Cities found successfully", pagination)
+	h.HandleSuccess(c, data, "Cities retrieved successfully",
+		response.WithPagination(total, pagination.Page, pagination.PerPage))
 }
 
 // UpdateCity godoc
-// @Summary Update a city
-// @Description Update an existing city's details
+// @Summary Update an existing city
+// @Description Allows administrators to modify city details
+// @Description Supports partial updates with optional fields
 // @Tags Cities
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "City ID"
-// @Param city body models.City true "City Update Details"
-// @Success 200 {object} response.APIResponse{data=models.City} "City updated successfully"
-// @Failure 400 {object} response.APIResponse "Invalid city update details"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique City Identifier" format(uuid)
+// @Param city body models.CityUpdate true "City Update Payload"
+// @Success 200 {object} response.APIResponse{data=models.CityDTO} "City successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid city update payload or ID"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
 // @Failure 404 {object} response.APIResponse "City not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during city update"
 // @Router /cities/{id} [put]
 func (h *CityHandler) UpdateCity(c *gin.Context) {
 	// Get city ID from path parameter
 	cityID := c.Param("id")
 	if cityID == "" {
-		response.BadRequest(c, "City ID is required", "Missing city ID", "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "City ID is required", nil))
 		return
 	}
 
-	var city models.City
-	if err := c.ShouldBindJSON(&city); err != nil {
-		h.logger.Error("Error binding city: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+	var cityUpdate models.CityUpdate
+	if err := h.ValidateRequest(c, &cityUpdate); err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	// Set the ID from path parameter
+	// Parse the ID
 	parsedID, err := uuid.Parse(cityID)
 	if err != nil {
-		response.BadRequest(c, "Invalid City ID", "Invalid UUID format", "")
-		return
-	}
-	city.ID = parsedID
-
-	if err := h.cityService.UpdateCity(c.Request.Context(), &city); err != nil {
-		h.logger.Error("Error updating city: %v", err)
-		response.InternalServerError(c, "Failed to update city", err.Error(), "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "Invalid City ID", err))
 		return
 	}
 
-	response.SuccessOK(c, city, "City updated successfully")
+	// Convert CityUpdate to City
+	city := &models.City{
+		ID:          parsedID,
+		Name:        cityUpdate.Name,
+		Description: cityUpdate.Description,
+		ProvinceID:  cityUpdate.ProvinceID,
+		ImageURL:    cityUpdate.ImageURL,
+	}
+
+	updatedCity, err := h.cityService.UpdateCity(c.Request.Context(), city)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to update city"))
+		return
+	}
+
+	h.HandleSuccess(c, updatedCity, "City updated successfully")
 }
 
 // DeleteCity godoc
 // @Summary Delete a city
-// @Description Remove a city from the system by its unique identifier
+// @Description Allows administrators to permanently remove a city from the system
+// @Description Deletes the city and its associated resources
 // @Tags Cities
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "City ID"
-// @Success 200 {object} response.APIResponse "Deleted successfully"
-// @Failure 400 {object} response.APIResponse "Invalid city ID"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique City Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse "City successfully deleted"
+// @Failure 400 {object} response.APIResponse "Invalid city ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
 // @Failure 404 {object} response.APIResponse "City not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during city deletion"
 // @Router /cities/{id} [delete]
 func (h *CityHandler) DeleteCity(c *gin.Context) {
 	// Get city ID from path parameter
 	cityID := c.Param("id")
 	if cityID == "" {
-		response.BadRequest(c, "City ID is required", "Missing city ID", "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "City ID is required", nil))
 		return
 	}
 
 	if err := h.cityService.DeleteCity(c.Request.Context(), cityID); err != nil {
-		h.logger.Error("Error deleting city: %v", err)
-		response.InternalServerError(c, "Failed to delete city", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to delete city"))
 		return
 	}
 
-	response.SuccessOK(c, nil, "City deleted successfully")
+	h.HandleSuccess(c, nil, "City deleted successfully")
 }
 
 // ListCities godoc
-// @Summary List cities
-// @Description Retrieve a list of cities with pagination and filtering
+// @Summary Retrieve cities list
+// @Description Fetches a paginated list of cities with optional filtering and sorting
+// @Description Supports advanced querying with flexible pagination and filtering options
 // @Tags Cities
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param limit query int false "Number of cities to retrieve" default(10)
-// @Param offset query int false "Number of cities to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Param province_id query string false "Filter by province ID"
-// @Success 200 {object} response.APIResponse{data=[]models.City} "Cities retrieved successfully"
-// @Failure 500 {object} response.APIResponse "Failed to list cities"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of cities per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort cities by" default("created_at)" Enum(created_at,name)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param province_id query string false "Filter cities by specific province"
+// @Success 200 {object} response.APIResponse{data=[]models.CityDTO} "Successfully retrieved cities list"
+// @Success 204 {object} response.APIResponse "No cities found"
+// @Failure 400 {object} response.APIResponse "Invalid query parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during cities retrieval"
 // @Router /cities [get]
 func (h *CityHandler) ListCities(c *gin.Context) {
-	// Parse pagination parameters with defaults
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	// Manually set list options with default values
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil {
+		page = 1
+	}
+
+	perPage, err := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+	if err != nil {
+		perPage = 10
+	}
+
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
 
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Prepare list options
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
+	listOptions := base.ListOptions{
+		Page:      page,
+		PerPage:   perPage,
 		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+		SortOrder: sortOrder,
+		Filters:   []base.FilterOption{},
 	}
 
-	// Optional filtering
-	filters := []repository.FilterOption{}
+	// Optional filtering by province
 	if provinceID := c.Query("province_id"); provinceID != "" {
-		filters = append(filters, repository.FilterOption{
+		listOptions.Filters = append(listOptions.Filters, base.FilterOption{
 			Field:    "province_id",
-			Operator: "eq",
+			Operator: base.OperatorEqual,
 			Value:    provinceID,
 		})
 	}
-	listOptions.Filters = filters
 
 	// Retrieve cities
-	cities, err := h.cityService.ListCities(c.Request.Context(), listOptions)
+	cities, total, err := h.cityService.ListCities(c.Request.Context(), listOptions)
 	if err != nil {
-		h.logger.Error("Error retrieving cities: %v", err)
-		response.InternalServerError(c, "Failed to retrieve cities", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to retrieve cities"))
 		return
 	}
 
-	// Count total cities for pagination
-	totalCities, err := h.cityService.CountCities(c.Request.Context(), filters)
-	if err != nil {
-		h.logger.Error("Error counting cities: %v", err)
-		response.InternalServerError(c, "Failed to count cities", err.Error(), "")
-		return
-	}
+	// Create pagination
+	data, pagination := base.PaginateResults(cities, listOptions.Page, listOptions.PerPage)
 
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalCities,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalCities) / float64(limit))),
-		HasNextPage: offset+limit < totalCities,
-	}
-
-	// Respond with cities and pagination
-	response.SuccessOK(c, cities, "Cities retrieved successfully", pagination)
+	h.HandleSuccess(c, data, "Cities retrieved successfully",
+		response.WithPagination(total, pagination.Page, pagination.PerPage))
 }
 
 // GetCityByID godoc
-// @Summary Get city by ID
-// @Description Retrieve a city's details by its unique identifier
+// @Summary Retrieve a specific city
+// @Description Fetches comprehensive details of a city by its unique identifier
+// @Description Returns full city information including province details
 // @Tags Cities
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "City ID"
-// @Success 200 {object} response.APIResponse{data=models.City} "City retrieved successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique City Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=models.CityDTO} "Successfully retrieved city details"
+// @Failure 400 {object} response.APIResponse "Invalid city ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
 // @Failure 404 {object} response.APIResponse "City not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during city retrieval"
 // @Router /cities/{id} [get]
 func (h *CityHandler) GetCityByID(c *gin.Context) {
 	// Get city ID from path parameter
 	cityID := c.Param("id")
 	if cityID == "" {
-		response.BadRequest(c, "City ID is required", "Missing city ID", "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "City ID is required", nil))
 		return
 	}
 
 	city, err := h.cityService.GetCityByID(c.Request.Context(), cityID)
 	if err != nil {
-		h.logger.Error("Error finding city by ID: %v", err)
-		response.NotFound(c, "City not found", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "City not found"))
 		return
 	}
 
-	response.SuccessOK(c, city, "City detail retrieved successfully")
+	h.HandleSuccess(c, city, "City detail retrieved successfully")
 }

@@ -1,7 +1,6 @@
 package base
 
 import (
-	"context"
 	"reflect"
 	"strings"
 
@@ -47,24 +46,6 @@ func BuildFilterFromStruct[T any](model T) []FilterOption {
 	}
 
 	return filters
-}
-
-// SafeExecute provides a wrapper for repository operations with error handling
-func SafeExecute[T any, R any](
-	ctx context.Context,
-	operation func() (R, error),
-	errorMessage string,
-) (R, error) {
-	result, err := operation()
-	if err != nil {
-		return result, errors.New(
-			errors.ErrDatabase,
-			errorMessage,
-			err,
-			errors.WithContext("original_error", err.Error()),
-		)
-	}
-	return result, nil
 }
 
 // PaginateResults applies pagination to a slice of results

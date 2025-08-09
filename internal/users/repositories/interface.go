@@ -9,33 +9,34 @@ import (
 
 // UserRepository extends BaseRepository with user-specific methods
 type UserRepository interface {
-	base.EnhancedRepository[models.User, models.UserDTO]
+	base.BaseRepository[models.User, models.User]
 
 	// User-specific query methods
-	FindByEmail(ctx context.Context, email string) (*models.UserDTO, error)
+	FindByEmail(ctx context.Context, email string) (*models.User, error)
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
 
-	// Additional user-specific operations
-	UpdateLastSignIn(ctx context.Context, userID string) error
-	ChangeUserRole(ctx context.Context, userID, newRole string) error
+	// Role and permission management
+	ChangeUserRole(ctx context.Context, payload *models.UserRoleUpdate) error
 }
 
 // UserProfileRepository extends BaseRepository with profile-specific methods
 type UserProfileRepository interface {
-	base.EnhancedRepository[models.UserProfile, models.UserProfileDTO]
+	base.BaseRepository[models.UserProfile, models.UserProfileDTO]
 
 	// Profile-specific query methods
 	FindByUserID(ctx context.Context, userID string) (*models.UserProfileDTO, error)
 	ExistsByUserID(ctx context.Context, userID string) (bool, error)
+	FindByFullname(ctx context.Context, fullname string) ([]models.UserProfileDTO, error)
 
 	// Additional profile-specific operations
-	UpdateProfileImage(ctx context.Context, profileID string, imageURL string) error
-	UpdateBio(ctx context.Context, profileID, bio string) error
+	UpdateAvatarImage(ctx context.Context, payload *models.UserProfileAvatarUpdate) error
+	UpdatePersonalInfo(ctx context.Context, payload *models.UserProfileUpdate) error
+	VerifyIdentity(ctx context.Context, payload *models.UserProfileIdentityUpdate) error
 }
 
 // UserBadgeRepository extends BaseRepository with badge-specific methods
 type UserBadgeRepository interface {
-	base.EnhancedRepository[models.UserBadge, models.UserBadgeDTO]
+	base.BaseRepository[models.UserBadge, models.UserBadgeDTO]
 
 	// Badge-specific query methods
 	FindUserBadgesByUser(ctx context.Context, userID string) ([]models.UserBadgeDTO, error)
@@ -43,5 +44,6 @@ type UserBadgeRepository interface {
 
 	// Additional badge-specific operations
 	CountUserBadges(ctx context.Context, userID string) (int, error)
-	RemoveBadgeFromUser(ctx context.Context, userID, badgeID string) error
+	AddBadgeToUser(ctx context.Context, payload *models.UserBadge) error
+	RemoveBadgeFromUser(ctx context.Context, payload *models.UserBadgePayload) error
 }

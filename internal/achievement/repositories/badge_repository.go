@@ -3,10 +3,10 @@ package repositories
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/holycann/cultour-backend/internal/achievement/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
 	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
@@ -23,52 +23,86 @@ func NewBadgeRepository(client *supabase.Client) BadgeRepository {
 	}
 }
 
-func (r *badgeRepository) Create(ctx context.Context, badge *models.Badge) error {
-	_, err := r.client.
+func (r *badgeRepository) Create(ctx context.Context, badge *models.Badge) (*models.Badge, error) {
+	_, _, err := r.client.
 		From(r.table).
 		Insert(badge, false, "", "minimal", "").
-		ExecuteTo(&badge)
-	return err
+		Execute()
+
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to create badge")
+	}
+
+	return badge, nil
 }
 
 func (r *badgeRepository) FindByID(ctx context.Context, id string) (*models.Badge, error) {
-	var badges []models.Badge
+	var badge models.Badge
+
 	_, err := r.client.
 		From(r.table).
 		Select("*", "", false).
 		Eq("id", id).
-		ExecuteTo(&badges)
-
+		Single().
+		ExecuteTo(&badge)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to fetch badge")
 	}
 
-	if len(badges) > 0 {
-		return &badges[0], nil
-	}
-	return nil, fmt.Errorf("badge not found")
+	return &badge, nil
 }
 
-func (r *badgeRepository) Update(ctx context.Context, badge *models.Badge) error {
+func (r *badgeRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.Badge, error) {
+	var badges []models.Badge
+
+	_, err := r.client.
+		From(r.table).
+		Select("*", "", false).
+		Eq(field, fmt.Sprintf("%v", value)).
+		ExecuteTo(&badges)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to fetch badges")
+	}
+
+	if len(badges) == 0 {
+		return nil, fmt.Errorf("no badges found")
+	}
+
+	return badges, nil
+}
+
+func (r *badgeRepository) Update(ctx context.Context, badge *models.Badge) (*models.Badge, error) {
 	_, _, err := r.client.
 		From(r.table).
 		Update(badge, "minimal", "").
 		Eq("id", badge.ID.String()).
 		Execute()
-	return err
+
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to update badge")
+	}
+
+	return badge, nil
 }
 
 func (r *badgeRepository) Delete(ctx context.Context, id string) error {
 	_, _, err := r.client.
 		From(r.table).
 		Delete("minimal", "").
+		Single().
 		Eq("id", id).
 		Execute()
-	return err
+
+	if err != nil {
+		return errors.Wrap(err, errors.ErrDatabase, "failed to delete badge")
+	}
+
+	return nil
 }
 
-func (r *badgeRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.Badge, error) {
+func (r *badgeRepository) List(ctx context.Context, opts base.ListOptions) ([]models.Badge, error) {
 	var badges []models.Badge
+
 	query := r.client.
 		From(r.table).
 		Select("*", "", false)
@@ -76,65 +110,67 @@ func (r *badgeRepository) List(ctx context.Context, opts repository.ListOptions)
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	// Apply sorting
 	if opts.SortBy != "" {
-		ascending := opts.SortOrder == repository.SortAscending
+		ascending := opts.SortOrder != base.SortDescending
 		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
 	}
 
 	// Apply pagination
-	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+	offset := (opts.Page - 1) * opts.PerPage
+	query = query.Range(offset, offset+opts.PerPage-1, "")
 
 	_, err := query.ExecuteTo(&badges)
-	return badges, err
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to list badges")
+	}
+
+	return badges, nil
 }
 
-func (r *badgeRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (r *badgeRepository) Count(ctx context.Context, filters []base.FilterOption) (int, error) {
 	query := r.client.
 		From(r.table).
-		Select("id", "exact", false)
+		Select("id", "exact", true)
 
 	// Apply filters
 	for _, filter := range filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	_, count, err := query.Execute()
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, errors.ErrDatabase, "failed to count badges")
 	}
 
 	return int(count), nil
 }
 
 func (r *badgeRepository) Exists(ctx context.Context, id string) (bool, error) {
-	_, err := r.FindByID(ctx, id)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (r *badgeRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.Badge, error) {
-	var badges []models.Badge
-	_, err := r.client.
+	_, count, err := r.client.
 		From(r.table).
-		Select("*", "", false).
-		Eq(field, fmt.Sprintf("%v", value)).
-		ExecuteTo(&badges)
-	return badges, err
+		Select("id", "exact", true).
+		Eq("id", id).
+		Limit(1, "").
+		Execute()
+
+	if err != nil {
+		return false, errors.Wrap(err, errors.ErrDatabase, "failed to check badge existence")
+	}
+
+	return count > 0, nil
 }
 
 // Specialized methods for badges
@@ -142,9 +178,6 @@ func (r *badgeRepository) FindBadgeByName(ctx context.Context, name string) (*mo
 	badges, err := r.FindByField(ctx, "name", name)
 	if err != nil {
 		return nil, err
-	}
-	if len(badges) == 0 {
-		return nil, fmt.Errorf("badge not found")
 	}
 	return &badges[0], nil
 }
@@ -157,52 +190,109 @@ func (r *badgeRepository) FindPopularBadges(ctx context.Context, limit int) ([]m
 		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
 		Limit(limit, "").
 		ExecuteTo(&badges)
-	return badges, err
+
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find popular badges")
+	}
+
+	return badges, nil
 }
 
-func (r *badgeRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.Badge, int, error) {
+func (r *badgeRepository) Search(ctx context.Context, opts base.ListOptions) ([]models.Badge, int, error) {
 	var badges []models.Badge
+
 	query := r.client.
 		From(r.table).
 		Select("*", "", false)
 
 	// Apply search query if provided
-	if opts.SearchQuery != "" {
-		escapedQuery := strings.ReplaceAll(strings.ReplaceAll(opts.SearchQuery, "%", "\\%"), "_", "\\_")
-		likeQuery := "%" + escapedQuery + "%"
-		query = query.Or(fmt.Sprintf("name.ilike.%s,description.ilike.%s", likeQuery, likeQuery), "")
+	if opts.Search != "" {
+		query = query.Or(
+			fmt.Sprintf("name.ilike.%%%s%%", opts.Search),
+			fmt.Sprintf("description.ilike.%%%s%%", opts.Search),
+		)
 	}
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
+	// Count total results
+	_, totalCount, err := query.Execute()
+	if err != nil {
+		return nil, 0, errors.Wrap(err, errors.ErrDatabase, "failed to count search results")
+	}
+
 	// Apply sorting
 	if opts.SortBy != "" {
-		ascending := opts.SortOrder == repository.SortAscending
+		ascending := opts.SortOrder != base.SortDescending
 		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
 	}
 
 	// Apply pagination
-	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+	offset := (opts.Page - 1) * opts.PerPage
+	query = query.Range(offset, offset+opts.PerPage-1, "")
 
-	// Execute query
-	_, err := query.ExecuteTo(&badges)
+	_, err = query.ExecuteTo(&badges)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, errors.Wrap(err, errors.ErrDatabase, "failed to execute search")
 	}
 
-	// Get total count
-	count, err := r.Count(ctx, opts.Filters)
-	if err != nil {
-		return nil, 0, err
-	}
+	return badges, int(totalCount), nil
+}
 
-	return badges, count, nil
+func (r *badgeRepository) BulkCreate(ctx context.Context, values []*models.Badge) ([]models.Badge, error) {
+	var results []models.Badge
+	for _, badge := range values {
+		createdBadge, err := r.Create(ctx, badge)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, *createdBadge)
+	}
+	return results, nil
+}
+
+func (r *badgeRepository) BulkUpdate(ctx context.Context, values []*models.Badge) ([]models.Badge, error) {
+	var results []models.Badge
+	for _, badge := range values {
+		updatedBadge, err := r.Update(ctx, badge)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, *updatedBadge)
+	}
+	return results, nil
+}
+
+func (r *badgeRepository) BulkDelete(ctx context.Context, ids []string) error {
+	for _, id := range ids {
+		if err := r.Delete(ctx, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *badgeRepository) BulkUpsert(ctx context.Context, values []*models.Badge) ([]models.Badge, error) {
+	var results []models.Badge
+	for _, badge := range values {
+		updatedBadge, err := r.Update(ctx, badge)
+		if err != nil {
+			createdBadge, createErr := r.Create(ctx, badge)
+			if createErr != nil {
+				return nil, createErr
+			}
+			results = append(results, *createdBadge)
+		} else {
+			results = append(results, *updatedBadge)
+		}
+	}
+	return results, nil
 }

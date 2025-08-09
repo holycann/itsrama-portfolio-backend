@@ -4,22 +4,27 @@ import (
 	"context"
 
 	"github.com/holycann/cultour-backend/internal/place/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
 )
 
 type ProvinceRepository interface {
-	repository.BaseRepository[models.Province, models.Province]
-	FindProvinceByName(ctx context.Context, name string) (*models.Province, error)
+	base.BaseRepository[models.Province, models.ProvinceDTO]
+	FindProvinceByName(ctx context.Context, name string) (*models.ProvinceDTO, error)
+	FindProvinceByCode(ctx context.Context, code string) (*models.ProvinceDTO, error)
+	ListProvincesByRegion(ctx context.Context, region string) ([]models.ProvinceDTO, error)
 }
 
 type CityRepository interface {
-	repository.BaseRepository[models.City, models.ResponseCity]
-	FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.ResponseCity, error)
-	FindCityByName(ctx context.Context, name string) (*models.ResponseCity, error)
+	base.BaseRepository[models.City, models.CityDTO]
+	FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.CityDTO, error)
+	FindCityByName(ctx context.Context, name string) (*models.CityDTO, error)
+	FindCityByCode(ctx context.Context, code string) (*models.CityDTO, error)
+	ListCitiesByPopulation(ctx context.Context, minPopulation, maxPopulation string) ([]models.CityDTO, error)
 }
 
 type LocationRepository interface {
-	repository.BaseRepository[models.Location, models.Location]
-	FindLocationsByCity(ctx context.Context, cityID string) ([]models.Location, error)
-	// FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error)
+	base.BaseRepository[models.Location, models.LocationDTO]
+	FindLocationsByCity(ctx context.Context, cityID string) ([]models.LocationDTO, error)
+	FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.LocationDTO, error)
+	SearchLocationsByName(ctx context.Context, query string) ([]models.LocationDTO, error)
 }

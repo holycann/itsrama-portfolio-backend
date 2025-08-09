@@ -2,14 +2,13 @@ package services
 
 import (
 	"context"
-	"fmt"
-
-	// "time"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/discussion/models"
 	"github.com/holycann/cultour-backend/internal/discussion/repositories"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
 )
 
 type participantService struct {
@@ -22,106 +21,172 @@ func NewParticipantService(participantRepo repositories.ParticipantRepository) P
 	}
 }
 
-func (s *participantService) CreateParticipant(ctx context.Context, participant *models.Participant) error {
-	// Validasi objek participant
+func (s *participantService) CreateParticipant(ctx context.Context, participant *models.Participant) (*models.Participant, error) {
+	// Validate participant object
 	if participant == nil {
-		return fmt.Errorf("participant tidak boleh nil")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Participant cannot be nil",
+			nil,
+		)
 	}
 
-	// participant.JoinedAt = time.Now()
+	// Validate model
+	if err := base.ValidateModel(participant); err != nil {
+		return nil, err
+	}
 
-	// Panggil repository untuk membuat participant
+	// Set default values
+	if participant.ThreadID == uuid.Nil {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread ID is required",
+			nil,
+		)
+	}
+
+	if participant.UserID == uuid.Nil {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"User ID is required",
+			nil,
+		)
+	}
+
+	now := time.Now()
+	participant.JoinedAt = &now
+	participant.UpdatedAt = &now
+
+	// Call repository to create participant
 	return s.participantRepo.Create(ctx, participant)
 }
 
-func (s *participantService) GetParticipantByID(ctx context.Context, id string) (*models.ResponseParticipant, error) {
-	// Validasi ID
+func (s *participantService) GetParticipantByID(ctx context.Context, id string) (*models.ParticipantDTO, error) {
+	// Validate ID
 	if id == "" {
-		return nil, fmt.Errorf("participant ID tidak boleh kosong")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Participant ID cannot be empty",
+			nil,
+		)
 	}
 
-	// Ambil participant dari repository
+	// Retrieve participant from repository
 	return s.participantRepo.FindByID(ctx, id)
 }
 
-func (s *participantService) ListParticipants(ctx context.Context, opts repository.ListOptions) ([]models.ResponseParticipant, error) {
-	// Set default values if not provided
-	if opts.Limit <= 0 {
-		opts.Limit = 10
+func (s *participantService) ListParticipants(ctx context.Context, opts base.ListOptions) ([]models.ParticipantDTO, error) {
+	// Set default pagination
+	if opts.Page <= 0 {
+		opts.Page = 1
 	}
-	if opts.Offset < 0 {
-		opts.Offset = 0
+	if opts.PerPage <= 0 {
+		opts.PerPage = 10
 	}
 
 	return s.participantRepo.List(ctx, opts)
 }
 
-func (s *participantService) UpdateParticipant(ctx context.Context, participant *models.Participant) error {
-	// Validasi objek participant
+func (s *participantService) UpdateParticipant(ctx context.Context, participant *models.Participant) (*models.Participant, error) {
+	// Validate participant object
 	if participant == nil {
-		return fmt.Errorf("participant tidak boleh nil")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Participant cannot be nil",
+			nil,
+		)
 	}
 
-	// Validasi field yang wajib diisi
+	// Validate model
+	if err := base.ValidateModel(participant); err != nil {
+		return nil, err
+	}
+
+	// Validate required fields
 	if participant.ThreadID == uuid.Nil || participant.UserID == uuid.Nil {
-		return fmt.Errorf("thread ID dan user ID wajib diisi untuk update")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread ID and User ID are required for update",
+			nil,
+		)
 	}
 
 	// Update timestamp
-	// participant.UpdatedAt = time.Now()
+	now := time.Now()
+	participant.UpdatedAt = &now
 
-	// Panggil repository untuk update participant
+	// Call repository to update participant
 	return s.participantRepo.Update(ctx, participant)
 }
 
-func (s *participantService) CountParticipants(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (s *participantService) CountParticipants(ctx context.Context, filters []base.FilterOption) (int, error) {
 	return s.participantRepo.Count(ctx, filters)
 }
 
-func (s *participantService) GetParticipantsByThread(ctx context.Context, threadID string) ([]models.ResponseParticipant, error) {
-	// Validasi thread ID
+func (s *participantService) GetParticipantsByThread(ctx context.Context, threadID string) ([]models.ParticipantDTO, error) {
+	// Validate thread ID
 	if threadID == "" {
-		return nil, fmt.Errorf("thread ID tidak boleh kosong")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread ID cannot be empty",
+			nil,
+		)
 	}
 
 	return s.participantRepo.FindParticipantsByThread(ctx, threadID)
 }
 
-func (s *participantService) GetThreadParticipants(ctx context.Context, threadID string) ([]models.ResponseParticipant, error) {
-	// Validasi thread ID
+func (s *participantService) GetThreadParticipants(ctx context.Context, threadID string) ([]models.ParticipantDTO, error) {
+	// Validate thread ID
 	if threadID == "" {
-		return nil, fmt.Errorf("thread ID tidak boleh kosong")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread ID cannot be empty",
+			nil,
+		)
 	}
 
 	return s.participantRepo.FindThreadParticipants(ctx, threadID)
 }
 
 func (s *participantService) RemoveParticipant(ctx context.Context, threadID, userID string) error {
-	// Validasi input parameters
+	// Validate input parameters
 	if threadID == "" {
-		return fmt.Errorf("thread ID tidak boleh kosong")
+		return errors.New(
+			errors.ErrValidation,
+			"Thread ID cannot be empty",
+			nil,
+		)
 	}
 	if userID == "" {
-		return fmt.Errorf("user ID tidak boleh kosong")
+		return errors.New(
+			errors.ErrValidation,
+			"User ID cannot be empty",
+			nil,
+		)
 	}
 
-	// Panggil repository untuk menghapus participant
+	// Call repository to remove participant
 	return s.participantRepo.RemoveParticipant(ctx, threadID, userID)
 }
 
-func (s *participantService) SearchParticipants(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseParticipant, error) {
-	// Set default values if not provided
-	if opts.Limit <= 0 {
-		opts.Limit = 10
+func (s *participantService) SearchParticipants(ctx context.Context, query string, opts base.ListOptions) ([]models.ParticipantDTO, int, error) {
+	// Set default pagination
+	if opts.Page <= 0 {
+		opts.Page = 1
 	}
-	if opts.Offset < 0 {
-		opts.Offset = 0
+	if opts.PerPage <= 0 {
+		opts.PerPage = 10
 	}
 
-	// Set search query
-	opts.SearchQuery = query
-
-	// Panggil repository untuk mencari participants
-	results, _, err := s.participantRepo.Search(ctx, opts)
-	return results, err
+	// Search participants
+	participants, count, err := s.participantRepo.Search(ctx, opts)
+	if err != nil {
+		return nil, 0, errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to search participants",
+		)
+	}
+	return participants, count, nil
 }

@@ -13,8 +13,17 @@ import (
 	discussionModels "github.com/holycann/cultour-backend/internal/discussion/models"
 	placeModels "github.com/holycann/cultour-backend/internal/place/models"
 	userModels "github.com/holycann/cultour-backend/internal/users/models"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/logger"
 	"golang.org/x/time/rate"
 	"google.golang.org/genai"
+)
+
+// Error types for Gemini AI
+const (
+	ErrResourceExhausted errors.ErrorType = "RESOURCE_EXHAUSTED"
+	ErrExpired           errors.ErrorType = "SESSION_EXPIRED"
+	ErrInvalidResponse   errors.ErrorType = "INVALID_RESPONSE"
 )
 
 // SafetyFilter manages content safety and quality
@@ -46,9 +55,41 @@ func (sf *SafetyFilter) ValidateResponseQuality(response string) bool {
 	return qualityScore >= sf.MinResponseQuality
 }
 
+// KnowledgeBaseInterface defines the interface for a knowledge base
+type KnowledgeBaseInterface interface {
+	// User domain operations
+	AddUser(user *userModels.User)
+	AddUserProfile(profile *userModels.UserProfile)
+	AddUserBadge(userID string, userBadge *userModels.UserBadge)
+
+	// Cultural domain operations
+	AddEvent(event *culturalModels.Event)
+	AddLocalStory(story *culturalModels.LocalStory)
+
+	// Place domain operations
+	AddCity(city *placeModels.City)
+	AddProvince(province *placeModels.Province)
+	AddLocation(location *placeModels.Location)
+
+	// Discussion domain operations
+	AddThread(thread *discussionModels.Thread)
+	AddMessage(message *discussionModels.Message)
+
+	// Achievement domain operations
+	AddBadge(badge *achievementModels.Badge)
+
+	// Context and metadata operations
+	AddContextualFact(key, fact string)
+	BuildContextualPrompt(userID string, eventID *string) string
+
+	// Getters
+	GetEvent(eventID string) *culturalModels.Event
+}
+
 // ComprehensiveKnowledgeBase integrates multiple domain models
 type ComprehensiveKnowledgeBase struct {
-	mutex sync.RWMutex
+	mutex  sync.RWMutex
+	logger *logger.Logger
 
 	// User-related knowledge
 	users        map[string]*userModels.User
@@ -76,8 +117,9 @@ type ComprehensiveKnowledgeBase struct {
 }
 
 // NewComprehensiveKnowledgeBase initializes an integrated knowledge base
-func NewComprehensiveKnowledgeBase() *ComprehensiveKnowledgeBase {
+func NewComprehensiveKnowledgeBase(logger *logger.Logger) *ComprehensiveKnowledgeBase {
 	return &ComprehensiveKnowledgeBase{
+		logger:          logger,
 		users:           make(map[string]*userModels.User),
 		userProfiles:    make(map[string]*userModels.UserProfile),
 		userBadges:      make(map[string][]*userModels.UserBadge),
@@ -97,13 +139,23 @@ func NewComprehensiveKnowledgeBase() *ComprehensiveKnowledgeBase {
 
 // AddUser adds or updates user information
 func (kb *ComprehensiveKnowledgeBase) AddUser(user *userModels.User) {
+	if user == nil {
+		kb.logger.Warn("Attempted to add nil user to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
-	kb.users[user.ID] = user
+	kb.users[user.ID.String()] = user
 }
 
 // AddUserProfile adds or updates user profile
 func (kb *ComprehensiveKnowledgeBase) AddUserProfile(profile *userModels.UserProfile) {
+	if profile == nil {
+		kb.logger.Warn("Attempted to add nil user profile to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.userProfiles[profile.UserID.String()] = profile
@@ -111,6 +163,11 @@ func (kb *ComprehensiveKnowledgeBase) AddUserProfile(profile *userModels.UserPro
 
 // AddUserBadge adds a badge to a user's collection
 func (kb *ComprehensiveKnowledgeBase) AddUserBadge(userID string, userBadge *userModels.UserBadge) {
+	if userBadge == nil {
+		kb.logger.Warn("Attempted to add nil user badge to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.userBadges[userID] = append(kb.userBadges[userID], userBadge)
@@ -118,6 +175,11 @@ func (kb *ComprehensiveKnowledgeBase) AddUserBadge(userID string, userBadge *use
 
 // AddEvent adds or updates an event
 func (kb *ComprehensiveKnowledgeBase) AddEvent(event *culturalModels.Event) {
+	if event == nil {
+		kb.logger.Warn("Attempted to add nil event to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.events[event.ID.String()] = event
@@ -125,6 +187,11 @@ func (kb *ComprehensiveKnowledgeBase) AddEvent(event *culturalModels.Event) {
 
 // AddLocalStory adds or updates a local story
 func (kb *ComprehensiveKnowledgeBase) AddLocalStory(story *culturalModels.LocalStory) {
+	if story == nil {
+		kb.logger.Warn("Attempted to add nil local story to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.localStories[story.ID.String()] = story
@@ -132,6 +199,11 @@ func (kb *ComprehensiveKnowledgeBase) AddLocalStory(story *culturalModels.LocalS
 
 // AddCity adds or updates a city
 func (kb *ComprehensiveKnowledgeBase) AddCity(city *placeModels.City) {
+	if city == nil {
+		kb.logger.Warn("Attempted to add nil city to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.cities[city.ID.String()] = city
@@ -139,6 +211,11 @@ func (kb *ComprehensiveKnowledgeBase) AddCity(city *placeModels.City) {
 
 // AddProvince adds or updates a province
 func (kb *ComprehensiveKnowledgeBase) AddProvince(province *placeModels.Province) {
+	if province == nil {
+		kb.logger.Warn("Attempted to add nil province to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.provinces[province.ID.String()] = province
@@ -146,6 +223,11 @@ func (kb *ComprehensiveKnowledgeBase) AddProvince(province *placeModels.Province
 
 // AddLocation adds or updates a location
 func (kb *ComprehensiveKnowledgeBase) AddLocation(location *placeModels.Location) {
+	if location == nil {
+		kb.logger.Warn("Attempted to add nil location to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.locations[location.ID.String()] = location
@@ -153,6 +235,11 @@ func (kb *ComprehensiveKnowledgeBase) AddLocation(location *placeModels.Location
 
 // AddThread adds or updates a discussion thread
 func (kb *ComprehensiveKnowledgeBase) AddThread(thread *discussionModels.Thread) {
+	if thread == nil {
+		kb.logger.Warn("Attempted to add nil thread to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.threads[thread.ID.String()] = thread
@@ -160,6 +247,11 @@ func (kb *ComprehensiveKnowledgeBase) AddThread(thread *discussionModels.Thread)
 
 // AddMessage adds or updates a message
 func (kb *ComprehensiveKnowledgeBase) AddMessage(message *discussionModels.Message) {
+	if message == nil {
+		kb.logger.Warn("Attempted to add nil message to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.messages[message.ID.String()] = message
@@ -167,6 +259,11 @@ func (kb *ComprehensiveKnowledgeBase) AddMessage(message *discussionModels.Messa
 
 // AddBadge adds or updates a badge
 func (kb *ComprehensiveKnowledgeBase) AddBadge(badge *achievementModels.Badge) {
+	if badge == nil {
+		kb.logger.Warn("Attempted to add nil badge to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.badges[badge.ID.String()] = badge
@@ -174,6 +271,11 @@ func (kb *ComprehensiveKnowledgeBase) AddBadge(badge *achievementModels.Badge) {
 
 // AddContextualFact adds a general contextual fact
 func (kb *ComprehensiveKnowledgeBase) AddContextualFact(key, fact string) {
+	if key == "" || fact == "" {
+		kb.logger.Warn("Attempted to add empty key or fact to knowledge base")
+		return
+	}
+
 	kb.mutex.Lock()
 	defer kb.mutex.Unlock()
 	kb.contextualFacts[key] = fact
@@ -237,14 +339,33 @@ func (kb *ComprehensiveKnowledgeBase) BuildContextualPrompt(userID string, event
 		strings.Join(contextParts, "\n"))
 }
 
+// GetEvent retrieves an event by ID
+func (kb *ComprehensiveKnowledgeBase) GetEvent(eventID string) *culturalModels.Event {
+	kb.mutex.RLock()
+	defer kb.mutex.RUnlock()
+	return kb.events[eventID]
+}
+
+// AIChatSessionInterface defines the contract for AI chat session management
+type AIChatSessionInterface interface {
+	// Session management
+	CreateSession(userID string, eventID *string) (*ChatSession, error)
+	GetSession(sessionID string) (*ChatSession, error)
+	AddMessage(sessionID, role, content string) error
+
+	// AI response generation
+	GenerateResponse(sessionID, query string) (string, error)
+}
+
 // CultourAIClient manages comprehensive AI interactions
 type CultourAIClient struct {
 	client         *genai.Client
 	config         *configs.Config
 	rateLimiter    *rate.Limiter
 	sessionManager *SessionManager
-	knowledgeBase  *ComprehensiveKnowledgeBase
+	knowledgeBase  KnowledgeBaseInterface
 	safetyFilter   *SafetyFilter
+	logger         *logger.Logger
 }
 
 // SessionManager handles in-memory chat sessions
@@ -253,6 +374,7 @@ type SessionManager struct {
 	mutex       sync.RWMutex
 	maxSessions int
 	sessionTTL  time.Duration
+	logger      *logger.Logger
 }
 
 // ChatSession represents a single user's chat context
@@ -272,15 +394,28 @@ type ChatMessage struct {
 	Time    time.Time
 }
 
+// NewSessionManager creates a new session manager with the provided configuration
+func NewSessionManager(maxSessions int, sessionTTL time.Duration, logger *logger.Logger) *SessionManager {
+	return &SessionManager{
+		sessions:    make(map[string]*ChatSession),
+		maxSessions: maxSessions,
+		sessionTTL:  sessionTTL,
+		logger:      logger,
+	}
+}
+
 // NewCultourAIClient creates a new AI client
-func NewCultourAIClient(config *configs.Config) (*CultourAIClient, error) {
+func NewCultourAIClient(config *configs.Config, logger *logger.Logger) (*CultourAIClient, error) {
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		APIKey: config.GeminiAI.ApiKey,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Gemini client: %v", err)
+		return nil, errors.New(errors.ErrInternal, "failed to create Gemini client", err)
 	}
+
+	kb := NewComprehensiveKnowledgeBase(logger)
+	sm := NewSessionManager(1000, 30*time.Minute, logger)
 
 	return &CultourAIClient{
 		client: client,
@@ -289,16 +424,13 @@ func NewCultourAIClient(config *configs.Config) (*CultourAIClient, error) {
 			rate.Every(time.Minute), // 100 requests per minute
 			100,
 		),
-		sessionManager: &SessionManager{
-			sessions:    make(map[string]*ChatSession),
-			maxSessions: 1000,
-			sessionTTL:  30 * time.Minute,
-		},
-		knowledgeBase: NewComprehensiveKnowledgeBase(),
+		sessionManager: sm,
+		knowledgeBase:  kb,
 		safetyFilter: &SafetyFilter{
 			MinResponseQuality: 0.7,
 			MaxResponseLength:  2000,
 		},
+		logger: logger,
 	}, nil
 }
 
@@ -309,7 +441,7 @@ func (c *CultourAIClient) CreateSession(userID string, eventID *string) (*ChatSe
 
 	// Check session limit
 	if len(c.sessionManager.sessions) >= c.sessionManager.maxSessions {
-		return nil, fmt.Errorf("maximum sessions reached")
+		return nil, errors.New(ErrResourceExhausted, "maximum sessions reached", nil)
 	}
 
 	sessionID := generateUniqueSessionID()
@@ -323,6 +455,10 @@ func (c *CultourAIClient) CreateSession(userID string, eventID *string) (*ChatSe
 	}
 
 	c.sessionManager.sessions[sessionID] = session
+	c.logger.Info("Created new chat session", map[string]interface{}{
+		"session_id": sessionID,
+		"user_id":    userID,
+	})
 
 	return session, nil
 }
@@ -334,13 +470,13 @@ func (c *CultourAIClient) GetSession(sessionID string) (*ChatSession, error) {
 
 	session, exists := c.sessionManager.sessions[sessionID]
 	if !exists {
-		return nil, fmt.Errorf("session not found")
+		return nil, errors.New(errors.ErrNotFound, "session not found", nil)
 	}
 
 	// Check session expiry
 	if time.Since(session.LastActivity) > c.sessionManager.sessionTTL {
 		delete(c.sessionManager.sessions, sessionID)
-		return nil, fmt.Errorf("session expired")
+		return nil, errors.New(ErrExpired, "session expired", nil)
 	}
 
 	return session, nil
@@ -353,7 +489,7 @@ func (c *CultourAIClient) AddMessage(sessionID, role, content string) error {
 
 	session, exists := c.sessionManager.sessions[sessionID]
 	if !exists {
-		return fmt.Errorf("session not found")
+		return errors.New(errors.ErrNotFound, "session not found", nil)
 	}
 
 	message := ChatMessage{
@@ -376,7 +512,7 @@ func (c *CultourAIClient) buildContext(session *ChatSession) context.Context {
 	// If session has an event, we can use that to further refine the context
 	if session.EventID != nil {
 		// Optionally retrieve event details from knowledge base
-		event := c.knowledgeBase.GetEvent(fmt.Sprintf("%d", *session.EventID))
+		event := c.knowledgeBase.GetEvent(*session.EventID)
 		if event != nil {
 			// You could add event-specific context preparation here
 		}
@@ -396,7 +532,7 @@ func (c *CultourAIClient) buildContext(session *ChatSession) context.Context {
 func (c *CultourAIClient) GenerateResponse(sessionID, query string) (string, error) {
 	// Rate limit check
 	if err := c.rateLimiter.Wait(context.Background()); err != nil {
-		return "", fmt.Errorf("rate limit exceeded")
+		return "", errors.New(ErrResourceExhausted, "rate limit exceeded", err)
 	}
 
 	session, err := c.GetSession(sessionID)
@@ -405,10 +541,10 @@ func (c *CultourAIClient) GenerateResponse(sessionID, query string) (string, err
 	}
 
 	// Prepare context
-	context := c.buildContext(session)
+	ctx := c.buildContext(session)
 
 	// Generate response
-	resp, err := c.client.Models.GenerateContent(context, c.config.GeminiAI.AIModel, genai.Text(query), &genai.GenerateContentConfig{
+	resp, err := c.client.Models.GenerateContent(ctx, c.config.GeminiAI.AIModel, genai.Text(query), &genai.GenerateContentConfig{
 		Temperature: c.config.GeminiAI.Temperature,
 		TopP:        c.config.GeminiAI.TopP,
 		TopK:        c.config.GeminiAI.TopK,
@@ -420,24 +556,31 @@ func (c *CultourAIClient) GenerateResponse(sessionID, query string) (string, err
 		},
 	})
 	if err != nil {
-		return "", err
+		return "", errors.New(errors.ErrInternal, "failed to generate AI response", err)
 	}
 
-	// Validate response
+	responseText := resp.Text()
+
+	// Validate response quality
+	// if !c.safetyFilter.ValidateResponseQuality(responseText) {
+	// 	c.logger.Warn("Generated AI response failed quality check", map[string]interface{}{
+	// 		"session_id": sessionID,
+	// 	})
+	// 	return "", errors.New(ErrInvalidResponse, "generated response did not meet quality standards", nil)
+	// }
 
 	// Add response to session
-	c.AddMessage(sessionID, "assistant", resp.Text())
+	if err := c.AddMessage(sessionID, "assistant", responseText); err != nil {
+		c.logger.Error("Failed to add AI response to session", map[string]interface{}{
+			"session_id": sessionID,
+			"error":      err.Error(),
+		})
+	}
 
-	return resp.Text(), nil
+	return responseText, nil
 }
 
 // Helper functions
 func generateUniqueSessionID() string {
 	return fmt.Sprintf("session_%d", time.Now().UnixNano())
-}
-
-func (k *ComprehensiveKnowledgeBase) GetEvent(eventID string) *culturalModels.Event {
-	k.mutex.RLock()
-	defer k.mutex.RUnlock()
-	return k.events[eventID]
 }

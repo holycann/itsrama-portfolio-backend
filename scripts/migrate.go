@@ -13,18 +13,33 @@ import (
 )
 
 func main() {
-	// Load .env
+	// Load .env with detailed logging
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("Warning: No .env file found")
+		log.Printf("[ENV] Warning: Failed to load .env file. Error: %v\n", err)
+	} else {
+		log.Println("[ENV] Successfully loaded .env configuration")
 	}
 
 	// Flag untuk menentukan aksi migrasi
-	var direction string
+	var up, down bool
 	var steps int
-	flag.StringVar(&direction, "direction", "up", "Migration direction: up or down")
-	flag.IntVar(&steps, "steps", 0, "Number of steps to migrate (used only for step mode)")
+	flag.BoolVar(&up, "up", false, "Migrate up")
+	flag.BoolVar(&down, "down", false, "Migrate down")
+	flag.IntVar(&steps, "steps", 0, "Number of steps to migrate")
 	flag.Parse()
+
+	// Validate migration direction
+	if (up && down) || (!up && !down) {
+		log.Fatalf("[ERROR] Please specify either --up or --down, but not both")
+	}
+
+	direction := "up"
+	if down {
+		direction = "down"
+	}
+
+	log.Printf("[CONFIG] Migration direction: %s, Steps: %d\n", direction, steps)
 
 	// Build connection string
 	dbHost := os.Getenv("DB_HOST")
@@ -35,9 +50,11 @@ func main() {
 
 	if dbHost == "" {
 		dbHost = "localhost"
+		log.Println("[CONFIG] Using default DB_HOST: localhost")
 	}
 	if dbPort == "" {
 		dbPort = "5432"
+		log.Println("[CONFIG] Using default DB_PORT: 5432")
 	}
 
 	connectionString := fmt.Sprintf(
@@ -49,32 +66,38 @@ func main() {
 		dbName,
 	)
 
+	log.Printf("[DB] Attempting to create migration with host: %s, port: %s, database: %s\n", dbHost, dbPort, dbName)
+
 	m, err := migrate.New("file://db/migrations", connectionString)
 	if err != nil {
-		log.Fatalf("Failed to create migration: %v", err)
+		log.Fatalf("[MIGRATION] Failed to create migration: %v\n", err)
 	}
 
 	// Jalankan sesuai argumen
-	switch direction {
-	case "up":
+	log.Println("[MIGRATION] Starting migration process...")
+	if direction == "up" {
+		log.Printf("[MIGRATION] Performing %d up migration step(s)\n", steps)
 		if steps > 0 {
 			err = m.Steps(steps)
 		} else {
 			err = m.Up()
 		}
-	case "down":
+	} else {
+		log.Printf("[MIGRATION] Performing %d down migration step(s)\n", steps)
 		if steps > 0 {
 			err = m.Steps(-steps)
 		} else {
 			err = m.Down()
 		}
-	default:
-		log.Fatalf("Unknown direction: %s (use up or down)", direction)
 	}
 
-	if err != nil && err != migrate.ErrNoChange {
-		log.Fatalf("Migration failed: %v", err)
+	if err != nil {
+		if err == migrate.ErrNoChange {
+			log.Println("[MIGRATION] No changes to apply. Database is up to date.")
+		} else {
+			log.Fatalf("[MIGRATION] Migration failed with error: %v\n", err)
+		}
+	} else {
+		log.Println("[MIGRATION] Migration completed successfully")
 	}
-
-	log.Println("Migration completed successfully")
 }

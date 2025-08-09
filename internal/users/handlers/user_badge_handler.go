@@ -1,104 +1,114 @@
 package handlers
 
 import (
-	"encoding/json"
-	"math"
+	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/holycann/cultour-backend/internal/logger"
-	"github.com/holycann/cultour-backend/internal/response"
+	"github.com/holycann/cultour-backend/internal/middleware"
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/internal/users/services"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/logger"
+	_ "github.com/holycann/cultour-backend/pkg/response"
 )
 
 // UserBadgeHandler handles HTTP requests related to user badges
 type UserBadgeHandler struct {
+	base.BaseHandler
 	service services.UserBadgeService
-	logger  *logger.Logger
 }
 
 // NewUserBadgeHandler creates a new instance of UserBadgeHandler
 func NewUserBadgeHandler(service services.UserBadgeService, logger *logger.Logger) *UserBadgeHandler {
 	return &UserBadgeHandler{
-		service: service,
-		logger:  logger,
+		BaseHandler: *base.NewBaseHandler(logger),
+		service:     service,
 	}
 }
 
 // AssignBadge godoc
 // @Summary Assign a badge to a user
-// @Description Add a new badge to a user's profile
+// @Description Allows administrators to award a specific badge to a user
+// @Description Creates a new user badge association in the system
 // @Tags User Badges
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param badge body models.UserBadgeCreate true "Badge Assignment Details"
-// @Success 201 {object} response.APIResponse{data=models.UserBadge} "Badge assigned successfully"
-// @Failure 400 {object} response.APIResponse "Invalid badge assignment details"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param badge body models.UserBadgePayload true "Badge Assignment Details"
+// @Success 201 {object} response.APIResponse{data=models.UserBadgeDTO} "Badge successfully assigned to user"
+// @Failure 400 {object} response.APIResponse "Invalid badge assignment payload or validation error"
+// @Failure 401 {object} response.APIResponse "Authentication required - missing or invalid token"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges (admin role required)"
+// @Failure 404 {object} response.APIResponse "User or badge not found"
+// @Failure 409 {object} response.APIResponse "Badge already assigned to user"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge assignment"
 // @Router /users/badges [post]
 func (h *UserBadgeHandler) AssignBadge(c *gin.Context) {
-	var badgeCreate models.UserBadgeCreate
-	if err := c.ShouldBindJSON(&badgeCreate); err != nil {
-		response.BadRequest(c, "Invalid badge assignment details", err.Error(), "")
-		return
-	}
+	var badgePayload models.UserBadge
 
-	// Validate required fields
-	if badgeCreate.UserID.String() == "" || badgeCreate.BadgeID.String() == "" {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"user_id":  badgeCreate.UserID.String() == "",
-			"badge_id": badgeCreate.BadgeID.String() == "",
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
-		return
-	}
-
-	// Create user badge
-	err := h.service.CreateUserBadge(c.Request.Context(), &badgeCreate)
+	// Get authenticated user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
 	if err != nil {
-		h.logger.Error("Failed to assign badge", err)
-		response.InternalServerError(c, "Failed to assign badge", err.Error(), "")
+		h.HandleError(c, err)
+		return
+	}
+
+	// Use authenticated user's ID
+	userUUID, err := h.ValidateUUID(userID, "user_id")
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+	badgePayload.UserID = userUUID
+	if err := h.ValidateRequest(c, &badgePayload); err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Add badge to user
+	err = h.service.AddBadgeToUser(c.Request.Context(), badgePayload)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
 	// Retrieve the newly created badge
-	badge, err := h.service.GetUserBadgesByUser(c.Request.Context(), badgeCreate.UserID.String())
+	badges, err := h.service.GetUserBadgesByUser(c.Request.Context(), userID)
 	if err != nil {
-		h.logger.Error("Failed to retrieve assigned badge", err)
-		response.InternalServerError(c, "Failed to retrieve assigned badge", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessCreated(c, badge, "Badge successfully assigned")
+	h.HandleCreated(c, badges, "Badge successfully assigned")
 }
 
 // GetUserBadges godoc
-// @Summary Get user badges
-// @Description Retrieve badges for a specific user with pagination and filtering
+// @Summary Retrieve user's badges
+// @Description Fetches a list of badges earned by a specific user
+// @Description Returns comprehensive badge details with optional filtering
 // @Tags User Badges
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param user_id query string true "User ID"
-// @Param limit query int false "Number of badges to retrieve" default(10)
-// @Param offset query int false "Number of badges to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.UserBadge} "User badges retrieved successfully"
-// @Failure 400 {object} response.APIResponse "Invalid search parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param user_id query string true "Unique User Identifier" format(uuid)
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of badges per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort badges by" default("created_at)" Enum(created_at,badge_name)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Success 200 {object} response.APIResponse{data=[]models.UserBadgeDTO} "Successfully retrieved user badges"
+// @Success 204 {object} response.APIResponse "No badges found for the user"
+// @Failure 400 {object} response.APIResponse "Invalid user ID or query parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 404 {object} response.APIResponse "User not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge retrieval"
 // @Router /users/badges [get]
 func (h *UserBadgeHandler) GetUserBadges(c *gin.Context) {
-	// Get user ID
-	userID := c.Query("user_id")
-	if userID == "" {
-		response.BadRequest(c, "User ID is required", "Missing user ID", "")
+	// Get authenticated user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
@@ -117,183 +127,164 @@ func (h *UserBadgeHandler) GetUserBadges(c *gin.Context) {
 	}
 
 	// Prepare list options
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
+	listOptions := base.ListOptions{
+		Page:      offset/limit + 1,
+		PerPage:   limit,
 		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-		Filters: []repository.FilterOption{
+		SortOrder: base.SortDescending,
+		Filters: []base.FilterOption{
 			{
 				Field:    "user_id",
-				Operator: "=",
+				Operator: base.OperatorEqual,
 				Value:    userID,
 			},
 		},
 	}
 	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+		listOptions.SortOrder = base.SortAscending
 	}
 
 	// Retrieve user badges
-	badges, err := h.service.ListUserBadges(c.Request.Context(), listOptions)
+	badges, totalBadges, err := h.service.ListUserBadges(c.Request.Context(), listOptions)
 	if err != nil {
-		h.logger.Error("Failed to retrieve user badges", err)
-		response.InternalServerError(c, "Failed to retrieve user badges", err.Error(), "")
+		h.HandleError(c, err)
 		return
-	}
-
-	// Count total user badges for pagination
-	totalBadges, err := h.service.CountUserBadges(c.Request.Context(), listOptions.Filters)
-	if err != nil {
-		h.logger.Error("Failed to count user badges", err)
-		response.InternalServerError(c, "Failed to count user badges", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalBadges,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalBadges) / float64(limit))),
-		HasNextPage: offset+limit < totalBadges,
 	}
 
 	// Respond with badges and pagination
-	response.SuccessOK(c, badges, "User badges retrieved successfully", pagination)
+	h.HandlePagination(c, badges, totalBadges, listOptions)
 }
 
 // RemoveBadge godoc
 // @Summary Remove a badge from a user
-// @Description Delete a specific badge from a user's profile
+// @Description Allows administrators to revoke a specific badge from a user
+// @Description Permanently deletes the user badge association
 // @Tags User Badges
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param user_id query string true "User ID"
-// @Param badge_id query string true "Badge ID"
-// @Success 200 {object} response.APIResponse "Badge removed successfully"
-// @Failure 400 {object} response.APIResponse "Invalid user ID or badge ID"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param user_id query string true "Unique User Identifier" format(uuid)
+// @Param badge_id query string true "Unique Badge Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse "Badge successfully removed from user"
+// @Failure 400 {object} response.APIResponse "Invalid user or badge ID"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
+// @Failure 404 {object} response.APIResponse "User badge association not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge removal"
 // @Router /users/badges [delete]
 func (h *UserBadgeHandler) RemoveBadge(c *gin.Context) {
-	userID := c.Query("user_id")
-	badgeID := c.Query("badge_id")
+	// Get authenticated user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
 
-	if userID == "" || badgeID == "" {
-		response.BadRequest(c, "User ID and Badge ID are required", "Missing user or badge ID", "")
+	badgeID := c.Query("badge_id")
+	if badgeID == "" {
+		h.HandleError(c, fmt.Errorf("Badge ID is required"))
 		return
 	}
 
 	// Parse UUIDs
-	_, err := uuid.Parse(userID)
+	userUUID, err := h.ValidateUUID(userID, "user_id")
 	if err != nil {
-		response.BadRequest(c, "Invalid User ID", "Invalid UUID format for user ID", "")
+		h.HandleError(c, err)
 		return
 	}
-	badgeUUID, err := uuid.Parse(badgeID)
+	badgeUUID, err := h.ValidateUUID(badgeID, "badge_id")
 	if err != nil {
-		response.BadRequest(c, "Invalid Badge ID", "Invalid UUID format for badge ID", "")
+		h.HandleError(c, err)
 		return
 	}
 
-	// Find the specific user badge to delete
-	userBadges, err := h.service.GetUserBadgesByUser(c.Request.Context(), userID)
+	// Prepare payload
+	payload := models.UserBadgePayload{
+		UserID:  userUUID,
+		BadgeID: badgeUUID,
+	}
+
+	// Remove badge from user
+	err = h.service.RemoveBadgeFromUser(c.Request.Context(), payload)
 	if err != nil {
-		h.logger.Error("Failed to find user badges", err)
-		response.InternalServerError(c, "Failed to find user badges", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	// Find the specific badge to delete
-	var badgeToDelete *models.UserBadge
-	for _, badge := range userBadges {
-		if badge.BadgeID == badgeUUID {
-			badgeToDelete = &badge
-			break
-		}
-	}
-
-	if badgeToDelete == nil {
-		response.NotFound(c, "Badge not found", "User does not have this badge", "")
-		return
-	}
-
-	// Delete the badge
-	err = h.service.DeleteUserBadge(c.Request.Context(), badgeToDelete.ID.String())
-	if err != nil {
-		h.logger.Error("Failed to remove badge", err)
-		response.InternalServerError(c, "Failed to remove badge", err.Error(), "")
-		return
-	}
-
-	response.SuccessOK(c, nil, "Badge removed successfully")
+	h.HandleSuccess(c, nil, "Badge removed successfully")
 }
 
 // CountUserBadges godoc
-// @Summary Count user badges
-// @Description Retrieve the number of badges a user has
+// @Summary Count user's badges
+// @Description Retrieves the total number of badges earned by a specific user
+// @Description Supports optional filtering by badge type or name
 // @Tags User Badges
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param user_id query string true "User ID"
-// @Success 200 {object} response.APIResponse{data=int} "User badge count retrieved successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param user_id query string true "Unique User Identifier" format(uuid)
+// @Param badge_name query string false "Optional filter to count badges by name"
+// @Success 200 {object} response.APIResponse{data=int} "Successfully retrieved badge count"
 // @Failure 400 {object} response.APIResponse "Invalid user ID"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 404 {object} response.APIResponse "User not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge count"
 // @Router /users/badges/count [get]
 func (h *UserBadgeHandler) CountUserBadges(c *gin.Context) {
-	userID := c.Query("user_id")
-	if userID == "" {
-		response.BadRequest(c, "User ID is required", "Missing user ID", "")
+	// Get authenticated user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
 	// Prepare filter
-	filters := []repository.FilterOption{
+	filters := []base.FilterOption{
 		{
 			Field:    "user_id",
-			Operator: "=",
+			Operator: base.OperatorEqual,
 			Value:    userID,
 		},
 	}
 
 	count, err := h.service.CountUserBadges(c.Request.Context(), filters)
 	if err != nil {
-		h.logger.Error("Failed to count user badges", err)
-		response.InternalServerError(c, "Failed to count user badges", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessOK(c, count, "User badges counted successfully")
+	h.HandleSuccess(c, count, "User badges counted successfully")
 }
 
 // GetUserBadgesByUser godoc
-// @Summary Get badges for a specific user
-// @Description Retrieve all badges associated with a given user ID
+// @Summary Retrieve detailed user badge information
+// @Description Fetches comprehensive badge details for a specific user
+// @Description Returns full badge information including badge metadata
 // @Tags User Badges
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param user_id path string true "User ID"
-// @Success 200 {object} response.APIResponse{data=[]models.UserBadge} "User badges retrieved successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param user_id path string true "Unique User Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=[]models.UserBadgeDTO} "Successfully retrieved user badge details"
+// @Success 204 {object} response.APIResponse "No badges found for the user"
 // @Failure 400 {object} response.APIResponse "Invalid user ID"
-// @Failure 500 {object} response.APIResponse "Internal server error"
-// @Router /users/badges/{user_id} [get]
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 404 {object} response.APIResponse "User not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge retrieval"
+// @Router /users/{user_id}/badges [get]
 func (h *UserBadgeHandler) GetUserBadgesByUser(c *gin.Context) {
-	// Verify the authenticated user's permission to access the badges
-	userID := c.GetString("user_id")
-	if userID == "" {
-		response.Unauthorized(c, "Authentication failed", "User not authenticated", "")
+	// Get authenticated user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
 	userBadges, err := h.service.GetUserBadgesByUser(c.Request.Context(), userID)
 	if err != nil {
-		h.logger.Error("Failed to retrieve user badges", err)
-		response.InternalServerError(c, "Failed to retrieve user badges", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessOK(c, userBadges, "User badges retrieved successfully")
+	h.HandleSuccess(c, userBadges, "User badges retrieved successfully")
 }

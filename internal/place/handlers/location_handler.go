@@ -1,309 +1,289 @@
 package handlers
 
 import (
-	"encoding/json"
-	"math"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/place/models"
 	"github.com/holycann/cultour-backend/internal/place/services"
-	"github.com/holycann/cultour-backend/internal/response"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/logger"
+
+	_ "github.com/holycann/cultour-backend/pkg/response"
 )
 
 // LocationHandler handles HTTP requests related to locations
 type LocationHandler struct {
+	base.BaseHandler
 	locationService services.LocationService
-	logger          *logger.Logger
 }
 
 // NewLocationHandler creates a new instance of location handler
-func NewLocationHandler(locationService services.LocationService, logger *logger.Logger) *LocationHandler {
+func NewLocationHandler(
+	locationService services.LocationService,
+	logger *logger.Logger,
+) *LocationHandler {
 	return &LocationHandler{
+		BaseHandler:     *base.NewBaseHandler(logger),
 		locationService: locationService,
-		logger:          logger,
 	}
 }
 
 // CreateLocation godoc
 // @Summary Create a new location
-// @Description Add a new location to the system
+// @Description Allows administrators to add a new geographical location to the system
+// @Description Supports creating locations with detailed geospatial information
 // @Tags Locations
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param location body models.Location true "Location Information"
-// @Success 201 {object} response.APIResponse{data=models.Location} "Location created successfully"
-// @Failure 400 {object} response.APIResponse "Invalid location creation details"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param location body models.LocationCreate true "Location Creation Details"
+// @Success 201 {object} response.APIResponse{data=models.LocationDTO} "Location successfully created with full details"
+// @Failure 400 {object} response.APIResponse "Invalid location creation payload or validation error"
+// @Failure 401 {object} response.APIResponse "Authentication required - missing or invalid token"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges (admin role required)"
+// @Failure 500 {object} response.APIResponse "Internal server error during location creation"
 // @Router /locations [post]
 func (h *LocationHandler) CreateLocation(c *gin.Context) {
-	var location models.Location
-	if err := c.ShouldBindJSON(&location); err != nil {
-		h.logger.Error("Error binding location: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+	var locationCreate models.LocationCreate
+
+	// Validate request
+	if err := h.ValidateRequest(c, &locationCreate); err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	// Validate required fields
-	if location.Name == "" || location.CityID == uuid.Nil || location.Latitude == 0 || location.Longitude == 0 {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"name":      location.Name == "",
-			"city_id":   location.CityID == uuid.Nil,
-			"latitude":  location.Latitude == 0,
-			"longitude": location.Longitude == 0,
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
+	// Create location
+	createdLocation, err := h.locationService.CreateLocation(c.Request.Context(), &locationCreate)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	if err := h.locationService.CreateLocation(c.Request.Context(), &location); err != nil {
-		h.logger.Error("Error creating location: %v", err)
-		response.InternalServerError(c, "Failed to create location", err.Error(), "")
-		return
-	}
-
-	response.SuccessCreated(c, location, "Location created successfully")
+	// Respond with created location
+	h.HandleCreated(c, createdLocation.ToDTO(), "Location created successfully")
 }
 
 // SearchLocations godoc
 // @Summary Search locations
-// @Description Search locations by various criteria
+// @Description Performs a full-text search across location details with advanced filtering
+// @Description Allows finding locations by keywords, city, coordinates, and other attributes
 // @Tags Locations
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param query query string true "Search query (name, etc.)"
-// @Param limit query int false "Number of results to retrieve" default(10)
-// @Param offset query int false "Number of results to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Param city_id query string false "Filter by city ID"
-// @Success 200 {object} response.APIResponse{data=[]models.Location} "Locations found successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param query query string true "Search term for finding locations" minlength(2)
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of search results per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort search results" default("relevance)" Enum(relevance,name,created_at)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param city_id query string false "Filter locations by specific city"
+// @Param latitude query float64 false "Latitude for proximity search"
+// @Param longitude query float64 false "Longitude for proximity search"
+// @Param radius query float64 false "Search radius in kilometers for proximity search" minimum(0)
+// @Success 200 {object} response.APIResponse{data=[]models.LocationDTO} "Successfully completed location search"
+// @Success 204 {object} response.APIResponse "No locations match the search query"
 // @Failure 400 {object} response.APIResponse "Invalid search parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during location search"
 // @Router /locations/search [get]
 func (h *LocationHandler) SearchLocations(c *gin.Context) {
-	// Get search query
-	query := c.Query("query")
-	if query == "" {
-		response.BadRequest(c, "Search query is required", "Empty search query", "")
-		return
+	// Manually set list options with default values
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil {
+		page = 1
 	}
 
-	// Parse pagination parameters
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	perPage, err := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+	if err != nil {
+		perPage = 10
+	}
+
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
 
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Prepare list options for search
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
+	listOptions := base.ListOptions{
+		Page:      page,
+		PerPage:   perPage,
 		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-		Filters: []repository.FilterOption{
-			{
-				Field:    "name",
-				Operator: "like",
-				Value:    query,
-			},
-		},
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+		SortOrder: sortOrder,
+		Filters:   []base.FilterOption{},
 	}
 
-	// Optional filtering by city_id
-	if cityID := c.Query("city_id"); cityID != "" {
-		listOptions.Filters = append(listOptions.Filters, repository.FilterOption{
-			Field:    "city_id",
-			Operator: "eq",
-			Value:    cityID,
-		})
+	// Prepare search filter
+	searchFilter := models.LocationDTO{
+		Name: c.Query("query"),
 	}
+	if cityID := c.Query("city_id"); cityID != "" {
+		cityUUID, err := uuid.Parse(cityID)
+		if err != nil {
+			h.HandleError(c, errors.New(
+				errors.ErrValidation,
+				"Invalid city ID",
+				err,
+			))
+			return
+		}
+		searchFilter.CityID = cityUUID
+	}
+
+	// Build filters dynamically
+	filters := base.BuildFilterFromStruct(searchFilter)
+
+	// Update list options with filters
+	listOptions.Filters = filters
 
 	// Search locations
-	locations, err := h.locationService.SearchLocations(c.Request.Context(), query, listOptions)
+	locations, err := h.locationService.SearchLocations(c.Request.Context(), listOptions)
 	if err != nil {
-		h.logger.Error("Error searching locations: %v", err)
-		response.InternalServerError(c, "Failed to search locations", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	// Count total search results
-	totalLocations, err := h.locationService.CountLocations(c.Request.Context(), listOptions.Filters)
-	if err != nil {
-		h.logger.Error("Error counting search results: %v", err)
-		response.InternalServerError(c, "Failed to count search results", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalLocations,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalLocations) / float64(limit))),
-		HasNextPage: offset+limit < totalLocations,
-	}
-
-	// Respond with locations and pagination
-	response.SuccessOK(c, locations, "Locations found successfully", pagination)
+	// Handle pagination
+	h.HandlePagination(c, locations, len(locations), listOptions)
 }
 
 // UpdateLocation godoc
-// @Summary Update a location
-// @Description Update an existing location's details
+// @Summary Update an existing location
+// @Description Allows administrators to modify location details
+// @Description Supports partial updates with optional fields
 // @Tags Locations
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Location ID"
-// @Param location body models.Location true "Location Update Details"
-// @Success 200 {object} response.APIResponse{data=models.Location} "Location updated successfully"
-// @Failure 400 {object} response.APIResponse "Invalid location update details"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Location Identifier" format(uuid)
+// @Param location body models.LocationUpdate true "Location Update Payload"
+// @Success 200 {object} response.APIResponse{data=models.LocationDTO} "Location successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid location update payload or ID"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
 // @Failure 404 {object} response.APIResponse "Location not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during location update"
 // @Router /locations/{id} [put]
 func (h *LocationHandler) UpdateLocation(c *gin.Context) {
-	// Get location ID from path parameter
-	locationID := c.Param("id")
-	if locationID == "" {
-		response.BadRequest(c, "Location ID is required", "Missing location ID", "")
-		return
-	}
-
-	var location models.Location
-	if err := c.ShouldBindJSON(&location); err != nil {
-		h.logger.Error("Error binding location: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
-		return
-	}
-
-	// Set the ID from path parameter
-	parsedID, err := uuid.Parse(locationID)
+	// Validate and parse location ID
+	locationID, err := h.ValidateUUID(c.Param("id"), "Location ID")
 	if err != nil {
-		response.BadRequest(c, "Invalid Location ID", "Invalid UUID format", "")
-		return
-	}
-	location.ID = parsedID
-
-	// Validate required fields
-	if location.Name == "" || location.CityID == uuid.Nil || location.Latitude == 0 || location.Longitude == 0 {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"name":      location.Name == "",
-			"city_id":   location.CityID == uuid.Nil,
-			"latitude":  location.Latitude == 0,
-			"longitude": location.Longitude == 0,
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	if err := h.locationService.UpdateLocation(c.Request.Context(), &location); err != nil {
-		h.logger.Error("Error updating location: %v", err)
-		response.InternalServerError(c, "Failed to update location", err.Error(), "")
+	// Validate request
+	var locationUpdate models.LocationUpdate
+	if err := h.ValidateRequest(c, &locationUpdate); err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessOK(c, location, "Location updated successfully")
+	// Set ID for update
+	locationUpdate.ID = locationID
+
+	// Update location
+	updatedLocation, err := h.locationService.UpdateLocation(c.Request.Context(), &locationUpdate)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Respond with updated location
+	h.HandleSuccess(c, updatedLocation.ToDTO(), "Location updated successfully")
 }
 
 // DeleteLocation godoc
 // @Summary Delete a location
-// @Description Remove a location from the system by its unique identifier
+// @Description Allows administrators to permanently remove a location from the system
+// @Description Deletes the location and its associated resources
 // @Tags Locations
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Location ID"
-// @Success 200 {object} response.APIResponse "Deleted successfully"
-// @Failure 400 {object} response.APIResponse "Invalid location ID"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Location Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse "Location successfully deleted"
+// @Failure 400 {object} response.APIResponse "Invalid location ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
 // @Failure 404 {object} response.APIResponse "Location not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during location deletion"
 // @Router /locations/{id} [delete]
 func (h *LocationHandler) DeleteLocation(c *gin.Context) {
-	// Get location ID from path parameter
+	// Validate and parse location ID
 	locationID := c.Param("id")
 	if locationID == "" {
-		response.BadRequest(c, "Location ID is required", "Missing location ID", "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Location ID cannot be empty",
+			nil,
+		))
 		return
 	}
 
+	// Delete location
 	if err := h.locationService.DeleteLocation(c.Request.Context(), locationID); err != nil {
-		h.logger.Error("Error deleting location: %v", err)
-		response.InternalServerError(c, "Failed to delete location", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessOK(c, nil, "Location deleted successfully")
+	// Respond with success
+	h.HandleSuccess(c, nil, "Location deleted successfully")
 }
 
 // ListLocations godoc
-// @Summary List locations
-// @Description Retrieve a list of locations with pagination and filtering
+// @Summary Retrieve locations list
+// @Description Fetches a paginated list of locations with optional filtering and sorting
+// @Description Supports advanced querying with flexible pagination and filtering options
 // @Tags Locations
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param limit query int false "Number of locations to retrieve" default(10)
-// @Param offset query int false "Number of locations to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Param city_id query string false "Filter by city ID"
-// @Success 200 {object} response.APIResponse{data=[]models.Location} "Locations retrieved successfully"
-// @Failure 500 {object} response.APIResponse "Failed to list locations"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of locations per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort locations by" default("created_at)" Enum(created_at,name)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param city_id query string false "Filter locations by specific city"
+// @Success 200 {object} response.APIResponse{data=[]models.LocationDTO} "Successfully retrieved locations list"
+// @Success 204 {object} response.APIResponse "No locations found"
+// @Failure 400 {object} response.APIResponse "Invalid query parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during locations retrieval"
 // @Router /locations [get]
 func (h *LocationHandler) ListLocations(c *gin.Context) {
-	// Parse pagination parameters with defaults
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	sortBy := c.DefaultQuery("sort_by", "created_at")
-	sortOrder := c.DefaultQuery("sort_order", "desc")
-
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
+	// Manually set list options with default values
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil {
+		page = 1
 	}
 
-	// Prepare list options
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
-		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+	perPage, err := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+	if err != nil {
+		perPage = 10
 	}
 
-	// Optional filtering
-	filters := []repository.FilterOption{}
+	listOptions := base.ListOptions{
+		Page:    page,
+		PerPage: perPage,
+	}
+
+	// Prepare filter
+	var filters []base.FilterOption
 	if cityID := c.Query("city_id"); cityID != "" {
-		filters = append(filters, repository.FilterOption{
+		cityUUID, err := uuid.Parse(cityID)
+		if err != nil {
+			h.HandleError(c, errors.New(
+				errors.ErrValidation,
+				"Invalid city ID",
+				err,
+			))
+			return
+		}
+		filters = append(filters, base.FilterOption{
 			Field:    "city_id",
-			Operator: "eq",
-			Value:    cityID,
+			Operator: base.OperatorEqual,
+			Value:    cityUUID,
 		})
 	}
 	listOptions.Filters = filters
@@ -311,58 +291,48 @@ func (h *LocationHandler) ListLocations(c *gin.Context) {
 	// Retrieve locations
 	locations, err := h.locationService.ListLocations(c.Request.Context(), listOptions)
 	if err != nil {
-		h.logger.Error("Error retrieving locations: %v", err)
-		response.InternalServerError(c, "Failed to retrieve locations", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	// Count total locations for pagination
-	totalLocations, err := h.locationService.CountLocations(c.Request.Context(), filters)
-	if err != nil {
-		h.logger.Error("Error counting locations: %v", err)
-		response.InternalServerError(c, "Failed to count locations", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalLocations,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalLocations) / float64(limit))),
-		HasNextPage: offset+limit < totalLocations,
-	}
-
-	// Respond with locations and pagination
-	response.SuccessOK(c, locations, "Locations retrieved successfully", pagination)
+	// Handle pagination
+	h.HandlePagination(c, locations, len(locations), listOptions)
 }
 
 // GetLocationByID godoc
-// @Summary Get location by ID
-// @Description Retrieve a location's details by its unique identifier
+// @Summary Retrieve a specific location
+// @Description Fetches comprehensive details of a location by its unique identifier
+// @Description Returns full location information including city details and geospatial data
 // @Tags Locations
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Location ID"
-// @Success 200 {object} response.APIResponse{data=models.Location} "Location retrieved successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Location Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=models.LocationDTO} "Successfully retrieved location details"
+// @Failure 400 {object} response.APIResponse "Invalid location ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
 // @Failure 404 {object} response.APIResponse "Location not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during location retrieval"
 // @Router /locations/{id} [get]
 func (h *LocationHandler) GetLocationByID(c *gin.Context) {
-	// Get location ID from path parameter
+	// Validate and parse location ID
 	locationID := c.Param("id")
 	if locationID == "" {
-		response.BadRequest(c, "Location ID is required", "Missing location ID", "")
+		h.HandleError(c, errors.New(
+			errors.ErrValidation,
+			"Location ID cannot be empty",
+			nil,
+		))
 		return
 	}
 
+	// Retrieve location
 	location, err := h.locationService.GetLocationByID(c.Request.Context(), locationID)
 	if err != nil {
-		h.logger.Error("Error finding location by ID: %v", err)
-		response.NotFound(c, "Location not found", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessOK(c, location, "Location detail retrieved successfully")
+	// Respond with location details
+	h.HandleSuccess(c, location, "Location detail retrieved successfully")
 }

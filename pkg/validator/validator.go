@@ -25,6 +25,12 @@ type ValidationContext struct {
 // ValidateStruct performs comprehensive validation for structs
 func ValidateStruct(s interface{}) error {
 	v := reflect.ValueOf(s)
+
+	// Check if the input is a pointer and dereference it
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
 	t := v.Type()
 
 	var errors []string

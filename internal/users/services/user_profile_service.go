@@ -5,22 +5,21 @@ import (
 	"database/sql"
 	"fmt"
 	"mime/multipart"
-	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/achievement/services"
-	"github.com/holycann/cultour-backend/internal/supabase"
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/internal/users/repositories"
-	"github.com/holycann/cultour-backend/pkg/repository"
-	storage_go "github.com/supabase-community/storage-go"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/supabase"
 )
 
 type userProfileService struct {
 	repo      repositories.UserProfileRepository
 	userRepo  repositories.UserRepository
-	userBadge UserBadgeService
+	userBadge repositories.UserBadgeRepository
 	badge     services.BadgeService
 	storage   *supabase.SupabaseStorage
 }
@@ -28,7 +27,7 @@ type userProfileService struct {
 func NewUserProfileService(
 	repo repositories.UserProfileRepository,
 	userRepo repositories.UserRepository,
-	userBadge UserBadgeService,
+	userBadge repositories.UserBadgeRepository,
 	badge services.BadgeService,
 	storage *supabase.SupabaseStorage,
 ) UserProfileService {
@@ -41,342 +40,331 @@ func NewUserProfileService(
 	}
 }
 
-func (s *userProfileService) CreateProfile(ctx context.Context, userProfile *models.UserProfile) error {
+func (s *userProfileService) CreateProfile(ctx context.Context, userProfile *models.UserProfileCreate) (*models.UserProfileDTO, error) {
 	// Validate input
-	if userProfile == nil {
-		return fmt.Errorf("user profile cannot be nil")
+	if err := base.ValidateModel(userProfile); err != nil {
+		return nil, err
 	}
 
 	// Validate user existence
 	if userProfile.UserID == uuid.Nil {
-		return fmt.Errorf("user ID is required")
+		return nil, errors.New(errors.ErrValidation, "user ID is required", nil)
 	}
 
 	// Check if user exists
-	_, err := s.userRepo.FindByID(ctx, userProfile.UserID.String())
+	userExists, err := s.userRepo.Exists(ctx, userProfile.UserID.String())
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("user with ID %s not found", userProfile.UserID)
-		}
-		return fmt.Errorf("error checking user existence: %w", err)
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error checking user existence")
+	}
+	if !userExists {
+		return nil, errors.New(errors.ErrNotFound, fmt.Sprintf("user %s does not exist", userProfile.UserID), nil)
 	}
 
-	// Check if profile already exists for this user
+	// Check if user profile exists by user id
 	exists, err := s.repo.ExistsByUserID(ctx, userProfile.UserID.String())
 	if err != nil {
-		return fmt.Errorf("error checking profile existence: %w", err)
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error checking profile existence")
 	}
 	if exists {
-		return fmt.Errorf("profile for user %s already exists", userProfile.UserID)
+		return nil, errors.New(errors.ErrConflict, fmt.Sprintf("profile for user %s already exists", userProfile.UserID), nil)
 	}
 
-	// Set default values
-	userProfile.ID = uuid.New()
-	now := time.Now().UTC()
-	userProfile.CreatedAt = now
-	userProfile.UpdatedAt = now
-
-	// Create profile
-	err = s.repo.Create(ctx, userProfile)
-	if err != nil {
-		return err
-	}
-
-	// Automatically assign Penjelajah badge
+	// Check if Penjelajah badge exists
 	penjelajahBadge, err := s.badge.GetBadgeByName(ctx, "Penjelajah")
 	if err != nil {
-		return fmt.Errorf("error retrieving penjelajah badge: %w", err)
+		return nil, errors.Wrap(err, errors.ErrInternal, "error retrieving penjelajah badge")
 	}
 
-	userBadgeCreate := &models.UserBadgeCreate{
-		UserID:  userProfile.UserID,
-		BadgeID: penjelajahBadge.ID,
+	// Prepare profile for creation
+	now := time.Now().UTC()
+	profile := &models.UserProfile{
+		ID:               uuid.New(),
+		UserID:           userProfile.UserID,
+		Fullname:         userProfile.Fullname,
+		Bio:              &userProfile.Bio,
+		AvatarUrl:        &userProfile.AvatarUrl,
+		IdentityImageUrl: &userProfile.IdentityImageUrl,
+		CreatedAt:        &now,
+		UpdatedAt:        &now,
 	}
 
-	err = s.userBadge.CreateUserBadge(ctx, userBadgeCreate)
+	// Create profile
+	createdProfile, err := s.repo.Create(ctx, profile)
 	if err != nil {
-		return fmt.Errorf("error assigning penjelajah badge: %w", err)
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error creating user profile")
 	}
 
-	return nil
+	// Assign Penjelajah badge
+	userBadgePayload := &models.UserBadge{
+		UserID:    profile.UserID,
+		BadgeID:   penjelajahBadge.ID,
+		CreatedAt: &now,
+	}
+
+	err = s.userBadge.AddBadgeToUser(ctx, userBadgePayload)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrInternal, "error assigning penjelajah badge")
+	}
+
+	dto := createdProfile.ToDTO()
+	return &dto, nil
 }
 
-func (s *userProfileService) GetProfileByID(ctx context.Context, id string) (*models.UserProfile, error) {
+func (s *userProfileService) GetProfileByID(ctx context.Context, id string) (*models.UserProfileDTO, error) {
 	// Validate input
 	if id == "" {
-		return nil, fmt.Errorf("profile ID cannot be empty")
+		return nil, errors.New(errors.ErrValidation, "profile ID cannot be empty", nil)
 	}
 
 	// Retrieve profile
 	profile, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user profile with ID %s not found", id)
+			return nil, errors.New(errors.ErrNotFound, fmt.Sprintf("user profile with ID %s not found", id), err)
 		}
-		return nil, fmt.Errorf("error retrieving user profile: %w", err)
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error retrieving user profile")
 	}
 
 	return profile, nil
 }
 
-func (s *userProfileService) ListProfiles(ctx context.Context, opts repository.ListOptions) ([]models.UserProfile, error) {
+func (s *userProfileService) ListProfiles(ctx context.Context, opts base.ListOptions) ([]models.UserProfileDTO, int, error) {
 	// Set default values if not provided
-	if opts.Limit <= 0 {
-		opts.Limit = 10
+	if opts.Page <= 0 {
+		opts.Page = 1
 	}
-	if opts.Offset < 0 {
-		opts.Offset = 0
+	if opts.PerPage <= 0 {
+		opts.PerPage = 10
 	}
 
-	return s.repo.List(ctx, opts)
+	profiles, total, err := s.repo.Search(ctx, opts)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, errors.ErrDatabase, "error listing profiles")
+	}
+
+	return profiles, total, nil
 }
 
-func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *models.UserProfile, avatar *multipart.FileHeader, identity *multipart.FileHeader) error {
+func (s *userProfileService) UpdateProfile(ctx context.Context, userProfile *models.UserProfileUpdate) (*models.UserProfileDTO, error) {
 	// Validate input
-	if userProfile == nil {
-		return fmt.Errorf("user profile cannot be nil")
-	}
-	if userProfile.ID == uuid.Nil || userProfile.UserID == uuid.Nil {
-		return fmt.Errorf("profile ID and user ID is required for update")
+	if err := base.ValidateModel(userProfile); err != nil {
+		return nil, err
 	}
 
 	// Check if profile exists
-	existingProfile, err := s.GetProfileByID(ctx, userProfile.ID.String())
+	existingProfile, err := s.repo.Exists(ctx, userProfile.ID.String())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	// Validate user existence if user ID is changed
-	if userProfile.UserID != uuid.Nil && userProfile.UserID != existingProfile.UserID {
-		_, err := s.userRepo.FindByID(ctx, userProfile.UserID.String())
-		if err != nil {
-			if err == sql.ErrNoRows {
-				return fmt.Errorf("user with ID %s not found", userProfile.UserID)
-			}
-			return fmt.Errorf("error checking user existence: %w", err)
-		}
+	if !existingProfile {
+		return nil, errors.New(errors.ErrNotFound, fmt.Sprintf("user profile with ID %s not found", userProfile.ID), nil)
 	}
 
-	// Merge: if value ada di userProfile, update, jika tidak ada pake existingProfile
-	mergedProfile := *existingProfile // start with existing
-
-	// Only update fields if userProfile has a non-zero value
-	if userProfile.Fullname != "" {
-		mergedProfile.Fullname = userProfile.Fullname
-	}
-	if userProfile.Bio != "" {
-		mergedProfile.Bio = userProfile.Bio
-	}
-	if userProfile.AvatarUrl != "" {
-		mergedProfile.AvatarUrl = userProfile.AvatarUrl
-	}
-	if userProfile.IdentityImageUrl != "" {
-		mergedProfile.IdentityImageUrl = userProfile.IdentityImageUrl
-	}
-	// Always update UpdatedAt
-	mergedProfile.UpdatedAt = time.Now().UTC()
-
-	// If avatar file is provided, upload and update AvatarUrl
-	if avatar != nil {
-		avatarUrl, err := s.updateAvatar(ctx, mergedProfile.UserID.String(), avatar)
-		if err != nil {
-			fmt.Println("Error:", err.Error())
-			return fmt.Errorf("failed to update avatar")
-		}
-		mergedProfile.AvatarUrl = avatarUrl
-	}
-
-	// If identity file is provided, upload and update IdentityImageUrl
-	if identity != nil {
-		identityUrl, err := s.updateIdentity(ctx, mergedProfile.UserID.String(), identity)
-		if err != nil {
-			fmt.Println("Error:", err.Error())
-			return fmt.Errorf("failed to update identity image")
-		}
-		mergedProfile.IdentityImageUrl = identityUrl
-
-		badge, err := s.badge.GetBadgeByName(ctx, "Warlok")
-		if err != nil {
-			fmt.Printf("Error getting Warlok badge: %v\n", err)
-			return fmt.Errorf("failed to get Warlok badge: %w", err)
-		}
-
-		err = s.userBadge.CreateUserBadge(ctx, &models.UserBadgeCreate{
-			UserID:  mergedProfile.UserID,
-			BadgeID: badge.ID,
-		})
-		if err != nil {
-			fmt.Printf("Error creating user badge: %v\n", err)
-			return fmt.Errorf("failed to create user badge: %w", err)
-		}
+	// Prepare update
+	updatePayload := &models.UserProfile{
+		ID:       userProfile.ID,
+		UserID:   userProfile.UserID,
+		Fullname: userProfile.Fullname,
+		Bio:      &userProfile.Bio,
 	}
 
 	// Perform update
-	return s.repo.Update(ctx, &mergedProfile)
+	updatedProfile, err := s.repo.Update(ctx, updatePayload)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error updating profile")
+	}
+
+	dto := updatedProfile.ToDTO()
+	return &dto, nil
 }
 
-// UpdateAvatar uploads the avatar file and returns the public URL
-func (s *userProfileService) updateAvatar(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
+func (s *userProfileService) UpdateProfileAvatar(ctx context.Context, payload *models.UserProfileAvatarUpdate) (*models.UserProfileDTO, error) {
 	// Validate input
-	if userID == "" {
-		return "", fmt.Errorf("user ID is required")
-	}
-	if file == nil {
-		return "", fmt.Errorf("file data is required")
+	if err := base.ValidateModel(payload); err != nil {
+		return nil, err
 	}
 
-	f, err := file.Open()
+	// Check if profile exists
+	existingProfile, err := s.GetProfileByID(ctx, payload.ID.String())
 	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	// Get file extension from the uploaded file's filename
-	ext := filepath.Ext(file.Filename)
-	if ext == "" {
-		ext = ".jpg" // default to jpg if extension is missing
+		return nil, err
 	}
 
-	// Build the destination path
-	destPath := s.storage.GetDefaultFolder() + "/avatar/" + userID + ext
-
-	// Upload file and get the response
-	result, _ := s.storage.GetClient().UploadFile(s.storage.GetBucketID(), destPath, f, storage_go.FileOptions{
-		ContentType: func(s string) *string { return &s }("image"),
-		Upsert:      func(b bool) *bool { return &b }(true),
-	})
-
-	if result.Key == "" {
-		return "", fmt.Errorf("failed to upload file: %v", result)
+	// Upload avatar
+	avatarUrl, err := s.updateAvatar(ctx, existingProfile.ID.String(), payload.Image)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrInternal, "failed to update avatar")
 	}
 
-	url := s.storage.GetClient().GetPublicUrl(s.storage.GetBucketID(), destPath)
-	if url.SignedURL == "" {
-		return "", fmt.Errorf("failed to get public url: %v", url)
+	payload.AvatarUrl = avatarUrl
+
+	// Perform update
+	err = s.repo.UpdateAvatarImage(ctx, payload)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error updating avatar")
 	}
 
-	return url.SignedURL, nil
+	existingProfile.AvatarUrl = &payload.AvatarUrl
+
+	return existingProfile, nil
 }
 
-// UpdateIdentity uploads the identity image file and returns the public URL
-func (s *userProfileService) updateIdentity(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
+func (s *userProfileService) UpdateProfileIdentity(ctx context.Context, payload *models.UserProfileIdentityUpdate) (*models.UserProfileDTO, error) {
 	// Validate input
-	if userID == "" {
-		return "", fmt.Errorf("user ID is required")
-	}
-	if file == nil {
-		return "", fmt.Errorf("file data is required")
+	if err := base.ValidateModel(payload); err != nil {
+		return nil, err
 	}
 
-	f, err := file.Open()
+	// Check if profile exists
+	existingProfile, err := s.repo.FindByID(ctx, payload.ID.String())
 	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	// Get file extension from the uploaded file's filename
-	ext := filepath.Ext(file.Filename)
-	if ext == "" {
-		ext = ".jpg" // default to jpg if extension is missing
+		return nil, err
 	}
 
-	// Build the destination path
-	destPath := s.storage.GetDefaultFolder() + "/identity/" + userID + ext
-
-	// Upload file and get the response
-	result, _ := s.storage.GetClient().UploadFile(s.storage.GetBucketID(), destPath, f, storage_go.FileOptions{
-		ContentType: func(s string) *string { return &s }("image"),
-		Upsert:      func(b bool) *bool { return &b }(true),
-	})
-
-	if result.Key == "" {
-		return "", fmt.Errorf("failed to upload file: %v", result)
+	// Upload identity image
+	identityUrl, err := s.updateIdentity(ctx, existingProfile.ID.String(), payload.Image)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrInternal, "failed to update identity image")
 	}
 
-	url := s.storage.GetClient().GetPublicUrl(s.storage.GetBucketID(), destPath)
-	if url.SignedURL == "" {
-		return "", fmt.Errorf("failed to get public url: %v", url)
+	payload.IdentityImageUrl = identityUrl
+
+	// Perform update
+	err = s.repo.VerifyIdentity(ctx, payload)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error updating identity image")
 	}
 
-	return url.SignedURL, nil
+	// Assign Warlok badge
+	badge, err := s.badge.GetBadgeByName(ctx, "Warlok")
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrInternal, "failed to get Warlok badge")
+	}
+
+	userBadgePayload := &models.UserBadge{
+		UserID:  existingProfile.User.ID,
+		BadgeID: badge.ID,
+	}
+
+	err = s.userBadge.AddBadgeToUser(ctx, userBadgePayload)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrInternal, "failed to create user badge")
+	}
+
+	existingProfile.IdentityImageUrl = &payload.IdentityImageUrl
+
+	return existingProfile, nil
 }
 
 func (s *userProfileService) DeleteProfile(ctx context.Context, id string) error {
 	// Validate input
 	if id == "" {
-		return fmt.Errorf("profile ID cannot be empty")
+		return errors.New(errors.ErrValidation, "profile ID cannot be empty", nil)
 	}
 
 	// Check if profile exists
 	_, err := s.GetProfileByID(ctx, id)
 	if err != nil {
-		return err
+		return errors.New(errors.ErrNotFound, "Profile not found", err)
 	}
 
 	// Soft delete the profile
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *userProfileService) CountProfiles(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (s *userProfileService) CountProfiles(ctx context.Context, filters []base.FilterOption) (int, error) {
 	return s.repo.Count(ctx, filters)
 }
 
-func (s *userProfileService) GetProfileByUserID(ctx context.Context, userID string) (*models.UserProfile, error) {
+func (s *userProfileService) GetProfileByUserID(ctx context.Context, userID string) (*models.UserProfileDTO, error) {
 	// Validate input
 	if userID == "" {
-		return nil, fmt.Errorf("user ID cannot be empty")
-	}
-
-	// Convert string to UUID
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
+		return nil, errors.New(errors.ErrValidation, "user ID cannot be empty", nil)
 	}
 
 	// Check if user exists
-	_, err = s.userRepo.FindByID(ctx, userID)
+	exists, err := s.repo.ExistsByUserID(ctx, userID)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user with ID %s not found", userID)
-		}
-		return nil, fmt.Errorf("error checking user existence: %w", err)
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error checking user existence")
+	}
+	if !exists {
+		return nil, errors.New(errors.ErrNotFound, fmt.Sprintf("user with ID %s not found", userID), nil)
 	}
 
 	// Retrieve profile
-	profile, err := s.repo.FindByField(ctx, "user_id", userUUID)
+	profile, err := s.repo.FindByUserID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving user profile: %w", err)
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error retrieving user profile")
 	}
 
-	if len(profile) == 0 {
-		return nil, fmt.Errorf("profile for user %s not found", userID)
-	}
-
-	return &profile[0], nil
+	return profile, nil
 }
 
-func (s *userProfileService) SearchProfiles(ctx context.Context, query string, opts repository.ListOptions) ([]models.UserProfile, error) {
-	// Set default values if not provided
-	if opts.Limit <= 0 {
-		opts.Limit = 10
-	}
-	if opts.Offset < 0 {
-		opts.Offset = 0
+func (s *userProfileService) GetProfileByFullname(ctx context.Context, fullname string) ([]models.UserProfileDTO, error) {
+	// Validate input
+	if fullname == "" {
+		return nil, errors.New(errors.ErrValidation, "fullname cannot be empty", nil)
 	}
 
-	// Add search query to filters
-	opts.Filters = append(opts.Filters,
-		repository.FilterOption{
-			Field:    "fullname",
-			Operator: "like",
-			Value:    query,
-		},
-		repository.FilterOption{
-			Field:    "bio",
-			Operator: "like",
-			Value:    query,
-		},
-	)
+	// Retrieve profiles
+	profiles, err := s.repo.FindByFullname(ctx, fullname)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "error retrieving user profiles")
+	}
 
-	return s.repo.List(ctx, opts)
+	return profiles, nil
+}
+
+func (s *userProfileService) SearchProfiles(ctx context.Context, opts base.ListOptions) ([]models.UserProfileDTO, int, error) {
+	// Validate ListOptions
+	if err := opts.Validate(); err != nil {
+		return nil, 0, errors.Wrap(err, errors.ErrValidation, "invalid list options")
+	}
+
+	profiles, total, err := s.repo.Search(ctx, opts)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, errors.ErrDatabase, "error searching profiles")
+	}
+
+	return profiles, total, nil
+}
+
+// Private helper methods for file uploads using Supabase storage
+func (s *userProfileService) updateAvatar(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
+	// Generate a unique path for the avatar
+	avatarPath := fmt.Sprintf("images/avatars/%s", userID)
+
+	// Upload the file to Supabase storage
+	uploadedPath, err := s.storage.Upload(ctx, file, avatarPath)
+	if err != nil {
+		return "", errors.Wrap(err, errors.ErrInternal, "failed to upload avatar")
+	}
+
+	// Get the public URL for the uploaded file
+	publicURL, err := s.storage.GetPublicURL(uploadedPath)
+	if err != nil {
+		return "", errors.Wrap(err, errors.ErrInternal, "failed to get avatar URL")
+	}
+
+	return publicURL, nil
+}
+
+func (s *userProfileService) updateIdentity(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
+	// Generate a unique path for the identity image
+	identityPath := fmt.Sprintf("images/identity/%s", userID)
+
+	// Upload the file to Supabase storage
+	uploadedPath, err := s.storage.Upload(ctx, file, identityPath)
+	if err != nil {
+		return "", errors.Wrap(err, errors.ErrInternal, "failed to upload identity image")
+	}
+
+	// Get the public URL for the uploaded file
+	publicURL, err := s.storage.GetPublicURL(uploadedPath)
+	if err != nil {
+		return "", errors.Wrap(err, errors.ErrInternal, "failed to get identity image URL")
+	}
+
+	return publicURL, nil
 }

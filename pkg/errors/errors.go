@@ -11,20 +11,27 @@ type ErrorType string
 
 const (
 	// Standard error types
-	ErrValidation     ErrorType = "VALIDATION_ERROR"
-	ErrNotFound       ErrorType = "NOT_FOUND"
-	ErrInternal       ErrorType = "INTERNAL_ERROR"
-	ErrAuthentication ErrorType = "AUTH_ERROR"
-	ErrAuthorization  ErrorType = "AUTHORIZATION_ERROR"
-	ErrDatabase       ErrorType = "DATABASE_ERROR"
-	ErrNetwork        ErrorType = "NETWORK_ERROR"
-	ErrConfiguration  ErrorType = "CONFIG_ERROR"
+	ErrValidation       ErrorType = "VALIDATION_ERROR"
+	ErrNotFound         ErrorType = "NOT_FOUND"
+	ErrInternal         ErrorType = "INTERNAL_ERROR"
+	ErrAuthentication   ErrorType = "AUTH_ERROR"
+	ErrAuthorization    ErrorType = "AUTHORIZATION_ERROR"
+	ErrDatabase         ErrorType = "DATABASE_ERROR"
+	ErrNetwork          ErrorType = "NETWORK_ERROR"
+	ErrConfiguration    ErrorType = "CONFIG_ERROR"
+	ErrConflict         ErrorType = "CONFLICT_ERROR"
+	ErrUnauthorized     ErrorType = "UNAUTHORIZED_ERROR"
+	ErrBadRequest       ErrorType = "BAD_REQUEST_ERROR"
+	ErrTimeout          ErrorType = "TIMEOUT_ERROR"
+	ErrCanceled         ErrorType = "CANCELED_ERROR"
+	ErrForbidden        ErrorType = "FORBIDDEN_ERROR"
+	ErrMethodNotAllowed ErrorType = "METHOD_NOT_ALLOWED_ERROR"
 )
 
 // CustomError represents a structured error with additional context
 type CustomError struct {
 	Type        ErrorType
-	Message     string
+	Message     []string
 	Err         error
 	Trace       []string
 	Context     map[string]interface{}
@@ -33,7 +40,7 @@ type CustomError struct {
 
 // Error implements the error interface
 func (e *CustomError) Error() string {
-	return fmt.Sprintf("%s: %s", e.Type, e.Message)
+	return fmt.Sprintf("%s: %s", e.Type, strings.Join(e.Message, "; "))
 }
 
 // Unwrap allows error unwrapping
@@ -50,7 +57,7 @@ func New(
 ) *CustomError {
 	customErr := &CustomError{
 		Type:        errorType,
-		Message:     message,
+		Message:     []string{message},
 		Err:         err,
 		Trace:       captureStackTrace(),
 		Context:     make(map[string]interface{}),
@@ -85,14 +92,27 @@ func Wrap(err error, errorType ErrorType, message string, opts ...func(*CustomEr
 		return nil
 	}
 
-	// If it's already a CustomError, update its context
+	// If it's already a CustomError, update its context and add new options
 	if customErr, ok := err.(*CustomError); ok {
+		// Append new message to existing messages instead of replacing
+		customErr.Message = append(customErr.Message, message)
 		customErr.Type = errorType
-		customErr.Message = message
+
+		// Apply additional options
+		for _, opt := range opts {
+			opt(customErr)
+		}
+
 		return customErr
 	}
 
-	return New(errorType, message, err, opts...)
+	// Append the original error message to the custom error message
+	fullMessage := message
+	if err != nil {
+		fullMessage += ": " + err.Error()
+	}
+
+	return New(errorType, fullMessage, err, opts...)
 }
 
 // captureStackTrace captures the current stack trace with more detailed information

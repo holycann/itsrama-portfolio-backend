@@ -1,180 +1,150 @@
 package handlers
 
 import (
-	"encoding/json"
-	"math"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/holycann/cultour-backend/internal/response"
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/internal/users/services"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/logger"
+	_ "github.com/holycann/cultour-backend/pkg/response"
+	"github.com/holycann/cultour-backend/pkg/validator"
 )
 
 // UserHandler handles user-related HTTP requests
 // @Description Manages user-related operations such as creation, retrieval, update, and deletion
 type UserHandler struct {
+	base.BaseHandler
 	userService services.UserService
 }
 
 // NewUserHandler creates a new instance of UserHandler
-// @Description Initializes a new UserHandler with the provided UserService
-func NewUserHandler(userService services.UserService) *UserHandler {
+// @Description Initializes a new UserHandler with the provided UserService and logger
+func NewUserHandler(userService services.UserService, logger *logger.Logger) *UserHandler {
 	return &UserHandler{
+		BaseHandler: *base.NewBaseHandler(logger),
 		userService: userService,
 	}
 }
 
 // CreateUser godoc
-// @Summary Create a new user
-// @Description Register a new user in the system
-// @Tags Users
+// @Summary Create a new user account
+// @Description Allows user registration with email or third-party authentication
+// @Description Supports creating user accounts with various authentication providers
+// @Tags User Management
 // @Accept json
 // @Produce json
-// @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param user body models.UserCreate true "User Registration Details"
-// @Success 201 {object} response.APIResponse{data=models.User} "User created successfully"
-// @Failure 400 {object} response.APIResponse "Invalid user creation details"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param user body models.UserCreate true "User Account Creation Details"
+// @Success 201 {object} response.APIResponse{data=models.UserDTO} "User account successfully created"
+// @Failure 400 {object} response.APIResponse "Invalid user creation payload or validation error"
+// @Failure 409 {object} response.APIResponse "User already exists with the provided email"
+// @Failure 500 {object} response.APIResponse "Internal server error during user account creation"
 // @Router /users [post]
 func (h *UserHandler) CreateUser(c *gin.Context) {
 	// Create a user model to bind request body
 	var userCreate models.UserCreate
 
-	// Bind and validate input
+	// Validate request body
 	if err := c.ShouldBindJSON(&userCreate); err != nil {
-		response.BadRequest(c, "Invalid request body", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid request body"))
 		return
 	}
 
-	// Convert UserCreate to User model
-	user := models.User{
-		Email:    userCreate.Email,
-		Password: userCreate.Password,
-		Role:     userCreate.Role,
-	}
-
-	// Validate email
-	if user.Email == "" || user.Password == "" || user.Role == "" {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"email":    user.Email == "",
-			"password": user.Password == "",
-			"role":     user.Role == "",
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
+	// Validate user creation payload
+	if err := validator.ValidateStruct(userCreate); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Validation failed"))
 		return
 	}
 
 	// Create user through service
-	if err := h.userService.CreateUser(c.Request.Context(), &user); err != nil {
-		response.Conflict(c, "Failed to create user", err.Error(), "")
+	createdUser, err := h.userService.CreateUser(c.Request.Context(), &userCreate)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to create user"))
 		return
 	}
 
-	// Respond with created user (excluding sensitive info)
-	response.SuccessCreated(c, user, "User created successfully")
+	// Respond with created user
+	h.HandleCreated(c, createdUser, "User created successfully")
 }
 
 // ListUsers godoc
-// @Summary List users
-// @Description Retrieve a list of users with pagination and filtering
-// @Tags Users
+// @Summary Retrieve users list
+// @Description Fetches a paginated list of user accounts with optional filtering and sorting
+// @Description Supports advanced querying with flexible pagination and filtering options
+// @Tags User Management
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param limit query int false "Number of users to retrieve" default(10)
-// @Param offset query int false "Number of users to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.User} "Users retrieved successfully"
-// @Failure 500 {object} response.APIResponse "Failed to list users"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of users per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort users by" default("created_at)" Enum(created_at,email)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param role query string false "Filter users by system role" Enum(user,admin,moderator)
+// @Param status query string false "Filter users by account status" Enum(active,inactive,suspended)
+// @Success 200 {object} response.APIResponse{data=[]models.UserDTO} "Successfully retrieved users list"
+// @Success 204 {object} response.APIResponse "No users found"
+// @Failure 400 {object} response.APIResponse "Invalid query parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
+// @Failure 500 {object} response.APIResponse "Internal server error during users retrieval"
 // @Router /users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	// Parse pagination parameters with defaults
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	sortBy := c.DefaultQuery("sort_by", "created_at")
-	sortOrder := c.DefaultQuery("sort_order", "desc")
-
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Prepare list options
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
-		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+	// Parse pagination parameters using base.ParsePaginationParams
+	listOptions, err := base.ParsePaginationParams(c)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid pagination parameters"))
+		return
 	}
 
 	// Optional filtering
-	filters := []repository.FilterOption{}
 	if role := c.Query("role"); role != "" {
-		filters = append(filters, repository.FilterOption{
+		listOptions.Filters = append(listOptions.Filters, base.FilterOption{
 			Field:    "role",
-			Operator: "=",
+			Operator: base.OperatorEqual,
 			Value:    role,
 		})
 	}
-	listOptions.Filters = filters
 
 	// Retrieve users
-	users, err := h.userService.ListUsers(c.Request.Context(), listOptions)
+	users, totalUsers, err := h.userService.ListUsers(c.Request.Context(), listOptions)
 	if err != nil {
-		response.InternalServerError(c, "Failed to retrieve users", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to retrieve users"))
 		return
-	}
-
-	// Count total users for pagination
-	totalUsers, err := h.userService.CountUsers(c.Request.Context(), filters)
-	if err != nil {
-		response.InternalServerError(c, "Failed to count users", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalUsers,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalUsers) / float64(limit))),
-		HasNextPage: offset+limit < totalUsers,
 	}
 
 	// Respond with users and pagination
-	response.SuccessOK(c, users, "Users retrieved successfully", pagination)
+	h.HandlePagination(c, users, totalUsers, listOptions)
 }
 
 // SearchUsers godoc
 // @Summary Search users
-// @Description Search users by various criteria
-// @Tags Users
+// @Description Performs a full-text search across user details with advanced filtering
+// @Description Allows finding users by keywords, email, and other attributes
+// @Tags User Management
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param query query string true "Search query (email, name, etc.)"
-// @Param limit query int false "Number of results to retrieve" default(10)
-// @Param offset query int false "Number of results to skip" default(0)
-// @Success 200 {object} response.APIResponse{data=[]models.User} "Users found successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param query query string true "Search term for finding users" minlength(2)
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of search results per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort search results" default("relevance)" Enum(relevance,email,created_at)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param role query string false "Filter users by system role" Enum(user,admin,moderator)
+// @Param status query string false "Filter users by account status" Enum(active,inactive,suspended)
+// @Success 200 {object} response.APIResponse{data=[]models.UserDTO} "Successfully completed user search"
+// @Success 204 {object} response.APIResponse "No users match the search query"
 // @Failure 400 {object} response.APIResponse "Invalid search parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
+// @Failure 500 {object} response.APIResponse "Internal server error during user search"
 // @Router /users/search [get]
 func (h *UserHandler) SearchUsers(c *gin.Context) {
 	// Get search query
 	query := c.Query("query")
 	if query == "" {
-		response.BadRequest(c, "Search query is required", "Empty search query", "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "Search query is required", nil))
 		return
 	}
 
@@ -182,83 +152,62 @@ func (h *UserHandler) SearchUsers(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
 	// Prepare list options for search
-	listOptions := repository.ListOptions{
-		Limit:  limit,
-		Offset: offset,
-		Filters: []repository.FilterOption{
-			{
-				Field:    "email",
-				Operator: "like",
-				Value:    query,
-			},
-		},
+	listOptions := base.ListOptions{
+		Page:    offset/limit + 1,
+		PerPage: limit,
+		Search:  query,
 	}
 
 	// Search users
-	users, err := h.userService.SearchUsers(c.Request.Context(), query, listOptions)
+	users, totalUsers, err := h.userService.SearchUsers(c.Request.Context(), listOptions)
 	if err != nil {
-		response.InternalServerError(c, "Failed to search users", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to search users"))
 		return
-	}
-
-	// Count total search results
-	totalUsers, err := h.userService.CountUsers(c.Request.Context(), listOptions.Filters)
-	if err != nil {
-		response.InternalServerError(c, "Failed to count search results", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalUsers,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalUsers) / float64(limit))),
-		HasNextPage: offset+limit < totalUsers,
 	}
 
 	// Respond with users and pagination
-	response.SuccessOK(c, users, "Users found successfully", pagination)
+	h.HandlePagination(c, users, totalUsers, listOptions)
 }
 
 // UpdateUser godoc
-// @Summary Update a user
-// @Description Update an existing user's details
-// @Tags Users
+// @Summary Update an existing user account
+// @Description Allows administrators to modify user account details
+// @Description Supports partial updates with optional fields
+// @Tags User Management
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "User ID"
-// @Param user body models.UserUpdate true "User Update Details"
-// @Success 200 {object} response.APIResponse{data=models.User} "User updated successfully"
-// @Failure 400 {object} response.APIResponse "Invalid user update details"
-// @Failure 404 {object} response.APIResponse "User not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
-// @Router /users/{id} [put]
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param user body models.UserUpdate true "User Account Update Payload"
+// @Success 200 {object} response.APIResponse{data=models.UserDTO} "User account successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid user update payload or ID"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
+// @Failure 404 {object} response.APIResponse "User account not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during user account update"
+// @Router /users [put]
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	// Get user ID from path parameter
-	userID := c.Param("id")
-	if userID == "" {
-		response.BadRequest(c, "User ID is required", "Missing user ID", "")
+	userIDStr := c.Param("id")
+	userID, err := h.ValidateUUID(userIDStr, "user_id")
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid user ID"))
 		return
 	}
 
-	// Create a user model to bind request body
-	var updateUser models.User
+	// Create a user update model to bind request body
+	var updateUser models.UserUpdate
 
-	// Bind input
+	// Bind and validate input
 	if err := c.ShouldBindJSON(&updateUser); err != nil {
-		response.BadRequest(c, "Invalid request body", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid request body"))
+		return
+	}
+
+	// Validate user update payload
+	if err := validator.ValidateStruct(updateUser); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Validation failed"))
 		return
 	}
 
@@ -266,74 +215,85 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	updateUser.ID = userID
 
 	// Update user
-	if err := h.userService.UpdateUser(c.Request.Context(), &updateUser); err != nil {
-		response.Conflict(c, "Failed to update user", err.Error(), "")
+	updatedUser, err := h.userService.UpdateUser(c.Request.Context(), &updateUser)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to update user"))
 		return
 	}
 
 	// Respond with success
-	response.SuccessOK(c, gin.H{
-		"id": userID,
-	}, "User updated successfully")
+	h.HandleSuccess(c, updatedUser, "User updated successfully")
 }
 
 // DeleteUser godoc
-// @Summary Delete a user
-// @Description Remove a user from the system by their unique identifier
-// @Tags Users
+// @Summary Delete a user account
+// @Description Allows administrators to permanently remove a user account
+// @Description Deletes the user account and associated resources
+// @Tags User Management
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "User ID"
-// @Success 200 {object} response.APIResponse "Deleted successfully"
-// @Failure 400 {object} response.APIResponse "Invalid user ID"
-// @Failure 404 {object} response.APIResponse "User not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique User Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse "User account successfully deleted"
+// @Failure 400 {object} response.APIResponse "Invalid user ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
+// @Failure 404 {object} response.APIResponse "User account not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during user account deletion"
 // @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	// Get user ID from path parameter
-	userID := c.Param("id")
-	if userID == "" {
-		response.BadRequest(c, "User ID is required", "Missing user ID", "")
+	userIDStr := c.Param("id")
+	userID, err := h.ValidateUUID(userIDStr, "user_id")
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid user ID"))
 		return
 	}
 
 	// Delete user
-	if err := h.userService.DeleteUser(c.Request.Context(), userID); err != nil {
-		response.Conflict(c, "Failed to delete user", err.Error(), "")
+	if err := h.userService.DeleteUser(c.Request.Context(), userID.String()); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to delete user"))
 		return
 	}
 
 	// Respond with success
-	response.SuccessOK(c, gin.H{
+	h.HandleSuccess(c, gin.H{
 		"id": userID,
 	}, "User deleted successfully")
 }
 
 // GetUserByID godoc
-// @Summary Get user by ID
-// @Description Retrieve a user's details by their unique identifier
-// @Tags Users
+// @Summary Retrieve a specific user account
+// @Description Fetches comprehensive details of a user account by its unique identifier
+// @Description Returns full user information including profile and role details
+// @Tags User Management
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "User ID"
-// @Success 200 {object} response.APIResponse{data=models.User} "User retrieved successfully"
-// @Failure 404 {object} response.APIResponse "User not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique User Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=models.UserDTO} "Successfully retrieved user account details"
+// @Failure 400 {object} response.APIResponse "Invalid user ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
+// @Failure 404 {object} response.APIResponse "User account not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during user account retrieval"
 // @Router /users/{id} [get]
 func (h *UserHandler) GetUserByID(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		response.BadRequest(c, "User ID is required", "Missing user ID", "")
-		return
-	}
-
-	user, err := h.userService.GetUserByID(c.Request.Context(), id)
+	// Get user ID from path parameter
+	userIDStr := c.Param("id")
+	userID, err := h.ValidateUUID(userIDStr, "user_id")
 	if err != nil {
-		response.NotFound(c, "User not found", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid user ID"))
 		return
 	}
 
-	response.SuccessOK(c, user, "User retrieved successfully")
+	// Retrieve user
+	user, err := h.userService.GetUserByID(c.Request.Context(), userID.String())
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "User not found"))
+		return
+	}
+
+	// Respond with user details
+	h.HandleSuccess(c, user, "User retrieved successfully")
 }

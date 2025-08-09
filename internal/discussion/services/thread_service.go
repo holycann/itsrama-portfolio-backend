@@ -2,13 +2,13 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/discussion/models"
 	"github.com/holycann/cultour-backend/internal/discussion/repositories"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
 )
 
 type threadService struct {
@@ -21,138 +21,204 @@ func NewThreadService(threadRepo repositories.ThreadRepository) ThreadService {
 	}
 }
 
-func (s *threadService) CreateThread(ctx context.Context, thread *models.Thread) error {
-	// Validasi objek thread
+func (s *threadService) CreateThread(ctx context.Context, thread *models.Thread) (*models.Thread, error) {
+	// Validate thread object
 	if thread == nil {
-		return fmt.Errorf("thread tidak boleh nil")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread cannot be nil",
+			nil,
+		)
+	}
+
+	// Validate model
+	if err := base.ValidateModel(thread); err != nil {
+		return nil, err
 	}
 
 	// Set default values
-	thread.ID = uuid.New()
-	thread.CreatedAt = time.Now()
+	if thread.ID == uuid.Nil {
+		thread.ID = uuid.New()
+	}
+
+	now := time.Now()
+	thread.CreatedAt = &now
 
 	// Set default status if not provided
 	if thread.Status == "" {
 		thread.Status = "active"
 	}
 
-	// Panggil repository untuk membuat thread
+	// Call repository to create thread
 	return s.threadRepo.Create(ctx, thread)
 }
 
-func (s *threadService) GetThreadByID(ctx context.Context, id string) (*models.ResponseThread, error) {
-	// Validasi ID
+func (s *threadService) GetThreadByID(ctx context.Context, id string) (*models.ThreadDTO, error) {
+	// Validate ID
 	if id == "" {
-		return nil, fmt.Errorf("thread ID tidak boleh kosong")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread ID cannot be empty",
+			nil,
+		)
 	}
 
-	// Ambil thread dari repository
+	// Retrieve thread from repository
 	thread, err := s.threadRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(
+			err,
+			errors.ErrNotFound,
+			"Failed to retrieve thread",
+		)
 	}
 	return thread, nil
 }
 
-func (s *threadService) ListThreads(ctx context.Context, opts repository.ListOptions) ([]models.ResponseThread, error) {
-	// Set default values if not provided
-	if opts.Limit <= 0 {
-		opts.Limit = 10
+func (s *threadService) ListThreads(ctx context.Context, opts base.ListOptions) ([]models.ThreadDTO, error) {
+	// Set default pagination
+	if opts.Page <= 0 {
+		opts.Page = 1
 	}
-	if opts.Offset < 0 {
-		opts.Offset = 0
+	if opts.PerPage <= 0 {
+		opts.PerPage = 10
 	}
 
 	threads, err := s.threadRepo.List(ctx, opts)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to list threads",
+		)
 	}
 	return threads, nil
 }
 
-func (s *threadService) UpdateThread(ctx context.Context, thread *models.Thread) error {
-	// Validasi objek thread
+func (s *threadService) UpdateThread(ctx context.Context, thread *models.Thread) (*models.Thread, error) {
+	// Validate thread object
 	if thread == nil {
-		return fmt.Errorf("thread tidak boleh nil")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread cannot be nil",
+			nil,
+		)
 	}
 
-	// Validasi field yang wajib diisi
+	// Validate model
+	if err := base.ValidateModel(thread); err != nil {
+		return nil, err
+	}
+
+	// Validate required fields
 	if thread.ID == uuid.Nil {
-		return fmt.Errorf("thread ID wajib diisi untuk update")
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Thread ID is required for update",
+			nil,
+		)
 	}
 
 	// Update timestamp
-	thread.UpdatedAt = time.Now()
+	now := time.Now()
+	thread.UpdatedAt = &now
 
-	// Panggil repository untuk update thread
+	// Call repository to update thread
 	return s.threadRepo.Update(ctx, thread)
 }
 
 func (s *threadService) DeleteThread(ctx context.Context, id string) error {
-	// Validasi ID
+	// Validate ID
 	if id == "" {
-		return fmt.Errorf("thread ID tidak boleh kosong")
+		return errors.New(
+			errors.ErrValidation,
+			"Thread ID cannot be empty",
+			nil,
+		)
 	}
 
-	// Panggil repository untuk menghapus thread
+	// Call repository to delete thread
 	return s.threadRepo.Delete(ctx, id)
 }
 
-func (s *threadService) CountThreads(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (s *threadService) CountThreads(ctx context.Context, filters []base.FilterOption) (int, error) {
 	return s.threadRepo.Count(ctx, filters)
 }
 
-func (s *threadService) GetThreadByEvent(ctx context.Context, eventID string) (*models.ResponseThread, error) {
+func (s *threadService) GetThreadByEvent(ctx context.Context, eventID string) (*models.ThreadDTO, error) {
+	// Validate event ID
+	if eventID == "" {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Event ID cannot be empty",
+			nil,
+		)
+	}
+
 	thread, err := s.threadRepo.FindThreadByEvent(ctx, eventID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(
+			err,
+			errors.ErrNotFound,
+			"Failed to retrieve thread by event",
+		)
 	}
 	return thread, nil
 }
 
-func (s *threadService) GetActiveThreads(ctx context.Context, limit int) ([]models.ResponseThread, error) {
+func (s *threadService) GetActiveThreads(ctx context.Context, limit int) ([]models.ThreadDTO, error) {
+	// Set default limit
 	if limit <= 0 {
 		limit = 10
 	}
+
 	threads, err := s.threadRepo.FindActiveThreads(ctx, limit)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to retrieve active threads",
+		)
 	}
 	return threads, nil
 }
 
-func (s *threadService) SearchThreads(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseThread, error) {
-	// Set default values if not provided
-	if opts.Limit <= 0 {
-		opts.Limit = 10
+func (s *threadService) SearchThreads(ctx context.Context, query string, opts base.ListOptions) ([]models.ThreadDTO, int, error) {
+	// Set default pagination
+	if opts.Page <= 0 {
+		opts.Page = 1
 	}
-	if opts.Offset < 0 {
-		opts.Offset = 0
+	if opts.PerPage <= 0 {
+		opts.PerPage = 10
 	}
 
-	// Add search query to filters
-	opts.Filters = append(opts.Filters,
-		repository.FilterOption{
-			Field:    "title",
-			Operator: "like",
-			Value:    query,
-		},
-	)
-
-	threads, err := s.threadRepo.List(ctx, opts)
+	// Search threads
+	threads, count, err := s.threadRepo.Search(ctx, opts)
 	if err != nil {
-		return nil, err
+		return nil, 0, errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to search threads",
+		)
 	}
-	return threads, nil
+	return threads, count, nil
 }
 
 func (s *threadService) JoinThread(ctx context.Context, threadID, userID string) error {
 	// Validate input parameters
 	if threadID == "" {
-		return fmt.Errorf("thread ID cannot be empty")
+		return errors.New(
+			errors.ErrValidation,
+			"Thread ID cannot be empty",
+			nil,
+		)
 	}
 	if userID == "" {
-		return fmt.Errorf("user ID cannot be empty")
+		return errors.New(
+			errors.ErrValidation,
+			"User ID cannot be empty",
+			nil,
+		)
 	}
 
 	// Call repository to join thread

@@ -3,6 +3,7 @@ package base
 import (
 	"fmt"
 	"mime/multipart"
+	"reflect"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ func (h *BaseHandler) ValidateRequest(c *gin.Context, request interface{}) error
 	}
 
 	// Validate struct
-	if err := validator.ValidateStruct(request); err != nil {
+	if err := validator.ValidateStruct(reflect.ValueOf(request).Elem().Interface()); err != nil {
 		return errors.Wrap(
 			err,
 			errors.ErrValidation,
@@ -75,9 +76,6 @@ func (h *BaseHandler) HandleCreated(c *gin.Context, data interface{}, message st
 
 // HandleError handles and logs errors with enhanced error handling
 func (h *BaseHandler) HandleError(c *gin.Context, err error) {
-	// Log the error
-	h.logger.Error("Handler error", "error", err)
-
 	// If it's not a CustomError, wrap it
 	var customErr *errors.CustomError
 	switch e := err.(type) {
@@ -91,6 +89,11 @@ func (h *BaseHandler) HandleError(c *gin.Context, err error) {
 			errors.WithContext("original_error", err.Error()),
 		)
 	}
+
+	// Log the error with detailed context
+	h.logger.Error("Handler error",
+		"error", customErr.Error(),
+	)
 
 	// Send error response
 	response.Error(c, customErr)

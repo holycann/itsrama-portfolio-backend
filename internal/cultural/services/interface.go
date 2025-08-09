@@ -5,30 +5,24 @@ import (
 	"mime/multipart"
 
 	"github.com/holycann/cultour-backend/internal/cultural/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
 )
 
+// EventService defines operations for managing events
 type EventService interface {
-	CreateEvent(ctx context.Context, event *models.RequestEvent, image *multipart.FileHeader) error
-	GetEventByID(ctx context.Context, id string) (*models.ResponseEvent, error)
-	ListEvents(ctx context.Context, opts repository.ListOptions) ([]models.ResponseEvent, error)
-	UpdateEvent(ctx context.Context, event *models.RequestEvent, image *multipart.FileHeader) error
+	// Event Creation and Management
+	CreateEvent(ctx context.Context, event *models.EventPayload, image *multipart.FileHeader) (*models.EventDTO, error)
+	UpdateEvent(ctx context.Context, event *models.EventPayload, image *multipart.FileHeader) (*models.EventDTO, error)
 	DeleteEvent(ctx context.Context, id string) error
-	CountEvents(ctx context.Context, filters []repository.FilterOption) (int, error)
-	UpdateEventViews(ctx context.Context, userID, eventID string) string
-	GetTrendingEvents(ctx context.Context, limit int) ([]models.ResponseEvent, error)
-	GetRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.ResponseEvent, error)
-	SearchEvents(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseEvent, error)
-}
 
-type LocalStoryService interface {
-	CreateLocalStory(ctx context.Context, localStory *models.LocalStory) error
-	GetLocalStoryByID(ctx context.Context, id string) (*models.LocalStory, error)
-	ListLocalStories(ctx context.Context, opts repository.ListOptions) ([]models.LocalStory, error)
-	UpdateLocalStory(ctx context.Context, localStory *models.LocalStory) error
-	DeleteLocalStory(ctx context.Context, id string) error
-	CountLocalStories(ctx context.Context, filters []repository.FilterOption) (int, error)
-	GetLocalStoriesByLocation(ctx context.Context, locationID string) ([]*models.LocalStory, error)
-	GetLocalStoriesByOriginCulture(ctx context.Context, culture string) ([]*models.LocalStory, error)
-	SearchLocalStories(ctx context.Context, query string, opts repository.ListOptions) ([]models.LocalStory, error)
+	// Event Retrieval Operations
+	GetEventByID(ctx context.Context, id string) (*models.EventDTO, error)
+	ListEvents(ctx context.Context, opts base.ListOptions) ([]models.EventDTO, error)
+	SearchEvents(ctx context.Context, query string, opts base.ListOptions) ([]models.EventDTO, error)
+
+	// Specialized Event Operations
+	GetTrendingEvents(ctx context.Context, limit int) ([]models.EventDTO, error)
+	GetRelatedEvents(ctx context.Context, eventID, locationID string, limit int) ([]models.EventDTO, error)
+	UpdateEventViews(ctx context.Context, userID, eventID string) string
+	CountEvents(ctx context.Context, filters []base.FilterOption) (int, error)
 }
