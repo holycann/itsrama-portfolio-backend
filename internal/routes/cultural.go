@@ -3,87 +3,86 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/holycann/cultour-backend/internal/cultural/handlers"
-	"github.com/holycann/cultour-backend/internal/cultural/repositories"
-	"github.com/holycann/cultour-backend/internal/cultural/services"
-	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/middleware"
-	placeRepo "github.com/holycann/cultour-backend/internal/place/repositories"
-	placeSvc "github.com/holycann/cultour-backend/internal/place/services"
-	"github.com/holycann/cultour-backend/internal/supabase"
 )
 
+// RegisterEventRoutes sets up routes for event-related operations
+// @Description Configures HTTP routes for event management with authentication and authorization
+// @Tags Events
 func RegisterEventRoutes(
 	r *gin.Engine,
-	appLogger *logger.Logger,
-	supabaseClient *supabase.SupabaseClient,
-	supabaseStorage *supabase.SupabaseStorage,
+	eventHandler *handlers.EventHandler,
 	routeMiddleware *middleware.Middleware,
 ) {
-	eventRepository := repositories.NewEventRepository(supabaseClient.GetClient())
-	placeRepository := placeRepo.NewLocationRepository(supabaseClient.GetClient())
-	placeService := placeSvc.NewLocationService(placeRepository)
-	eventService := services.NewEventService(eventRepository, placeService, supabaseStorage)
-	eventHandler := handlers.NewEventHandler(eventService, appLogger)
-
 	event := r.Group("/events")
 	{
-		// Only allow users with "admin" or "user" role or "penjelajah" or "warlok" badge to create/update/delete
+		// Create a new event
+		// @Summary Create a new cultural event
+		// @Description Allows authenticated users to add a new cultural event to the platform
+		// @Tags Events
 		event.POST("",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
 			eventHandler.CreateEvent,
 		)
-		event.GET("", eventHandler.ListEvent)
+
+		// List events
+		// @Summary Retrieve a list of events
+		// @Description Fetches paginated list of events with optional filtering
+		// @Tags Events
+		event.GET("", eventHandler.ListEvents)
+
+		// Search events
+		// @Summary Search events by query
+		// @Description Performs full-text search across event fields
+		// @Tags Events
 		event.GET("/search", eventHandler.SearchEvents)
-		event.GET("/trending", eventHandler.TrendingEvents)
+
+		// Get trending events
+		// @Summary Retrieve trending events
+		// @Description Fetches most popular or recently viewed events
+		// @Tags Events
+		event.GET("/trending", eventHandler.GetTrendingEvents)
+
+		// Get related events for a specific event
+		// @Summary Retrieve related events
+		// @Description Finds events similar to a specific event based on location and other criteria
+		// @Tags Events
+		event.GET("/:id/related", eventHandler.GetRelatedEvents)
+
+		// Get a specific event by ID
+		// @Summary Retrieve a specific event
+		// @Description Fetches comprehensive details of an event by its unique identifier
+		// @Tags Events
 		event.GET("/:id", eventHandler.GetEventByID)
+
+		// Update event views
+		// @Summary Increment event view count
+		// @Description Tracks and updates the number of times an event has been viewed
+		// @Tags Events
 		event.POST("/:id/views",
 			routeMiddleware.VerifyJWT(),
 			eventHandler.UpdateEventViews,
 		)
+
+		// Update an event
+		// @Summary Update an existing event
+		// @Description Allows event creator or administrator to modify event details
+		// @Tags Events
 		event.PUT("/:id",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
 			eventHandler.UpdateEvent,
 		)
+
+		// Delete an event
+		// @Summary Delete an existing event
+		// @Description Allows event creator or administrator to remove an event from the platform
+		// @Tags Events
 		event.DELETE("/:id",
 			routeMiddleware.VerifyJWT(),
 			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
 			eventHandler.DeleteEvent,
-		)
-	}
-}
-
-func RegisterLocalStoryRoutes(
-	r *gin.Engine,
-	appLogger *logger.Logger,
-	supabaseClient *supabase.SupabaseClient,
-	routeMiddleware *middleware.Middleware,
-) {
-	localStoryRepository := repositories.NewLocalStoryRepository(supabaseClient.GetClient())
-	localStoryService := services.NewLocalStoryService(localStoryRepository)
-	localStoryHandler := handlers.NewLocalStoryHandler(localStoryService, appLogger)
-
-	localStory := r.Group("/local-stories")
-	{
-		// Only allow users with "admin" or "user" role or "penjelajah" or "warlok" badge to create/update/delete
-		localStory.POST("",
-			routeMiddleware.VerifyJWT(),
-			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
-			localStoryHandler.CreateLocalStory,
-		)
-		localStory.GET("", localStoryHandler.ListLocalStories)
-		localStory.GET("/search", localStoryHandler.SearchLocalStories)
-		localStory.GET("/:id", localStoryHandler.ListLocalStories) // Use ListLocalStories with ID filter
-		localStory.PUT("/:id",
-			routeMiddleware.VerifyJWT(),
-			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
-			localStoryHandler.UpdateLocalStory,
-		)
-		localStory.DELETE("/:id",
-			routeMiddleware.VerifyJWT(),
-			routeMiddleware.RequireRoleOrBadge("admin", "warlok"),
-			localStoryHandler.DeleteLocalStory,
 		)
 	}
 }

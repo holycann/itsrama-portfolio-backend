@@ -1,249 +1,160 @@
 package handlers
 
 import (
-	"encoding/json"
-	"math"
-	"mime/multipart"
+	"fmt"
+	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/holycann/cultour-backend/internal/logger"
-	"github.com/holycann/cultour-backend/internal/response"
+	"github.com/holycann/cultour-backend/internal/middleware"
 	"github.com/holycann/cultour-backend/internal/users/models"
 	"github.com/holycann/cultour-backend/internal/users/services"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/logger"
+	_ "github.com/holycann/cultour-backend/pkg/response"
+	"github.com/holycann/cultour-backend/pkg/validator"
 )
 
 // UserProfileHandler handles user profile-related HTTP requests
 // @Description Manages user profile operations such as creation, retrieval, update, and deletion
 type UserProfileHandler struct {
+	base.BaseHandler
 	userProfileService services.UserProfileService
 }
 
 // NewUserProfileHandler creates a new instance of UserProfileHandler
-// @Description Initializes a new UserProfileHandler with the provided UserProfileService
-func NewUserProfileHandler(userProfileService services.UserProfileService) *UserProfileHandler {
+// @Description Initializes a new UserProfileHandler with the provided UserProfileService and logger
+func NewUserProfileHandler(userProfileService services.UserProfileService, logger *logger.Logger) *UserProfileHandler {
 	return &UserProfileHandler{
+		BaseHandler:        *base.NewBaseHandler(logger),
 		userProfileService: userProfileService,
 	}
 }
 
 // CreateUserProfile godoc
 // @Summary Create a new user profile
-// @Description Register a new user profile in the system
+// @Description Allows administrators or users to create a detailed user profile
+// @Description Supports initializing profile with optional personal information
 // @Tags User Profiles
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
 // @Param profile body models.UserProfileCreate true "User Profile Creation Details"
-// @Success 201 {object} response.APIResponse{data=models.UserProfile} "User profile created successfully"
-// @Failure 400 {object} response.APIResponse "Invalid user profile creation details"
-// @Failure 500 {object} response.APIResponse "Internal server error"
-// @Router /profile [post]
+// @Success 201 {object} response.APIResponse{data=models.UserProfileDTO} "User profile successfully created"
+// @Failure 400 {object} response.APIResponse "Invalid profile creation payload or validation error"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
+// @Failure 409 {object} response.APIResponse "Profile already exists for the user"
+// @Failure 500 {object} response.APIResponse "Internal server error during profile creation"
+// @Router /users/profiles [post]
 func (h *UserProfileHandler) CreateUserProfile(c *gin.Context) {
-	// Create a user model to bind request body
-	var userProfile models.UserProfile
-
-	// Bind and validate input
-	if err := c.ShouldBindJSON(&userProfile); err != nil {
-		response.BadRequest(c, "Invalid request body", err.Error(), "")
+	// Get authenticated user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	// Validate required fields
-	if userProfile.UserID.String() == "" || userProfile.Fullname == "" {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"user_id":  userProfile.UserID.String() == "",
-			"fullname": userProfile.Fullname == "",
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
+	// Create a user profile model to bind request body
+	var userProfileCreate models.UserProfileCreate
+
+	// Validate request body
+	if err := c.ShouldBindJSON(&userProfileCreate); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid request body"))
 		return
 	}
 
-	// Create user through service
-	if err := h.userProfileService.CreateProfile(c.Request.Context(), &userProfile); err != nil {
-		response.Conflict(c, "Failed to create user profile", err.Error(), "")
+	if userProfileCreate.UserID == uuid.Nil {
+		// Set user ID from context
+		userProfileCreate.UserID, err = h.ValidateUUID(userID, "User ID")
+		if err != nil {
+			h.HandleError(c, err)
+			return
+		}
+	}
+
+	// Validate user profile creation payload
+	if err := validator.ValidateStruct(userProfileCreate); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Validation failed"))
+		return
+	}
+
+	// Create user profile through service
+	createdProfile, err := h.userProfileService.CreateProfile(c.Request.Context(), &userProfileCreate)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to create user profile"))
 		return
 	}
 
 	// Respond with created user profile
-	response.SuccessCreated(c, userProfile, "User Profile created successfully")
+	h.HandleCreated(c, createdProfile, "User profile created successfully")
 }
 
 // ListUsersProfile godoc
-// @Summary List user profiles
-// @Description Retrieve a list of user profiles with pagination and filtering
+// @Summary Retrieve users profiles list
+// @Description Fetches a paginated list of user profiles with optional filtering and sorting
+// @Description Supports advanced querying with flexible pagination and filtering options
 // @Tags User Profiles
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param limit query int false "Number of user profiles to retrieve" default(10)
-// @Param offset query int false "Number of user profiles to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.UserProfile} "User profiles retrieved successfully"
-// @Failure 500 {object} response.APIResponse "Failed to list user profiles"
-// @Router /profile [get]
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of profiles per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort profiles by" default("created_at)" Enum(created_at,fullname)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param fullname query string false "Filter profiles by partial full name match"
+// @Success 200 {object} response.APIResponse{data=[]models.UserProfileDTO} "Successfully retrieved user profiles list"
+// @Success 204 {object} response.APIResponse "No user profiles found"
+// @Failure 400 {object} response.APIResponse "Invalid query parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during profiles retrieval"
+// @Router /users/profiles [get]
 func (h *UserProfileHandler) ListUsersProfile(c *gin.Context) {
-	// Parse pagination parameters with defaults
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-	sortBy := c.DefaultQuery("sort_by", "created_at")
-	sortOrder := c.DefaultQuery("sort_order", "desc")
-
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Prepare list options
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
-		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
-	}
-
-	// Optional filtering
-	filters := []repository.FilterOption{}
-	if fullname := c.Query("fullname"); fullname != "" {
-		filters = append(filters, repository.FilterOption{
-			Field:    "fullname",
-			Operator: "like",
-			Value:    fullname,
-		})
-	}
-	listOptions.Filters = filters
-
-	// Retrieve users
-	usersProfile, err := h.userProfileService.ListProfiles(c.Request.Context(), listOptions)
+	listOptions, err := base.ParsePaginationParams(c)
 	if err != nil {
-		response.InternalServerError(c, "Failed to retrieve users profile", err.Error(), "")
+		h.HandleError(c, errors.New(errors.ErrBadRequest, err.Error(), err))
 		return
 	}
 
-	// Count total users for pagination
-	totalProfiles, err := h.userProfileService.CountProfiles(c.Request.Context(), filters)
+	// Retrieve user profiles
+	profiles, totalProfiles, err := h.userProfileService.ListProfiles(c.Request.Context(), listOptions)
 	if err != nil {
-		response.InternalServerError(c, "Failed to count user profiles", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to retrieve user profiles"))
 		return
 	}
 
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalProfiles,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalProfiles) / float64(limit))),
-		HasNextPage: offset+limit < totalProfiles,
-	}
-
-	// Respond with users and pagination
-	response.SuccessOK(c, usersProfile, "User Profiles retrieved successfully", pagination)
-}
-
-// GetUserProfileById godoc
-// @Summary Get user profile by profile ID
-// @Description Retrieve a user profile by its profile ID
-// @Tags User Profiles
-// @Produce json
-// @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "User Profile ID"
-// @Success 200 {object} response.APIResponse{data=models.UserProfile} "User profile retrieved successfully"
-// @Failure 404 {object} response.APIResponse "User profile not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
-// @Router /profile/{id} [get]
-func (h *UserProfileHandler) GetUserProfileById(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		response.BadRequest(c, "Profile ID is required", "Missing profile ID", "")
-		return
-	}
-
-	// Retrieve user profile by profile id
-	userProfile, err := h.userProfileService.GetProfileByID(c.Request.Context(), id)
-	if err != nil {
-		if err.Error() == "user profile not found" {
-			response.NotFound(c, "User profile not found", err.Error(), "")
-			return
-		}
-		response.InternalServerError(c, "Failed to retrieve user profile", err.Error(), "")
-		return
-	}
-
-	response.SuccessOK(c, userProfile, "User profile retrieved successfully", nil)
-}
-
-// GetAuthenticatedUserProfile godoc
-// @Summary Get user profile for the authenticated user
-// @Description Retrieve the user profile for the currently authenticated user
-// @Tags User Profiles
-// @Produce json
-// @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Success 200 {object} response.APIResponse{data=models.UserProfile} "User profile retrieved successfully"
-// @Failure 401 {object} response.APIResponse "Unauthorized"
-// @Failure 404 {object} response.APIResponse "User profile not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
-// @Router /profile/me [get]
-func (h *UserProfileHandler) GetAuthenticatedUserProfile(c *gin.Context) {
-	// Extract user ID from context (set by authentication middleware)
-	userID, exists := c.Get("user_id")
-	if !exists {
-		response.Unauthorized(c, "Unauthorized", "User ID not found in context", "")
-		return
-	}
-
-	userIDStr, ok := userID.(string)
-	if !ok || userIDStr == "" {
-		response.Unauthorized(c, "Unauthorized", "Invalid user ID in context", "")
-		return
-	}
-
-	// Retrieve user profile by user_id
-	userProfile, err := h.userProfileService.GetProfileByUserID(c.Request.Context(), userIDStr)
-	if err != nil {
-		logger.DefaultLogger().Error("ERROR:", err.Error())
-		if err.Error() == "user profile not found" {
-			response.NotFound(c, "User profile not found", err.Error(), "")
-			return
-		}
-		response.InternalServerError(c, "Failed to retrieve user profile", err.Error(), "")
-		return
-	}
-
-	response.SuccessOK(c, userProfile, "User profile retrieved successfully", nil)
+	// Respond with user profiles and pagination
+	h.HandlePagination(c, profiles, totalProfiles, listOptions)
 }
 
 // SearchUserProfile godoc
 // @Summary Search user profiles
-// @Description Search user profiles by various criteria
+// @Description Performs a full-text search across user profile details with advanced filtering
+// @Description Allows finding user profiles by keywords, name, and other attributes
 // @Tags User Profiles
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param query query string true "Search query (fullname, etc.)"
-// @Param limit query int false "Number of results to retrieve" default(10)
-// @Param offset query int false "Number of results to skip" default(0)
-// @Success 200 {object} response.APIResponse{data=[]models.UserProfile} "User profiles found successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param query query string true "Search term for finding user profiles" minlength(2)
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of search results per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort search results" default("relevance)" Enum(relevance,fullname,created_at)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Success 200 {object} response.APIResponse{data=[]models.UserProfileDTO} "Successfully completed user profile search"
+// @Success 204 {object} response.APIResponse "No user profiles match the search query"
 // @Failure 400 {object} response.APIResponse "Invalid search parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error"
-// @Router /profile/search [get]
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during user profile search"
+// @Router /users/profiles/search [get]
 func (h *UserProfileHandler) SearchUserProfile(c *gin.Context) {
 	// Get search query
 	query := c.Query("query")
 	if query == "" {
-		response.BadRequest(c, "Search query is required", "Empty search query", "")
+		h.HandleError(c, errors.New(errors.ErrValidation, "Search query is required", nil))
 		return
 	}
 
@@ -251,171 +162,329 @@ func (h *UserProfileHandler) SearchUserProfile(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
 	// Prepare list options for search
-	listOptions := repository.ListOptions{
-		Limit:  limit,
-		Offset: offset,
-		Filters: []repository.FilterOption{
-			{
-				Field:    "fullname",
-				Operator: "like",
-				Value:    query,
-			},
-		},
+	listOptions := base.ListOptions{
+		Page:    offset/limit + 1,
+		PerPage: limit,
+		Search:  query,
 	}
 
 	// Search user profiles
-	userProfiles, err := h.userProfileService.SearchProfiles(c.Request.Context(), query, listOptions)
+	profiles, totalProfiles, err := h.userProfileService.SearchProfiles(c.Request.Context(), listOptions)
 	if err != nil {
-		response.InternalServerError(c, "Failed to search user profiles", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to search user profiles"))
 		return
 	}
 
-	// Count total search results
-	totalProfiles, err := h.userProfileService.CountProfiles(c.Request.Context(), listOptions.Filters)
-	if err != nil {
-		response.InternalServerError(c, "Failed to count search results", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalProfiles,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalProfiles) / float64(limit))),
-		HasNextPage: offset+limit < totalProfiles,
-	}
-
-	// Respond with users and pagination
-	response.SuccessOK(c, userProfiles, "User Profiles found successfully", pagination)
+	// Respond with user profiles and pagination
+	h.HandlePagination(c, profiles, totalProfiles, listOptions)
 }
 
 // UpdateUserProfile godoc
-// @Summary Update a user profile
-// @Description Update an existing user profile's details, including uploading an avatar file or identity image
+// @Summary Update an existing user profile
+// @Description Allows users to modify their profile details
+// @Description Supports partial updates with optional fields
+// @Tags User Profiles
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param profile body models.UserProfileUpdate true "User Profile Update Payload"
+// @Success 200 {object} response.APIResponse{data=models.UserProfileDTO} "User profile successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid profile update payload or ID"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - can only update own profile"
+// @Failure 404 {object} response.APIResponse "User profile not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during profile update"
+// @Router /users/profiles/{id} [put]
+func (h *UserProfileHandler) UpdateUserProfile(c *gin.Context) {
+	// Get authenticated user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Get user profile ID from path parameter
+	profileIDStr := c.Param("id")
+	profileID, err := h.ValidateUUID(profileIDStr, "profile_id")
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid user profile ID"))
+		return
+	}
+
+	// Create a user profile update model to bind request body
+	var updateProfile models.UserProfileUpdate
+
+	// Bind and validate input
+	if err := c.ShouldBindJSON(&updateProfile); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid request body"))
+		return
+	}
+
+	if updateProfile.UserID == uuid.Nil {
+		// Set user ID from context
+		updateProfile.UserID, err = h.ValidateUUID(userID, "User ID")
+		if err != nil {
+			h.HandleError(c, err)
+			return
+		}
+	}
+
+	// Set the ID from path parameter
+	updateProfile.ID = profileID
+
+	// Validate user profile update payload
+	if err := validator.ValidateStruct(updateProfile); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Validation failed"))
+		return
+	}
+
+	// Update user profile
+	updatedProfile, err := h.userProfileService.UpdateProfile(c.Request.Context(), &updateProfile)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to update user profile"))
+		return
+	}
+
+	// Respond with success
+	h.HandleSuccess(c, updatedProfile, "User profile updated successfully")
+}
+
+// UpdateUserAvatar godoc
+// @Summary Update user profile avatar
+// @Description Allows users to upload a new profile picture
+// @Description Supports multipart file upload or URL-based avatar update
 // @Tags User Profiles
 // @Accept multipart/form-data
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "User Profile ID"
-// @Param profile body models.UserProfile true "User Profile Update Details"
-// @Param avatar formData file false "Avatar file"
-// @Param identity_image formData file false "Identity image file"
-// @Success 200 {object} response.APIResponse{data=models.UserProfile} "User profile updated successfully"
-// @Failure 400 {object} response.APIResponse "Invalid user profile update details"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id formData string true "Unique User Profile Identifier" format(uuid)
+// @Param avatar_url formData string true "URL of the new avatar image"
+// @Param image formData file true "New Avatar Image File"
+// @Success 200 {object} response.APIResponse{data=models.UserProfileDTO} "Avatar successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid avatar update payload or file"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - can only update own avatar"
 // @Failure 404 {object} response.APIResponse "User profile not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
-// @Router /profile/{id} [put]
-func (h *UserProfileHandler) UpdateUserProfile(c *gin.Context) {
-	// Get user ID from path parameter and parse to UUID
-	userProfileID := c.Param("id")
-	if userProfileID == "" {
-		response.BadRequest(c, "User Profile ID is required", "Missing user profile ID", "")
-		return
-	}
-
-	userProfileUUID, err := uuid.Parse(userProfileID)
+// @Failure 500 {object} response.APIResponse "Internal server error during avatar update"
+// @Router /users/profiles/{id}/avatar [put]
+func (h *UserProfileHandler) UpdateUserAvatar(c *gin.Context) {
+	// Get user profile ID from path parameter
+	profileIDStr := c.Param("id")
+	profileID, err := h.ValidateUUID(profileIDStr, "profile_id")
 	if err != nil {
-		response.BadRequest(c, "Invalid User Profile ID", "User Profile ID must be a valid UUID", "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid user profile ID"))
 		return
 	}
 
-	userID := c.GetString("user_id")
-	if userID == "" {
-		response.BadRequest(c, "User not authenticated", "Missing user ID in context", "")
+	// Multipart form handling with max file size of 2MB
+	const maxAvatarFileSize = 2 * 1024 * 1024 // 2MB
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxAvatarFileSize)
+
+	if err := c.Request.ParseMultipartForm(maxAvatarFileSize); err != nil {
+		if strings.Contains(err.Error(), "http: request body too large") {
+			h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "File size exceeds maximum limit of 2MB"))
+		} else {
+			h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid multipart form request"))
+		}
 		return
 	}
 
-	userUUID, err := uuid.Parse(userID)
+	// Get the avatar file from multipart form
+	avatarFile, err := c.FormFile("avatar")
 	if err != nil {
-		response.BadRequest(c, "Invalid User Profile ID", "User Profile ID must be a valid UUID", "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Avatar file is required"))
 		return
 	}
 
-	var avatarFileHeader *multipart.FileHeader
-	var identityImageFileHeader *multipart.FileHeader
-	contentType := c.ContentType()
+	// Create a user profile avatar update model
+	var updateAvatarProfile models.UserProfileAvatarUpdate
+	updateAvatarProfile.ID = profileID
+	updateAvatarProfile.Image = avatarFile
 
-	// Only parse multipart form if content type is multipart
-	if contentType == "multipart/form-data" {
-		if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
-			response.BadRequest(c, "Failed to parse form data", err.Error(), "")
-			return
-		}
-
-		// Cek dulu kalo avatar ada
-		if c.Request.MultipartForm != nil {
-			if files, ok := c.Request.MultipartForm.File["avatar"]; ok && len(files) > 0 {
-				avatarFileHeader = files[0]
-			}
-			if files, ok := c.Request.MultipartForm.File["identity_image"]; ok && len(files) > 0 {
-				identityImageFileHeader = files[0]
-			}
-		}
-
-		c.Request.Form.Del("avatar")
-		c.Request.Form.Del("identity_image")
-	}
-
-	var updateUserProfile models.UserProfile
-	if err := c.ShouldBind(&updateUserProfile); err != nil {
-		response.BadRequest(c, "Invalid user profile update details", err.Error(), "")
-		return
-	}
-
-	updateUserProfile.ID = userProfileUUID
-	updateUserProfile.UserID = userUUID
-
-	// Update user profile with avatar and/or identity image file
-	if err := h.userProfileService.UpdateProfile(c.Request.Context(), &updateUserProfile, avatarFileHeader, identityImageFileHeader); err != nil {
-		logger.DefaultLogger().Error("ERROR:", err.Error())
-		response.Conflict(c, "Failed to update user profile", err.Error(), "")
+	// Update user profile avatar
+	updatedProfile, err := h.userProfileService.UpdateProfileAvatar(c.Request.Context(), &updateAvatarProfile)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to update user profile avatar"))
 		return
 	}
 
 	// Respond with success
-	response.SuccessOK(c, updateUserProfile, "User Profile updated successfully")
+	h.HandleSuccess(c, updatedProfile, "User profile avatar updated successfully")
+}
+
+// VerifyIdentity godoc
+// @Summary Update user profile identity
+// @Description Allows users to upload a new identity document
+// @Description Supports multipart file upload for identity verification
+// @Tags User Profiles
+// @Accept multipart/form-data
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique User Profile Identifier" format(uuid)
+// @Param identity_image formData file true "Identity Document Image" format(binary)
+// @Success 200 {object} response.APIResponse{data=models.UserProfileDTO} "Identity document successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid identity update payload or file"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - can only update own identity"
+// @Failure 404 {object} response.APIResponse "User profile not found"
+// @Failure 413 {object} response.APIResponse "File size too large"
+// @Failure 415 {object} response.APIResponse "Unsupported file type"
+// @Failure 500 {object} response.APIResponse "Internal server error during identity update"
+// @Router /users/profiles/{id}/verify [post]
+func (h *UserProfileHandler) VerifyIdentity(c *gin.Context) {
+	// Get user profile ID from path parameter
+	profileIDStr := c.Param("id")
+	profileID, err := h.ValidateUUID(profileIDStr, "profile_id")
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid user profile ID"))
+		return
+	}
+
+	// Multipart form handling with max file size of 2MB
+	const maxIdentityFileSize = 2 * 1024 * 1024 // 2MB
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxIdentityFileSize)
+
+	if err := c.Request.ParseMultipartForm(maxIdentityFileSize); err != nil {
+		if strings.Contains(err.Error(), "http: request body too large") {
+			h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "File size exceeds maximum limit of 2MB"))
+		} else {
+			h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid multipart form request"))
+		}
+		return
+	}
+
+	// Log form field keys
+	for key := range c.Request.Form {
+		fmt.Printf("Form field key: %s\n", key)
+	}
+
+	// Get the identity document file from multipart form
+	identityFile, err := c.FormFile("identity_image")
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Identity document image is required"))
+		return
+	}
+
+	// Create a user profile identity update model
+	var updateIdentityProfile models.UserProfileIdentityUpdate
+	updateIdentityProfile.ID = profileID
+	updateIdentityProfile.Image = identityFile
+
+	// Update user profile identity
+	updatedProfile, err := h.userProfileService.UpdateProfileIdentity(c.Request.Context(), &updateIdentityProfile)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to update user profile identity document"))
+		return
+	}
+
+	// Respond with success
+	h.HandleSuccess(c, updatedProfile, "User profile identity document updated successfully")
 }
 
 // DeleteUserProfile godoc
 // @Summary Delete a user profile
-// @Description Remove a user profile from the system by its unique identifier
+// @Description Allows administrators to permanently remove a user profile
+// @Description Deletes the profile and associated user information
 // @Tags User Profiles
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "User Profile ID"
-// @Success 200 {object} response.APIResponse "Deleted successfully"
-// @Failure 400 {object} response.APIResponse "Invalid user profile ID"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique User Profile Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse "User profile successfully deleted"
+// @Failure 400 {object} response.APIResponse "Invalid profile ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
 // @Failure 404 {object} response.APIResponse "User profile not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
-// @Router /profile/{id} [delete]
+// @Failure 500 {object} response.APIResponse "Internal server error during profile deletion"
+// @Router /users/profiles/{id} [delete]
 func (h *UserProfileHandler) DeleteUserProfile(c *gin.Context) {
-	// Get user ID from path parameter
-	userID := c.Param("id")
-	if userID == "" {
-		response.BadRequest(c, "User Profile ID is required", "Missing user profile ID", "")
+	// Get user profile ID from path parameter
+	profileIDStr := c.Param("id")
+	profileID, err := h.ValidateUUID(profileIDStr, "profile_id")
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid user profile ID"))
 		return
 	}
 
-	// Delete user
-	if err := h.userProfileService.DeleteProfile(c.Request.Context(), userID); err != nil {
-		response.Conflict(c, "Failed to delete user profile", err.Error(), "")
+	// Delete user profile
+	if err := h.userProfileService.DeleteProfile(c.Request.Context(), profileID.String()); err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
 	// Respond with success
-	response.SuccessOK(c, gin.H{
-		"id": userID,
-	}, "User Profile deleted successfully")
+	h.HandleSuccess(c, gin.H{
+		"id": profileID,
+	}, "User profile deleted successfully")
+}
+
+// GetUserProfileById godoc
+// @Summary Retrieve a specific user profile
+// @Description Fetches comprehensive details of a user profile by its unique identifier
+// @Description Returns full profile information including user details
+// @Tags User Profiles
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique User Profile Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=models.UserProfileDTO} "Successfully retrieved user profile details"
+// @Failure 400 {object} response.APIResponse "Invalid profile ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 404 {object} response.APIResponse "User profile not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during profile retrieval"
+// @Router /users/profiles/{id} [get]
+func (h *UserProfileHandler) GetUserProfileById(c *gin.Context) {
+	// Get user profile ID from path parameter
+	profileIDStr := c.Param("id")
+	profileID, err := h.ValidateUUID(profileIDStr, "profile_id")
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid user profile ID"))
+		return
+	}
+
+	// Retrieve user profile
+	profile, err := h.userProfileService.GetProfileByID(c.Request.Context(), profileID.String())
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "User profile not found"))
+		return
+	}
+
+	// Respond with user profile details
+	h.HandleSuccess(c, profile, "User profile retrieved successfully")
+}
+
+// GetAuthenticatedUserProfile godoc
+// @Summary Retrieve the current user's profile
+// @Description Fetches the profile details of the authenticated user
+// @Description Returns comprehensive profile information for the logged-in user
+// @Tags User Profiles
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Success 200 {object} response.APIResponse{data=models.UserProfileDTO} "Successfully retrieved authenticated user profile"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 404 {object} response.APIResponse "User profile not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during profile retrieval"
+// @Router /users/profiles/me [get]
+func (h *UserProfileHandler) GetAuthenticatedUserProfile(c *gin.Context) {
+	// Get authenticated user ID from context
+	userID, _, _, _, err := middleware.GetUserFromContext(c)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Retrieve user profile
+	profile, err := h.userProfileService.GetProfileByUserID(c.Request.Context(), userID)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Respond with user profile details
+	h.HandleSuccess(c, profile, "User profile retrieved successfully")
 }

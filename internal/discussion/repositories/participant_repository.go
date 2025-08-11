@@ -7,7 +7,8 @@ import (
 	"fmt"
 
 	"github.com/holycann/cultour-backend/internal/discussion/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
 	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
@@ -24,70 +25,86 @@ func NewParticipantRepository(supabaseClient *supabase.Client) ParticipantReposi
 	}
 }
 
-func (r *participantRepository) Create(ctx context.Context, participant *models.Participant) error {
+func (r *participantRepository) Create(ctx context.Context, participant *models.Participant) (*models.Participant, error) {
 	_, _, err := r.supabaseClient.
 		From(r.table).
 		Insert(participant, false, "", "minimal", "").
 		Execute()
-	return err
+	if err != nil {
+		return nil, errors.Wrap(
+			err,
+			errors.ErrDatabase,
+			"Failed to create participant",
+		)
+	}
+
+	return participant, nil
 }
 
-func (r *participantRepository) FindByID(ctx context.Context, id string) (*models.ResponseParticipant, error) {
-	var participant *models.ResponseParticipant
+func (r *participantRepository) FindByID(ctx context.Context, id string) (*models.ParticipantDTO, error) {
+	var participantDTO models.ParticipantDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, user:user_view!discussion_participants_user_id_fkey(*)", "", false).
 		Eq("id", id).
 		Single().
-		ExecuteTo(&participant)
-	return participant, err
+		ExecuteTo(&participantDTO)
+	return &participantDTO, err
 }
 
-func (r *participantRepository) Update(ctx context.Context, participant *models.Participant) error {
+func (r *participantRepository) Update(ctx context.Context, participant *models.Participant) (*models.Participant, error) {
 	_, _, err := r.supabaseClient.
 		From(r.table).
 		Update(participant, "minimal", "").
 		Eq("thread_id", participant.ThreadID.String()).
 		Eq("user_id", participant.UserID.String()).
 		Execute()
+	if err != nil {
+		return nil, err
+	}
+	return participant, nil
+}
+
+func (r *participantRepository) Delete(ctx context.Context, id string) error {
+	_, _, err := r.supabaseClient.
+		From(r.table).
+		Delete("minimal", "").
+		Eq("id", id).
+		Execute()
 	return err
 }
 
-// Delete method is deprecated and will always return an error
-func (r *participantRepository) Delete(ctx context.Context, id string) error {
-	return fmt.Errorf("delete method is deprecated for participant repository")
-}
-
-func (r *participantRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.ResponseParticipant, error) {
-	var participants []models.ResponseParticipant
+func (r *participantRepository) List(ctx context.Context, opts base.ListOptions) ([]models.ParticipantDTO, error) {
+	var participants []models.ParticipantDTO
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false)
+		Select("*, user:user_view!discussion_participants_user_id_fkey(*)", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	// Apply sorting
 	if opts.SortBy != "" {
-		ascending := opts.SortOrder == repository.SortAscending
+		ascending := opts.SortOrder == base.SortAscending
 		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
 	}
 
 	// Apply pagination
-	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+	limit, offset := opts.LimitOffset()
+	query = query.Range(offset, offset+limit-1, "")
 
 	_, err := query.ExecuteTo(&participants)
 	return participants, err
 }
 
-func (r *participantRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (r *participantRepository) Count(ctx context.Context, filters []base.FilterOption) (int, error) {
 	query := r.supabaseClient.
 		From(r.table).
 		Select("id", "exact", false)
@@ -95,9 +112,9 @@ func (r *participantRepository) Count(ctx context.Context, filters []repository.
 	// Apply filters
 	for _, filter := range filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
@@ -110,48 +127,63 @@ func (r *participantRepository) Count(ctx context.Context, filters []repository.
 	return int(count), nil
 }
 
-// Deprecated: This method is no longer recommended for use
 func (r *participantRepository) Exists(ctx context.Context, id string) (bool, error) {
-	// This method is deprecated and will be removed in future versions
-	return false, fmt.Errorf("method Exists is deprecated")
+	query := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", false).
+		Eq("id", id)
+
+	_, count, err := query.Execute()
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
-func (r *participantRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ResponseParticipant, error) {
-	var participants []models.ResponseParticipant
+func (r *participantRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ParticipantDTO, error) {
+	var participants []models.ParticipantDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, user:user_view!discussion_participants_user_id_fkey(*)", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
 		ExecuteTo(&participants)
 	return participants, err
 }
 
-func (r *participantRepository) FindParticipantsByThread(ctx context.Context, threadID string) ([]models.ResponseParticipant, error) {
-	var responseParticipants []models.ResponseParticipant
+func (r *participantRepository) FindParticipantsByThread(ctx context.Context, threadID string) ([]models.ParticipantDTO, error) {
+	var participants []models.ParticipantDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, user:users_view!discussion_participants_user_id_fkey(*)", "", false).
 		Eq("thread_id", threadID).
-		ExecuteTo(&responseParticipants)
-	if err != nil {
-		return nil, err
-	}
-
-	return responseParticipants, nil
+		ExecuteTo(&participants)
+	return participants, err
 }
 
-func (r *participantRepository) FindThreadParticipants(ctx context.Context, threadID string) ([]models.ResponseParticipant, error) {
-	var responseParticipants []models.ResponseParticipant
+func (r *participantRepository) FindParticipantByThread(ctx context.Context, userID, threadID string) (*models.ParticipantDTO, error) {
+	var participants []models.ParticipantDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, user:users_view!discussion_participants_user_id_fkey(*)", "", false).
 		Eq("thread_id", threadID).
-		ExecuteTo(&responseParticipants)
+		Eq("user_id", userID).
+		Limit(1, "").
+		ExecuteTo(&participants)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return responseParticipants, nil
+	if len(participants) == 0 {
+		return nil, nil
+	}
+
+	return &participants[0], nil
+}
+
+func (r *participantRepository) FindThreadParticipants(ctx context.Context, threadID string) ([]models.ParticipantDTO, error) {
+	return r.FindParticipantsByThread(ctx, threadID)
 }
 
 func (r *participantRepository) RemoveParticipant(ctx context.Context, threadID, userID string) error {
@@ -168,32 +200,32 @@ func (r *participantRepository) RemoveParticipant(ctx context.Context, threadID,
 	return nil
 }
 
-func (r *participantRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.ResponseParticipant, int, error) {
-	var responseParticipants []models.ResponseParticipant
+func (r *participantRepository) Search(ctx context.Context, opts base.ListOptions) ([]models.ParticipantDTO, int, error) {
+	var participants []models.ParticipantDTO
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false)
+		Select("*, user:user_view!discussion_participants_user_id_fkey(*)", "", false)
 
 	// Apply search query if provided
-	if opts.SearchQuery != "" {
+	if opts.Search != "" {
 		query = query.Or(
-			fmt.Sprintf("users_profile.fullname.ilike.%%%s%%", opts.SearchQuery),
-			fmt.Sprintf("thread_id.ilike.%%%s%%", opts.SearchQuery),
+			fmt.Sprintf("user.username.ilike.%%%s%%", opts.Search),
+			fmt.Sprintf("thread_id.ilike.%%%s%%", opts.Search),
 		)
 	}
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	// Execute query to get results
-	_, err := query.ExecuteTo(&responseParticipants)
+	_, err := query.ExecuteTo(&participants)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to search participants: %w", err)
 	}
@@ -204,5 +236,72 @@ func (r *participantRepository) Search(ctx context.Context, opts repository.List
 		return nil, 0, fmt.Errorf("failed to count participants: %w", err)
 	}
 
-	return responseParticipants, int(count), nil
+	return participants, int(count), nil
+}
+
+func (r *participantRepository) BulkCreate(ctx context.Context, participants []*models.Participant) ([]models.Participant, error) {
+	var createdParticipants []models.Participant
+
+	for _, participant := range participants {
+		_, _, err := r.supabaseClient.
+			From(r.table).
+			Insert(participant, false, "", "minimal", "").
+			Execute()
+		if err != nil {
+			return nil, err
+		}
+
+		createdParticipants = append(createdParticipants, *participant)
+	}
+
+	return createdParticipants, nil
+}
+
+func (r *participantRepository) BulkUpdate(ctx context.Context, participants []*models.Participant) ([]models.Participant, error) {
+	var updatedParticipants []models.Participant
+
+	for _, participant := range participants {
+		_, _, err := r.supabaseClient.
+			From(r.table).
+			Update(participant, "minimal", "").
+			Eq("thread_id", participant.ThreadID.String()).
+			Eq("user_id", participant.UserID.String()).
+			Execute()
+		if err != nil {
+			return nil, err
+		}
+
+		updatedParticipants = append(updatedParticipants, *participant)
+	}
+
+	return updatedParticipants, nil
+}
+
+func (r *participantRepository) BulkDelete(ctx context.Context, ids []string) error {
+	_, _, err := r.supabaseClient.
+		From(r.table).
+		Delete("minimal", "").
+		In("id", ids).
+		Execute()
+	return err
+}
+
+func (r *participantRepository) BulkUpsert(ctx context.Context, participants []*models.Participant) ([]models.ParticipantDTO, error) {
+	var upsertedParticipants []models.ParticipantDTO
+
+	for _, participant := range participants {
+		var upsertedParticipant models.ParticipantDTO
+		_, err := r.supabaseClient.
+			From(r.table).
+			Upsert(participant, "id", "minimal", "").
+			Single().
+			ExecuteTo(&upsertedParticipant)
+		if err != nil {
+			return nil, err
+		}
+
+		upsertedParticipants = append(upsertedParticipants, upsertedParticipant)
+	}
+
+	return upsertedParticipants, nil
 }

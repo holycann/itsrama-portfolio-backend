@@ -3,11 +3,11 @@ package repositories
 import (
 	"context"
 	"fmt"
-	"strings"
+	"sort"
 
-	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/cultural/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
 	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
@@ -24,39 +24,42 @@ func NewEventRepository(supabaseClient *supabase.Client) EventRepository {
 	}
 }
 
-func (r *eventRepository) Create(ctx context.Context, event *models.Event) error {
+func (r *eventRepository) Create(ctx context.Context, event *models.Event) (*models.Event, error) {
 	_, _, err := r.supabaseClient.
 		From(r.table).
 		Insert(event, false, "", "minimal", "").
 		Execute()
-	return err
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to create event")
+	}
+	return event, nil
 }
 
-func (r *eventRepository) FindByID(ctx context.Context, id string) (*models.ResponseEvent, error) {
-	var event *models.ResponseEvent
+func (r *eventRepository) FindByID(ctx context.Context, id string) (*models.EventDTO, error) {
+	var eventDTO models.EventDTO
+
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, location:locations(*, city:cities(*, province:provinces(*)))", "", false).
+		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false).
 		Eq("id", id).
 		Single().
-		ExecuteTo(&event)
-
-	if err == nil && event != nil {
-		views, _ := r.GetEventViews(ctx, id)
-		event.Views = views
+		ExecuteTo(&eventDTO)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to fetch event")
 	}
-
-	return event, err
+	return &eventDTO, nil
 }
 
-// Update methods to handle type conversions and UUID correctly
-func (r *eventRepository) Update(ctx context.Context, event *models.Event) error {
+func (r *eventRepository) Update(ctx context.Context, event *models.Event) (*models.Event, error) {
 	_, _, err := r.supabaseClient.
 		From(r.table).
 		Update(event, "minimal", "").
 		Eq("id", event.ID.String()).
 		Execute()
-	return err
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to update event")
+	}
+	return event, nil
 }
 
 func (r *eventRepository) Delete(ctx context.Context, id string) error {
@@ -65,189 +68,153 @@ func (r *eventRepository) Delete(ctx context.Context, id string) error {
 		Delete("minimal", "").
 		Eq("id", id).
 		Execute()
-	return err
+	if err != nil {
+		return errors.Wrap(err, errors.ErrDatabase, "failed to delete event")
+	}
+	return nil
 }
 
-func (r *eventRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.ResponseEvent, error) {
-	var events []models.ResponseEvent
+func (r *eventRepository) List(ctx context.Context, opts base.ListOptions) ([]models.EventDTO, error) {
+	var events []models.EventDTO
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*, location:locations(*, city:cities(*, province:provinces(*)))", "", false)
+		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		case base.OperatorGreaterThan:
+			query = query.Gt(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case base.OperatorLessThan:
+			query = query.Lt(filter.Field, fmt.Sprintf("%v", filter.Value))
 		}
+	}
+
+	// Apply search if provided
+	if opts.Search != "" {
+		query = query.Or(
+			fmt.Sprintf("name.ilike.%%%s%%", opts.Search),
+			fmt.Sprintf("description.ilike.%%%s%%", opts.Search),
+		)
 	}
 
 	// Apply sorting
 	if opts.SortBy != "" {
-		ascending := opts.SortOrder == repository.SortAscending
+		ascending := opts.SortOrder == base.SortAscending
 		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
 	}
 
 	// Apply pagination
-	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+	offset := (opts.Page - 1) * opts.PerPage
+	query = query.Range(offset, offset+opts.PerPage-1, "")
 
 	_, err := query.ExecuteTo(&events)
-
-	// Fetch views for each event
-	for i := range events {
-		views, _ := r.GetEventViews(ctx, events[i].ID.String())
-		events[i].Views = views
-	}
-
-	return events, err
-}
-
-func (r *eventRepository) GetEventViews(ctx context.Context, eventID string) (int, error) {
-	var viewsData struct {
-		Views int `json:"views"`
-	}
-
-	_, err := r.supabaseClient.
-		From("event_with_views").
-		Select("views", "", false).
-		Single().
-		Eq("id", eventID).
-		ExecuteTo(&viewsData)
-
 	if err != nil {
-		return 0, err
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to list events")
 	}
 
-	views := viewsData.Views
-
-	return views, nil
+	return events, nil
 }
 
-func (r *eventRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (r *eventRepository) Count(ctx context.Context, filters []base.FilterOption) (int, error) {
 	query := r.supabaseClient.
 		From(r.table).
-		Select("id", "exact", false)
+		Select("id", "exact", true)
 
 	// Apply filters
 	for _, filter := range filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	_, count, err := query.Execute()
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrap(err, errors.ErrDatabase, "failed to count events")
 	}
 
 	return int(count), nil
 }
 
 func (r *eventRepository) Exists(ctx context.Context, id string) (bool, error) {
-	_, err := r.FindByID(ctx, id)
+	_, count, err := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", true).
+		Eq("id", id).
+		Limit(1, "").
+		Execute()
+
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, errors.ErrDatabase, "failed to check event existence")
 	}
-	return true, nil
+
+	return count > 0, nil
 }
 
-func (r *eventRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ResponseEvent, error) {
-	var events []models.ResponseEvent
+func (r *eventRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.EventDTO, error) {
+	var events []models.EventDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, location:locations(*, city:cities(*, province:provinces(*)))", "", false).
+		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
 		ExecuteTo(&events)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find events by field")
 	}
-
-	// Fetch views for each event
-	for i := range events {
-		views, _ := r.GetEventViews(ctx, events[i].ID.String())
-		events[i].Views = views
-	}
-
 	return events, nil
 }
 
-// Specialized methods
-// Modify Search method to match base repository interface
-func (r *eventRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.ResponseEvent, int, error) {
-	var events []models.ResponseEvent
-	query := r.supabaseClient.
+func (r *eventRepository) FindEventsByLocation(ctx context.Context, locationID string) ([]models.EventDTO, error) {
+	var events []models.EventDTO
+	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, location:locations(*, city:cities(*, province:provinces(*)))", "", false)
-
-	// Apply search query if provided
-	if opts.SearchQuery != "" {
-		escapedQuery := strings.ReplaceAll(strings.ReplaceAll(opts.SearchQuery, "%", "\\%"), "_", "\\_")
-		likeQuery := "%" + escapedQuery + "%"
-		query = query.Or(fmt.Sprintf("name.ilike.%s,description.ilike.%s", likeQuery, likeQuery), "")
-	}
-
-	// Apply filters
-	for _, filter := range opts.Filters {
-		switch filter.Operator {
-		case "=":
-			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
-			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
-		}
-	}
-
-	// Apply sorting
-	if opts.SortBy != "" {
-		ascending := opts.SortOrder == repository.SortAscending
-		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
-	}
-
-	// Apply pagination
-	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
-
-	// Execute query
-	_, err := query.ExecuteTo(&events)
+		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false).
+		Eq("location_id", locationID).
+		ExecuteTo(&events)
 	if err != nil {
-		return nil, 0, err
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find events by location")
 	}
-
-	// Get total count
-	count, err := r.Count(ctx, opts.Filters)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// Fetch views for each event
-	for i := range events {
-		views, _ := r.GetEventViews(ctx, events[i].ID.String())
-		events[i].Views = views
-	}
-
-	return events, count, nil
+	return events, nil
 }
 
-// FindPopularEventsWithDetails retrieves popular events with full details
-func (r *eventRepository) FindPopularEvents(ctx context.Context, limit int) ([]models.ResponseEvent, error) {
-	var events []models.ResponseEvent
+func (r *eventRepository) FindRelatedEvents(ctx context.Context, eventID, locationID string, limit int) ([]models.EventDTO, error) {
+	var events []models.EventDTO
 	_, err := r.supabaseClient.
-		From("event_with_views").
-		Select("*, location:locations(*, city:cities(*, province:provinces(*)))", "", false).
-		Order("views", &postgrest.OrderOpts{Ascending: false}).
+		From(r.table).
+		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false).
+		Eq("location_id", locationID).
+		Neq("id", eventID).
 		Limit(limit, "").
 		ExecuteTo(&events)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find related events")
+	}
+	return events, nil
+}
 
-	// Fetch views for each event
-	for i := range events {
-		views, _ := r.GetEventViews(ctx, events[i].ID.String())
-		events[i].Views = views
+func (r *eventRepository) GetEventViews(ctx context.Context, eventID string) (int, error) {
+	var views struct {
+		Views int `json:"views"`
+	}
+	_, err := r.supabaseClient.
+		From("event_with_views").
+		Select("views", "", false).
+		Eq("id", eventID).
+		Single().
+		ExecuteTo(&views)
+
+	if err != nil {
+		return 0, errors.Wrap(err, errors.ErrDatabase, "failed to get event views")
 	}
 
-	return events, err
+	return views.Views, nil
 }
 
 func (r *eventRepository) UpdateViews(ctx context.Context, userID, eventID string) string {
@@ -258,74 +225,176 @@ func (r *eventRepository) UpdateViews(ctx context.Context, userID, eventID strin
 		})
 }
 
-// Similar modifications for FindRelatedEvents, FindRecentEvents, FindEventsByLocation
-func (r *eventRepository) FindRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.ResponseEvent, error) {
-	var events []models.ResponseEvent
-
-	// First, get the original event's details to find related events
-	originalEvent, err := r.FindByID(ctx, eventID)
+func (r *eventRepository) FindPopularEvents(ctx context.Context, limit int) ([]models.EventDTO, error) {
+	var events []models.EventDTO
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false).
+		Limit(limit, "").
+		ExecuteTo(&events)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find original event: %w", err)
+		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find popular events")
 	}
 
-	// Find related events based on similar location, city, or province
-	_, err = r.supabaseClient.
+	// Sort events manually by views in descending order
+	sort.Slice(events, func(i, j int) bool {
+		viewsI := 0
+		viewsJ := 0
+
+		if events[i].Views != nil {
+			viewsI = events[i].Views["views"]
+		}
+
+		if events[j].Views != nil {
+			viewsJ = events[j].Views["views"]
+		}
+
+		return viewsI > viewsJ
+	})
+
+	return events, nil
+}
+
+func (r *eventRepository) Search(ctx context.Context, opts base.ListOptions) ([]models.EventDTO, int, error) {
+	var events []models.EventDTO
+
+	// First, get the total count without pagination
+	countQuery := r.supabaseClient.
 		From(r.table).
-		Select("*, location:locations(*, city:cities(*, province:provinces(*)))", "", false).
-		Or(
-			fmt.Sprintf(
-				"location_id.eq.%s,city_id.eq.%s,province_id.eq.%s",
-				(*originalEvent).Location.ID.String(),
-				(*originalEvent).City.ID.String(),
-				(*originalEvent).Province.ID.String(),
+		Select("*", "exact", false)
+
+	// Apply search if provided
+	if opts.Search != "" {
+		countQuery = countQuery.Or(
+			fmt.Sprintf("name.ilike.%%%s%%",
+				opts.Search,
 			),
 			"",
-		).
-		Neq("id", eventID).
-		Limit(limit, "").
-		ExecuteTo(&events)
-
-	// Fetch views for each event
-	for i := range events {
-		views, _ := r.GetEventViews(ctx, events[i].ID.String())
-		events[i].Views = views
+		)
 	}
 
-	return events, err
+	// Apply filters to count query
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case base.OperatorEqual:
+			countQuery = countQuery.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case base.OperatorLike:
+			countQuery = countQuery.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Execute count query
+	var countResult []map[string]interface{}
+	_, err := countQuery.ExecuteTo(&countResult)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, errors.ErrDatabase, "failed to count search results")
+	}
+	totalCount := len(countResult)
+
+	// Now build the main query with full select and relations
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false)
+
+	// Apply search if provided
+	if opts.Search != "" {
+		query = query.Or(
+			fmt.Sprintf("name.ilike.%%%s%%",
+				opts.Search,
+			),
+			"",
+		)
+	}
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case base.OperatorEqual:
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case base.OperatorLike:
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Apply pagination
+	offset := (opts.Page - 1) * opts.PerPage
+	query = query.Range(offset, offset+opts.PerPage-1, "")
+
+	// Execute main query
+	_, err = query.ExecuteTo(&events)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, errors.ErrDatabase, "failed to execute search")
+	}
+
+	return events, totalCount, nil
 }
 
-// Similar implementation for FindRecentEventsWithDetails and FindEventsByLocationWithDetails
-func (r *eventRepository) FindRecentEvents(ctx context.Context, limit int) ([]models.ResponseEvent, error) {
-	var events []models.ResponseEvent
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select("*, location:locations(*, city:cities(*, province:provinces(*)))", "", false).
-		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
-		Limit(limit, "").
-		ExecuteTo(&events)
-
-	// Fetch views for each event
-	for i := range events {
-		views, _ := r.GetEventViews(ctx, events[i].ID.String())
-		events[i].Views = views
+func (r *eventRepository) BulkCreate(ctx context.Context, events []*models.Event) ([]models.Event, error) {
+	var results []models.Event
+	for _, event := range events {
+		createdEvent, err := r.Create(ctx, event)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, *createdEvent)
 	}
-
-	return events, err
+	return results, nil
 }
 
-func (r *eventRepository) FindEventsByLocation(ctx context.Context, locationID uuid.UUID) ([]models.ResponseEvent, error) {
-	var events []models.ResponseEvent
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select("*, location:locations(*, city:cities(*, province:provinces(*)))", "", false).
-		Eq("location_id", locationID.String()).
-		ExecuteTo(&events)
-
-	// Fetch views for each event
-	for i := range events {
-		views, _ := r.GetEventViews(ctx, events[i].ID.String())
-		events[i].Views = views
+func (r *eventRepository) BulkUpdate(ctx context.Context, events []*models.Event) ([]models.Event, error) {
+	var results []models.Event
+	for _, event := range events {
+		updatedEvent, err := r.Update(ctx, event)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, *updatedEvent)
 	}
+	return results, nil
+}
 
-	return events, err
+func (r *eventRepository) BulkDelete(ctx context.Context, ids []string) error {
+	for _, id := range ids {
+		if err := r.Delete(context.Background(), id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *eventRepository) BulkUpsert(ctx context.Context, events []*models.Event) ([]models.EventDTO, error) {
+	var results []models.EventDTO
+	for _, event := range events {
+		// Check if event exists
+		exists, err := r.Exists(ctx, event.ID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		var upsertedEvent *models.EventDTO
+		if exists {
+			// Update existing event
+			updatedEvent, err := r.Update(ctx, event)
+			if err != nil {
+				return nil, err
+			}
+			upsertedEvent, err = r.FindByID(ctx, updatedEvent.ID.String())
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// Create new event
+			createdEvent, err := r.Create(ctx, event)
+			if err != nil {
+				return nil, err
+			}
+			upsertedEvent, err = r.FindByID(ctx, createdEvent.ID.String())
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		results = append(results, *upsertedEvent)
+	}
+	return results, nil
 }

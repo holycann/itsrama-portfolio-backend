@@ -1,341 +1,326 @@
 package handlers
 
 import (
-	"encoding/json"
-	"math"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/place/models"
 	"github.com/holycann/cultour-backend/internal/place/services"
-	"github.com/holycann/cultour-backend/internal/response"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/logger"
+	"github.com/holycann/cultour-backend/pkg/response"
 )
 
-// ProvinceHandler menangani permintaan HTTP terkait provinsi
+// ProvinceHandler handles HTTP requests related to provinces
 type ProvinceHandler struct {
+	base.BaseHandler
 	provinceService services.ProvinceService
-	logger          *logger.Logger
 }
 
-// NewProvinceHandler membuat instance baru dari province handler
-func NewProvinceHandler(provinceService services.ProvinceService, logger *logger.Logger) *ProvinceHandler {
+// NewProvinceHandler creates a new instance of province handler
+func NewProvinceHandler(
+	provinceService services.ProvinceService,
+	appLogger *logger.Logger,
+) *ProvinceHandler {
 	return &ProvinceHandler{
+		BaseHandler:     *base.NewBaseHandler(appLogger),
 		provinceService: provinceService,
-		logger:          logger,
 	}
 }
 
 // CreateProvince godoc
 // @Summary Create a new province
-// @Description Add a new province to the system
+// @Description Allows administrators to add a new administrative province to the system
+// @Description Supports creating provinces with detailed geographical information
 // @Tags Provinces
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param province body models.Province true "Province Information"
-// @Success 201 {object} response.APIResponse{data=models.Province} "Province created successfully"
-// @Failure 400 {object} response.APIResponse "Invalid province creation details"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param province body models.ProvinceCreate true "Province Creation Details"
+// @Success 201 {object} response.APIResponse{data=models.ProvinceDTO} "Province successfully created with full details"
+// @Failure 400 {object} response.APIResponse "Invalid province creation payload or validation error"
+// @Failure 401 {object} response.APIResponse "Authentication required - missing or invalid token"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges (admin role required)"
+// @Failure 500 {object} response.APIResponse "Internal server error during province creation"
 // @Router /provinces [post]
 func (h *ProvinceHandler) CreateProvince(c *gin.Context) {
-	var province models.Province
-	if err := c.ShouldBindJSON(&province); err != nil {
-		h.logger.Error("Error binding province: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
+	var provinceCreate models.ProvinceCreate
+	if err := c.ShouldBindJSON(&provinceCreate); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid province creation details"))
 		return
 	}
 
-	// Validate required fields
-	if province.Name == "" {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"name": province.Name == "",
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
+	// Validate the input
+	if err := base.ValidateModel(provinceCreate); err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	if err := h.provinceService.CreateProvince(c.Request.Context(), &province); err != nil {
-		h.logger.Error("Error creating province: %v", err)
-		response.InternalServerError(c, "Failed to create province", err.Error(), "")
+	// Convert ProvinceCreate to Province
+	province := &models.Province{
+		Name:        provinceCreate.Name,
+		Description: provinceCreate.Description,
+	}
+
+	createdProvince, err := h.provinceService.CreateProvince(c.Request.Context(), province)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to create province"))
 		return
 	}
 
-	response.SuccessCreated(c, province, "Province created successfully")
+	h.HandleSuccess(c, createdProvince, "Province created successfully")
 }
 
 // GetProvinceByID godoc
-// @Summary Get province by ID
-// @Description Retrieve a province's details by its unique identifier
+// @Summary Retrieve a specific province
+// @Description Fetches comprehensive details of a province by its unique identifier
+// @Description Returns full province information including associated cities
 // @Tags Provinces
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Province ID"
-// @Success 200 {object} response.APIResponse{data=models.Province} "Province retrieved successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Province Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=models.ProvinceDTO} "Successfully retrieved province details"
+// @Failure 400 {object} response.APIResponse "Invalid province ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
 // @Failure 404 {object} response.APIResponse "Province not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during province retrieval"
 // @Router /provinces/{id} [get]
 func (h *ProvinceHandler) GetProvinceByID(c *gin.Context) {
-	// Get province ID from path parameter
 	provinceID := c.Param("id")
-	if provinceID == "" {
-		response.BadRequest(c, "Province ID is required", "Missing province ID", "")
-		return
-	}
 
-	province, err := h.provinceService.GetProvinceByID(c.Request.Context(), provinceID)
+	// Validate UUID
+	parsedID, err := h.ValidateUUID(provinceID, "province_id")
 	if err != nil {
-		h.logger.Error("Error finding province by ID: %v", err)
-		response.NotFound(c, "Province not found", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessOK(c, province, "Province found")
+	province, err := h.provinceService.GetProvinceByID(c.Request.Context(), parsedID.String())
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrNotFound, "Province not found"))
+		return
+	}
+
+	h.HandleSuccess(c, province, "Province retrieved successfully")
 }
 
 // SearchProvinces godoc
 // @Summary Search provinces
-// @Description Search provinces by various criteria
+// @Description Performs a full-text search across province details with advanced filtering
+// @Description Allows finding provinces by keywords and other attributes
 // @Tags Provinces
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param query query string true "Search query (name, etc.)"
-// @Param limit query int false "Number of results to retrieve" default(10)
-// @Param offset query int false "Number of results to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.Province} "Provinces found successfully"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param query query string true "Search term for finding provinces" minlength(2)
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of search results per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort search results" default("relevance)" Enum(relevance,name,created_at)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Success 200 {object} response.APIResponse{data=[]models.ProvinceDTO} "Successfully completed province search"
+// @Success 204 {object} response.APIResponse "No provinces match the search query"
 // @Failure 400 {object} response.APIResponse "Invalid search parameters"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during province search"
 // @Router /provinces/search [get]
 func (h *ProvinceHandler) SearchProvinces(c *gin.Context) {
-	// Get search query
-	query := c.Query("query")
-	if query == "" {
-		response.BadRequest(c, "Search query is required", "Empty search query", "")
-		return
+	// Manually set list options with default values
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil {
+		page = 1
 	}
 
-	// Parse pagination parameters
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	perPage, err := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+	if err != nil {
+		perPage = 10
+	}
+
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
 
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Prepare list options for search
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
+	listOptions := base.ListOptions{
+		Page:      page,
+		PerPage:   perPage,
 		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-		Filters: []repository.FilterOption{
-			{
-				Field:    "name",
-				Operator: "like",
-				Value:    query,
-			},
-		},
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+		SortOrder: sortOrder,
+		Filters:   []base.FilterOption{},
 	}
 
-	// Search provinces
-	provinces, err := h.provinceService.SearchProvinces(c.Request.Context(), query, listOptions)
+	// Add optional search filter
+	if query := c.Query("query"); query != "" {
+		listOptions.Filters = append(listOptions.Filters, base.FilterOption{
+			Field:    "name",
+			Operator: base.OperatorLike,
+			Value:    query,
+		})
+	}
+
+	// Perform search
+	provinces, total, err := h.provinceService.SearchProvinces(c.Request.Context(), listOptions)
 	if err != nil {
-		h.logger.Error("Error searching provinces: %v", err)
-		response.InternalServerError(c, "Failed to search provinces", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to search provinces"))
 		return
 	}
 
-	// Count total search results
-	totalProvinces, err := h.provinceService.CountProvinces(c.Request.Context(), listOptions.Filters)
-	if err != nil {
-		h.logger.Error("Error counting search results: %v", err)
-		response.InternalServerError(c, "Failed to count search results", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalProvinces,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalProvinces) / float64(limit))),
-		HasNextPage: offset+limit < totalProvinces,
-	}
-
-	// Respond with provinces and pagination
-	response.SuccessOK(c, provinces, "Provinces found successfully", pagination)
+	// Attach pagination based on total and requested options
+	h.HandleSuccess(c, provinces, "Provinces retrieved successfully",
+		response.WithPagination(total, listOptions.Page, listOptions.PerPage))
 }
 
 // UpdateProvince godoc
-// @Summary Update a province
-// @Description Update an existing province's details
+// @Summary Update an existing province
+// @Description Allows administrators to modify province details
+// @Description Supports partial updates with optional fields
 // @Tags Provinces
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Province ID"
-// @Param province body models.Province true "Province Update Details"
-// @Success 200 {object} response.APIResponse{data=models.Province} "Province updated successfully"
-// @Failure 400 {object} response.APIResponse "Invalid province update details"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Province Identifier" format(uuid)
+// @Param province body models.ProvinceUpdate true "Province Update Payload"
+// @Success 200 {object} response.APIResponse{data=models.ProvinceDTO} "Province successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid province update payload or ID"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
 // @Failure 404 {object} response.APIResponse "Province not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during province update"
 // @Router /provinces/{id} [put]
 func (h *ProvinceHandler) UpdateProvince(c *gin.Context) {
-	// Get province ID from path parameter
+	// Validate and parse province ID
 	provinceID := c.Param("id")
-	if provinceID == "" {
-		response.BadRequest(c, "Province ID is required", "Missing province ID", "")
-		return
-	}
-
-	var province models.Province
-	if err := c.ShouldBindJSON(&province); err != nil {
-		h.logger.Error("Error binding province: %v", err)
-		response.BadRequest(c, "Invalid request payload", err.Error(), "")
-		return
-	}
-
-	// Set the ID from path parameter
-	parsedID, err := uuid.Parse(provinceID)
+	parsedID, err := h.ValidateUUID(provinceID, "province_id")
 	if err != nil {
-		response.BadRequest(c, "Invalid Province ID", "Invalid UUID format", "")
-		return
-	}
-	province.ID = parsedID
-
-	if err := h.provinceService.UpdateProvince(c.Request.Context(), &province); err != nil {
-		h.logger.Error("Error updating province: %v", err)
-		response.InternalServerError(c, "Failed to update province", err.Error(), "")
+		h.HandleError(c, err)
 		return
 	}
 
-	response.SuccessOK(c, province, "Province updated successfully")
+	// Bind and validate update payload
+	var provinceUpdate models.ProvinceUpdate
+	if err := c.ShouldBindJSON(&provinceUpdate); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid province update details"))
+		return
+	}
+
+	// Validate the input
+	if err := base.ValidateModel(provinceUpdate); err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Prepare province for update
+	province := &models.Province{
+		ID:          parsedID,
+		Name:        provinceUpdate.Name,
+		Description: provinceUpdate.Description,
+	}
+
+	// Perform update
+	updatedProvince, err := h.provinceService.UpdateProvince(c.Request.Context(), province)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to update province"))
+		return
+	}
+
+	h.HandleSuccess(c, updatedProvince, "Province updated successfully")
 }
 
 // DeleteProvince godoc
 // @Summary Delete a province
-// @Description Remove a province from the system by its unique identifier
+// @Description Allows administrators to permanently remove a province from the system
+// @Description Deletes the province and its associated resources
 // @Tags Provinces
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Province ID"
-// @Success 200 {object} response.APIResponse "Deleted successfully"
-// @Failure 400 {object} response.APIResponse "Invalid province ID"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Province Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse "Province successfully deleted"
+// @Failure 400 {object} response.APIResponse "Invalid province ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
 // @Failure 404 {object} response.APIResponse "Province not found"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Failure 500 {object} response.APIResponse "Internal server error during province deletion"
 // @Router /provinces/{id} [delete]
 func (h *ProvinceHandler) DeleteProvince(c *gin.Context) {
-	// Get province ID from path parameter
+	// Validate and parse province ID
 	provinceID := c.Param("id")
-	if provinceID == "" {
-		response.BadRequest(c, "Province ID is required", "Missing province ID", "")
+	parsedID, err := h.ValidateUUID(provinceID, "province_id")
+	if err != nil {
+		h.HandleError(c, err)
 		return
 	}
 
-	if err := h.provinceService.DeleteProvince(c.Request.Context(), provinceID); err != nil {
-		h.logger.Error("Error deleting province: %v", err)
-		response.InternalServerError(c, "Failed to delete province", err.Error(), "")
+	// Perform deletion
+	if err := h.provinceService.DeleteProvince(c.Request.Context(), parsedID.String()); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to delete province"))
 		return
 	}
 
-	response.SuccessOK(c, nil, "Province deleted successfully")
+	h.HandleSuccess(c, nil, "Province deleted successfully")
 }
 
 // ListProvinces godoc
-// @Summary List provinces
-// @Description Retrieve a list of provinces with pagination and filtering
+// @Summary Retrieve provinces list
+// @Description Fetches a paginated list of provinces with optional filtering and sorting
+// @Description Supports advanced querying with flexible pagination and filtering options
 // @Tags Provinces
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param limit query int false "Number of provinces to retrieve" default(10)
-// @Param offset query int false "Number of provinces to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.Province} "Provinces retrieved successfully"
-// @Failure 500 {object} response.APIResponse "Failed to list provinces"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param page query int false "Page number for pagination" default(1) minimum(1)
+// @Param per_page query int false "Number of provinces per page" default(10) minimum(1) maximum(100)
+// @Param sort_by query string false "Field to sort provinces by" default("created_at)" Enum(created_at,name)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Success 200 {object} response.APIResponse{data=[]models.ProvinceDTO} "Successfully retrieved provinces list"
+// @Success 204 {object} response.APIResponse "No provinces found"
+// @Failure 400 {object} response.APIResponse "Invalid query parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during provinces retrieval"
 // @Router /provinces [get]
 func (h *ProvinceHandler) ListProvinces(c *gin.Context) {
-	// Parse pagination parameters with defaults
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	// Parse list options manually
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil {
+		page = 1
+	}
+
+	perPage, err := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+	if err != nil {
+		perPage = 10
+	}
+
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
 
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// Prepare list options
-	listOptions := repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
+	listOptions := base.ListOptions{
+		Page:      page,
+		PerPage:   perPage,
 		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-	}
-	if sortOrder == "asc" {
-		listOptions.SortOrder = repository.SortAscending
+		SortOrder: sortOrder,
+		Filters:   []base.FilterOption{},
 	}
 
-	// Optional filtering
-	filters := []repository.FilterOption{}
+	// Optional name filter
 	if name := c.Query("name"); name != "" {
-		filters = append(filters, repository.FilterOption{
+		listOptions.Filters = append(listOptions.Filters, base.FilterOption{
 			Field:    "name",
-			Operator: "like",
+			Operator: base.OperatorLike,
 			Value:    name,
 		})
 	}
-	listOptions.Filters = filters
 
 	// Retrieve provinces
-	provinces, err := h.provinceService.ListProvinces(c.Request.Context(), listOptions)
+	provinces, _, err := h.provinceService.SearchProvinces(c.Request.Context(), listOptions)
 	if err != nil {
-		h.logger.Error("Error retrieving provinces: %v", err)
-		response.InternalServerError(c, "Failed to retrieve provinces", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to retrieve provinces"))
 		return
 	}
 
-	// Count total provinces for pagination
-	totalProvinces, err := h.provinceService.CountProvinces(c.Request.Context(), filters)
-	if err != nil {
-		h.logger.Error("Error counting provinces: %v", err)
-		response.InternalServerError(c, "Failed to count provinces", err.Error(), "")
-		return
-	}
+	// Create pagination
+	data, pagination := base.PaginateResults(provinces, listOptions.Page, listOptions.PerPage)
 
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalProvinces,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalProvinces) / float64(limit))),
-		HasNextPage: offset+limit < totalProvinces,
-	}
-
-	// Respond with provinces and pagination
-	response.SuccessOK(c, provinces, "Provinces retrieved successfully", pagination)
+	h.HandleSuccess(c, data, "Provinces retrieved successfully",
+		response.WithPagination(pagination.Total, pagination.Page, pagination.PerPage))
 }

@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/holycann/cultour-backend/internal/place/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
 	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
@@ -24,16 +24,16 @@ func NewCityRepository(supabaseClient *supabase.Client) CityRepository {
 	}
 }
 
-func (r *cityRepository) Create(ctx context.Context, city *models.City) error {
+func (r *cityRepository) Create(ctx context.Context, city *models.City) (*models.City, error) {
 	_, err := r.supabaseClient.
 		From(r.table).
 		Insert(city, false, "", "minimal", "").
 		ExecuteTo(&city)
-	return err
+	return city, err
 }
 
-func (r *cityRepository) FindByID(ctx context.Context, id string) (*models.ResponseCity, error) {
-	var city *models.ResponseCity
+func (r *cityRepository) FindByID(ctx context.Context, id string) (*models.CityDTO, error) {
+	var city *models.CityDTO
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*, province:provinces(*)", "", false).
@@ -43,13 +43,13 @@ func (r *cityRepository) FindByID(ctx context.Context, id string) (*models.Respo
 	return city, err
 }
 
-func (r *cityRepository) Update(ctx context.Context, city *models.City) error {
+func (r *cityRepository) Update(ctx context.Context, city *models.City) (*models.City, error) {
 	_, _, err := r.supabaseClient.
 		From(r.table).
 		Update(city, "minimal", "").
 		Eq("id", city.ID.String()).
 		Execute()
-	return err
+	return city, err
 }
 
 func (r *cityRepository) Delete(ctx context.Context, id string) error {
@@ -61,8 +61,8 @@ func (r *cityRepository) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-func (r *cityRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.ResponseCity, error) {
-	var cities []models.ResponseCity
+func (r *cityRepository) List(ctx context.Context, opts base.ListOptions) ([]models.CityDTO, error) {
+	var cities []models.CityDTO
 	query := r.supabaseClient.
 		From(r.table).
 		Select("*, province:provinces(*)", "", false)
@@ -70,27 +70,28 @@ func (r *cityRepository) List(ctx context.Context, opts repository.ListOptions) 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	// Apply sorting
 	if opts.SortBy != "" {
-		ascending := opts.SortOrder == repository.SortAscending
+		ascending := opts.SortOrder == base.SortAscending
 		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
 	}
 
 	// Apply pagination
-	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+	limit, offset := opts.LimitOffset()
+	query = query.Range(offset, offset+limit-1, "")
 
 	_, err := query.ExecuteTo(&cities)
 	return cities, err
 }
 
-func (r *cityRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (r *cityRepository) Count(ctx context.Context, filters []base.FilterOption) (int, error) {
 	query := r.supabaseClient.
 		From(r.table).
 		Select("id", "exact", false)
@@ -98,9 +99,9 @@ func (r *cityRepository) Count(ctx context.Context, filters []repository.FilterO
 	// Apply filters
 	for _, filter := range filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
@@ -121,8 +122,8 @@ func (r *cityRepository) Exists(ctx context.Context, id string) (bool, error) {
 	return true, nil
 }
 
-func (r *cityRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ResponseCity, error) {
-	var cities []models.ResponseCity
+func (r *cityRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.CityDTO, error) {
+	var cities []models.CityDTO
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*, province:provinces(*)", "", false).
@@ -131,9 +132,123 @@ func (r *cityRepository) FindByField(ctx context.Context, field string, value in
 	return cities, err
 }
 
+func (r *cityRepository) Search(ctx context.Context, opts base.ListOptions) ([]models.CityDTO, int, error) {
+	var cities []models.CityDTO
+	var totalCount int
+
+	query := r.supabaseClient.
+		From(r.table).
+		Select("*, province:provinces(*)", "", false)
+
+	// Apply search query if provided
+	if opts.Search != "" {
+		query = query.Or(
+			fmt.Sprintf("name.ilike.%%%s%%", opts.Search),
+			fmt.Sprintf("province_id.ilike.%%%s%%", opts.Search),
+		)
+	}
+
+	// Apply filters
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case base.OperatorEqual:
+			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case base.OperatorLike:
+			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Apply sorting
+	if opts.SortBy != "" {
+		ascending := opts.SortOrder == base.SortAscending
+		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
+	}
+
+	// First, get total count
+	countQuery := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", false)
+
+	// Apply same filters to count query
+	if opts.Search != "" {
+		countQuery = countQuery.Or(
+			fmt.Sprintf("name.ilike.%%%s%%", opts.Search),
+			fmt.Sprintf("province_id.ilike.%%%s%%", opts.Search),
+		)
+	}
+
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case base.OperatorEqual:
+			countQuery = countQuery.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case base.OperatorLike:
+			countQuery = countQuery.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Execute count query
+	_, count, err := countQuery.Execute()
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count cities: %w", err)
+	}
+	totalCount = int(count)
+
+	// Apply pagination
+	limit, offset := opts.LimitOffset()
+	query = query.Range(offset, offset+limit-1, "")
+
+	// Execute query to get paginated results
+	_, err = query.ExecuteTo(&cities)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to search cities: %w", err)
+	}
+
+	return cities, totalCount, nil
+}
+
+func (r *cityRepository) BulkCreate(ctx context.Context, cities []*models.City) ([]models.City, error) {
+	var createdCities []models.City
+	for _, city := range cities {
+		_, err := r.supabaseClient.
+			From(r.table).
+			Insert(city, false, "", "minimal", "").
+			ExecuteTo(&city)
+		if err != nil {
+			return nil, err
+		}
+		createdCities = append(createdCities, *city)
+	}
+	return createdCities, nil
+}
+
+func (r *cityRepository) BulkUpdate(ctx context.Context, cities []*models.City) ([]models.City, error) {
+	var updatedCities []models.City
+	for _, city := range cities {
+		_, _, err := r.supabaseClient.
+			From(r.table).
+			Update(city, "minimal", "").
+			Eq("id", city.ID.String()).
+			Execute()
+		if err != nil {
+			return nil, err
+		}
+		updatedCities = append(updatedCities, *city)
+	}
+	return updatedCities, nil
+}
+
+func (r *cityRepository) BulkDelete(ctx context.Context, ids []string) error {
+	_, _, err := r.supabaseClient.
+		From(r.table).
+		Delete("minimal", "").
+		In("id", ids).
+		Execute()
+	return err
+}
+
 // Specialized methods for cities
-func (r *cityRepository) FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.ResponseCity, error) {
-	var cities []models.ResponseCity
+func (r *cityRepository) FindCitiesByProvince(ctx context.Context, provinceID string) ([]models.CityDTO, error) {
+	var cities []models.CityDTO
 	_, err := r.supabaseClient.
 		From(r.table).
 		Select("*, province:provinces(*)", "", false).
@@ -142,7 +257,7 @@ func (r *cityRepository) FindCitiesByProvince(ctx context.Context, provinceID st
 	return cities, err
 }
 
-func (r *cityRepository) FindCityByName(ctx context.Context, name string) (*models.ResponseCity, error) {
+func (r *cityRepository) FindCityByName(ctx context.Context, name string) (*models.CityDTO, error) {
 	cities, err := r.FindByField(ctx, "name", name)
 	if err != nil {
 		return nil, err
@@ -153,42 +268,24 @@ func (r *cityRepository) FindCityByName(ctx context.Context, name string) (*mode
 	return &cities[0], nil
 }
 
-func (r *cityRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.ResponseCity, int, error) {
-	var cities []models.ResponseCity
+func (r *cityRepository) FindCityByCode(ctx context.Context, code string) (*models.CityDTO, error) {
+	cities, err := r.FindByField(ctx, "code", code)
+	if err != nil {
+		return nil, err
+	}
+	if len(cities) == 0 {
+		return nil, fmt.Errorf("city not found")
+	}
+	return &cities[0], nil
+}
 
-	query := r.supabaseClient.
+func (r *cityRepository) ListCitiesByPopulation(ctx context.Context, minPopulation, maxPopulation string) ([]models.CityDTO, error) {
+	var cities []models.CityDTO
+	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, province:provinces(*)", "", false)
-
-	// Apply search query if provided
-	if opts.SearchQuery != "" {
-		query = query.Or(
-			fmt.Sprintf("name.ilike.%%%s%%", opts.SearchQuery),
-			fmt.Sprintf("province_id.ilike.%%%s%%", opts.SearchQuery),
-		)
-	}
-
-	// Apply filters
-	for _, filter := range opts.Filters {
-		switch filter.Operator {
-		case "=":
-			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
-			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
-		}
-	}
-
-	// Execute query to get results
-	_, err := query.ExecuteTo(&cities)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to search cities: %w", err)
-	}
-
-	// Count total matching records
-	_, count, err := query.Execute()
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count cities: %w", err)
-	}
-
-	return cities, int(count), nil
+		Select("*, province:provinces(*)", "", false).
+		Gte("population", minPopulation).
+		Lte("population", maxPopulation).
+		ExecuteTo(&cities)
+	return cities, err
 }

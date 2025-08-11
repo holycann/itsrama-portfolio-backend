@@ -3,128 +3,183 @@ package services
 import (
 	"context"
 	"fmt"
-	"math"
 	"mime/multipart"
-	"strings"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/cultural/models"
 	"github.com/holycann/cultour-backend/internal/cultural/repositories"
+	discussionModels "github.com/holycann/cultour-backend/internal/discussion/models"
+	discussionServices "github.com/holycann/cultour-backend/internal/discussion/services"
 	placeModels "github.com/holycann/cultour-backend/internal/place/models"
-	"github.com/holycann/cultour-backend/internal/place/services"
-	"github.com/holycann/cultour-backend/internal/supabase"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	placeServices "github.com/holycann/cultour-backend/internal/place/services"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/supabase"
 	storage_go "github.com/supabase-community/storage-go"
 )
 
 type eventService struct {
 	eventRepo       repositories.EventRepository
-	locationService services.LocationService
-	storage         *supabase.SupabaseStorage
+	locationService placeServices.LocationService
+	storage         supabase.SupabaseStorage
+	threadService   discussionServices.ThreadService
 }
 
-func NewEventService(eventRepo repositories.EventRepository, service services.LocationService, storage *supabase.SupabaseStorage) EventService {
+func NewEventService(
+	eventRepo repositories.EventRepository,
+	service placeServices.LocationService,
+	storage supabase.SupabaseStorage,
+	threadService discussionServices.ThreadService,
+) EventService {
 	return &eventService{
 		eventRepo:       eventRepo,
 		storage:         storage,
 		locationService: service,
+		threadService:   threadService,
 	}
 }
 
-func (s *eventService) CreateEvent(ctx context.Context, event *models.RequestEvent, image *multipart.FileHeader) error {
-	// Validate event object
-	if event == nil {
-		return fmt.Errorf("event cannot be nil")
-	}
+func (s *eventService) findOrCreateLocation(ctx context.Context, locationPayload *placeModels.LocationCreate) (*placeModels.Location, error) {
+	const tolerance = 0.0001
 
-	// Validate all required fields
-	if event.UserID == uuid.Nil {
-		return fmt.Errorf("user_id is required")
-	}
-	if event.CityID == uuid.Nil {
-		return fmt.Errorf("city_id is required")
-	}
-	if event.ProvinceID == uuid.Nil {
-		return fmt.Errorf("province_id is required")
-	}
-	if event.Name == "" {
-		return fmt.Errorf("name is required")
-	}
-	if event.Description == "" {
-		return fmt.Errorf("description is required")
-	}
-	if event.StartDate.IsZero() {
-		return fmt.Errorf("start_date is required")
-	}
-	if event.EndDate.IsZero() {
-		return fmt.Errorf("end_date is required")
-	}
-
-	tolerance := 0.0001
-	existingLocations, err := s.locationService.ListLocations(ctx, repository.ListOptions{
-		Filters: []repository.FilterOption{
+	// Search for existing locations with matching name
+	existingLocations, err := s.locationService.ListLocations(ctx, base.ListOptions{
+		Filters: []base.FilterOption{
 			{
 				Field:    "name",
 				Operator: "eq",
-				Value:    event.Location.Name,
+				Value:    locationPayload.Name,
 			},
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to check existing locations: %v", err)
+		return nil, err
 	}
 
-	var matchedLocation *placeModels.Location
+	// Check for location with similar coordinates
 	for _, loc := range existingLocations {
-		if math.Abs(loc.Latitude-event.Location.Latitude) <= tolerance &&
-			math.Abs(loc.Longitude-event.Location.Longitude) <= tolerance {
-			matchedLocation = &loc
-			break
+		if abs(loc.Latitude-locationPayload.Latitude) <= tolerance &&
+			abs(loc.Longitude-locationPayload.Longitude) <= tolerance {
+			location := &placeModels.Location{
+				ID:        loc.ID,
+				CityID:    loc.CityID,
+				Name:      loc.Name,
+				Latitude:  loc.Latitude,
+				Longitude: loc.Longitude,
+			}
+			return location, nil
 		}
 	}
-
-	if matchedLocation == nil {
-		event.Location.ID = uuid.New()
-		event.Location.CityID = event.CityID
-		if err := s.locationService.CreateLocation(ctx, event.Location); err != nil {
-			return fmt.Errorf("failed to create new location: %v", err)
-		}
-
-	} else {
-		event.Location = matchedLocation
+	// Convert LocationPayload to Location for creation
+	locationToCreate := &placeModels.LocationCreate{
+		Name:      locationPayload.Name,
+		Latitude:  locationPayload.Latitude,
+		Longitude: locationPayload.Longitude,
+		CityID:    locationPayload.CityID,
 	}
 
-	eventData := models.Event{
+	// Create new location if no match found
+	location, err := s.locationService.CreateLocation(ctx, locationToCreate)
+	if err != nil {
+		return nil, err
+	}
+
+	return location, nil
+}
+
+// abs returns the absolute value of a float64
+func abs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func (s *eventService) CreateEvent(ctx context.Context, event *models.EventPayload) (*models.EventDTO, error) {
+	// Validate input
+	if err := base.ValidateModel(event); err != nil {
+		return nil, err
+	}
+
+	// Find or create location
+	location, err := s.findOrCreateLocation(ctx, event.Location)
+	if err != nil {
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to process event location",
+			errors.WithContext("location_name", event.Location.Name),
+		)
+	}
+
+	now := time.Now().UTC()
+	eventData := &models.Event{
 		ID:            uuid.New(),
 		UserID:        event.UserID,
-		LocationID:    event.Location.ID,
-		CityID:        event.CityID,
-		ProvinceID:    event.ProvinceID,
+		LocationID:    location.ID,
 		Name:          event.Name,
 		Description:   event.Description,
 		StartDate:     event.StartDate,
 		EndDate:       event.EndDate,
 		IsKidFriendly: event.IsKidFriendly,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		CreatedAt:     &now,
+		UpdatedAt:     &now,
 	}
 
-	imageUrl, err := s.uploadEventImage(ctx, eventData.ID.String(), image)
+	// Upload image if provided
+	if event.Image != nil {
+		imageURL, err := s.uploadEventImage(ctx, eventData.ID.String(), event.Image)
+		if err != nil {
+			return nil, errors.Wrap(err,
+				errors.ErrInternal,
+				"Failed to upload event image",
+				errors.WithContext("event_id", eventData.ID),
+			)
+		}
+		eventData.ImageURL = imageURL
+	}
+
+	// Create event in repository
+	createdEvent, err := s.eventRepo.Create(ctx, eventData)
 	if err != nil {
-		return fmt.Errorf("failed to upload event image: %v", err)
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to create event",
+			errors.WithContext("event_name", event.Name),
+		)
 	}
 
-	eventData.ImageURL = imageUrl
-	event.ImageURL = imageUrl
-	event.ID = eventData.ID
+	// Create a thread for the event
+	threadInput := &discussionModels.CreateThread{
+		EventID:   createdEvent.ID,
+		CreatorID: event.UserID,
+		Status:    "active",
+	}
 
-	// Call repository to create event
-	return s.eventRepo.Create(ctx, &eventData)
+	_, err = s.threadService.CreateThread(ctx, threadInput)
+	if err != nil {
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to create thread for event",
+			errors.WithContext("event_id", createdEvent.ID),
+		)
+	}
+
+	// Fetch and return created event details
+	eventDTO, err := s.getEventDetails(ctx, createdEvent.ID.String())
+	if err != nil {
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to retrieve created event details",
+			errors.WithContext("event_id", createdEvent.ID),
+		)
+	}
+
+	return eventDTO, nil
 }
 
 func (s *eventService) uploadEventImage(ctx context.Context, eventID string, file *multipart.FileHeader) (string, error) {
-	// Validate input
 	if eventID == "" {
 		return "", fmt.Errorf("event ID cannot be empty")
 	}
@@ -132,218 +187,173 @@ func (s *eventService) uploadEventImage(ctx context.Context, eventID string, fil
 		return "", fmt.Errorf("file data is required")
 	}
 
-	// Open the file
-	f, err := file.Open()
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
+	destPath := "images/events/" + eventID + filepath.Ext(file.Filename)
 
-	// Get file extension from the uploaded file's filename
-	// (default to .jpg if missing)
-	ext := ".jpg"
-	if file.Filename != "" {
-		for i := len(file.Filename) - 1; i >= 0; i-- {
-			if file.Filename[i] == '.' {
-				ext = file.Filename[i:]
-				break
-			}
-		}
-	}
-
-	// Build the destination path (assuming you have a storage service, adjust as needed)
-	destPath := s.storage.GetDefaultFolder() + "/images/" + "event/" + eventID + ext
-
-	result, _ := s.storage.GetClient().UploadFile(s.storage.GetBucketID(), destPath, f, storage_go.FileOptions{
+	_, err := s.storage.Upload(ctx, file, destPath, storage_go.FileOptions{
 		ContentType: func(s string) *string { return &s }("image"),
 		Upsert:      func(b bool) *bool { return &b }(true),
 	})
-	if result.Key == "" {
-		return "", fmt.Errorf("failed to upload file: %v", result)
-	}
-	url := s.storage.GetClient().GetPublicUrl(s.storage.GetBucketID(), destPath)
-	if url.SignedURL == "" {
-		return "", fmt.Errorf("failed to get public url: %v", url)
-	}
-
-	return url.SignedURL, nil
-}
-
-func (s *eventService) deleteEventImage(ctx context.Context, path string) error {
-	_, err := s.storage.GetClient().RemoveFile(s.storage.GetBucketID(), []string{path})
 	if err != nil {
-		return fmt.Errorf("failed to delete event image: %v", err)
+		return "", errors.Wrap(err,
+			errors.ErrInternal,
+			"Failed to upload event image",
+			errors.WithContext("event_id", eventID),
+		)
 	}
-	return nil
+
+	signedURL, err := s.storage.GetPublicURL(destPath)
+	if err != nil {
+		return "", errors.Wrap(err,
+			errors.ErrInternal,
+			"Failed to get public URL for event image",
+			errors.WithContext("dest_path", destPath),
+		)
+	}
+
+	return signedURL, nil
 }
 
-func (s *eventService) GetEventByID(ctx context.Context, id string) (*models.ResponseEvent, error) {
-	if id == "" {
+func (s *eventService) getEventDetails(ctx context.Context, eventID string) (*models.EventDTO, error) {
+	if eventID == "" {
 		return nil, fmt.Errorf("event ID cannot be empty")
 	}
-	event, err := s.eventRepo.FindByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return event, nil
+
+	return s.eventRepo.FindByID(ctx, eventID)
 }
 
-func (s *eventService) ListEvents(ctx context.Context, opts repository.ListOptions) ([]models.ResponseEvent, error) {
-	// Modify the list options to include full details
-	opts.Limit = opts.Limit
-	opts.Offset = opts.Offset
-	opts.SortBy = opts.SortBy
-	opts.SortOrder = opts.SortOrder
-
-	// Use the new method to fetch events with full details
-	events, _, err := s.eventRepo.Search(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	return events, nil
+func (s *eventService) GetEventByID(ctx context.Context, id string) (*models.EventDTO, error) {
+	return s.getEventDetails(ctx, id)
 }
 
-func (s *eventService) UpdateEvent(ctx context.Context, event *models.RequestEvent, image *multipart.FileHeader) error {
-	// Validate event object
-	if event == nil {
-		return fmt.Errorf("event cannot be nil")
-	}
-
-	// Validate required fields
-	if event.ID == uuid.Nil || event.UserID == uuid.Nil {
-		return fmt.Errorf("event ID and user ID are required for update")
-	}
-
-	existingEvent, err := s.eventRepo.FindByID(ctx, event.ID.String())
+func (s *eventService) ListEvents(ctx context.Context, opts base.ListOptions) ([]models.EventDTO, int, error) {
+	events, total, err := s.eventRepo.Search(ctx, opts)
 	if err != nil {
-		return fmt.Errorf("failed to get existing event: %v", err)
+		return nil, 0, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to list events",
+			errors.WithContext("options", opts),
+		)
 	}
 
-	// Convert RequestEvent to Event
-	eventData := models.Event{
-		ID:     event.ID,
-		UserID: event.UserID,
-		CityID: func() uuid.UUID {
-			if event.CityID != uuid.Nil && event.CityID != existingEvent.CityID {
-				return event.CityID
-			}
-			return existingEvent.CityID
-		}(),
-		ProvinceID: func() uuid.UUID {
-			if event.ProvinceID != uuid.Nil && event.ProvinceID != existingEvent.ProvinceID {
-				return event.ProvinceID
-			}
-			return existingEvent.ProvinceID
-		}(),
-		Name: func() string {
-			if event.Name != "" && event.Name != existingEvent.Name {
-				return event.Name
-			}
-			return existingEvent.Name
-		}(),
-		Description: func() string {
-			if event.Description != "" && event.Description != existingEvent.Description {
-				return event.Description
-			}
-			return existingEvent.Description
-		}(),
-		StartDate: func() time.Time {
-			if !event.StartDate.IsZero() && event.StartDate != existingEvent.StartDate {
-				return event.StartDate
-			}
-			return existingEvent.StartDate
-		}(),
-		EndDate: func() time.Time {
-			if !event.EndDate.IsZero() && event.EndDate != existingEvent.EndDate {
-				return event.EndDate
-			}
-			return existingEvent.EndDate
-		}(),
-		IsKidFriendly: func() bool {
-			if event.IsKidFriendly != existingEvent.IsKidFriendly {
-				return event.IsKidFriendly
-			}
-			return existingEvent.IsKidFriendly
-		}(),
-		UpdatedAt: time.Now(),
-		ImageURL:  existingEvent.ImageURL,
+	return events, total, nil
+}
+
+func (s *eventService) UpdateEvent(ctx context.Context, event *models.EventPayload) (*models.EventDTO, error) {
+	// Validate input
+	if err := base.ValidateModel(event); err != nil {
+		return nil, errors.New(
+			errors.ErrValidation,
+			"Invalid event payload",
+			err,
+			errors.WithContext("payload", event),
+		)
 	}
 
-	if image != nil {
-		var imagePath string
-		parts := strings.SplitN(existingEvent.ImageURL, "public/cultour/", 2)
-		if len(parts) == 2 {
-			imagePath = parts[1]
-		} else {
-			return fmt.Errorf("prefix not found")
-		}
-
-		err := s.deleteEventImage(ctx, imagePath)
-		if err != nil {
-			return fmt.Errorf("failed to delete existing event image: %v", err)
-		}
-		imageUrl, err := s.uploadEventImage(ctx, eventData.ID.String(), image)
-		if err != nil {
-			return fmt.Errorf("failed to upload event image: %v", err)
-		}
-		eventData.ImageURL = imageUrl
-	}
-
-	tolerance := 0.0001
-
-	if event.Location == nil {
-		return fmt.Errorf("location data is required for updating LocationID")
-	}
-
-	existingLocations, err := s.locationService.ListLocations(ctx, repository.ListOptions{
-		Filters: []repository.FilterOption{
-			{
-				Field:    "name",
-				Operator: "eq",
-				Value:    event.Location.Name,
-			},
-		},
-	})
+	// Retrieve existing event
+	existingEvent, err := s.getEventDetails(ctx, event.ID.String())
 	if err != nil {
-		return fmt.Errorf("failed to check existing location: %v", err)
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to retrieve existing event",
+			errors.WithContext("event_id", event.ID),
+		)
 	}
 
-	var matchedLocation *placeModels.Location
-	for _, loc := range existingLocations {
-		if math.Abs(loc.Latitude-event.Location.Latitude) <= tolerance &&
-			math.Abs(loc.Longitude-event.Location.Longitude) <= tolerance {
-			matchedLocation = &loc
-			break
+	// Find or create location
+	location, err := s.findOrCreateLocation(ctx, event.Location)
+	if err != nil {
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to process event location",
+			errors.WithContext("location_name", event.Location.Name),
+		)
+	}
+
+	now := time.Now().UTC()
+	eventData := &models.Event{
+		ID:            event.ID,
+		UserID:        event.UserID,
+		LocationID:    location.ID,
+		Name:          s.getUpdatedValue(event.Name, existingEvent.Name),
+		Description:   s.getUpdatedValue(event.Description, existingEvent.Description),
+		StartDate:     s.getUpdatedTime(event.StartDate, existingEvent.StartDate),
+		EndDate:       s.getUpdatedTime(event.EndDate, existingEvent.EndDate),
+		IsKidFriendly: s.getUpdatedBool(event.IsKidFriendly, existingEvent.IsKidFriendly),
+		ImageURL:      existingEvent.ImageURL,
+		UpdatedAt:     &now,
+	}
+
+	// Upload new image if provided
+	if event.Image != nil {
+		imageURL, err := s.uploadEventImage(ctx, eventData.ID.String(), event.Image)
+		if err != nil {
+			return nil, errors.Wrap(err,
+				errors.ErrInternal,
+				"Failed to upload event image",
+				errors.WithContext("event_id", eventData.ID),
+			)
 		}
+		eventData.ImageURL = imageURL
 	}
 
-	if matchedLocation == nil {
-		event.Location.ID = uuid.New()
-		event.Location.CityID = event.CityID
-		if err := s.locationService.CreateLocation(ctx, event.Location); err != nil {
-			return fmt.Errorf("failed to create new location: %v", err)
-		}
-		eventData.LocationID = event.Location.ID
-	} else {
-		eventData.LocationID = matchedLocation.ID
+	// Update event in repository
+	updatedEvent, err := s.eventRepo.Update(ctx, eventData)
+	if err != nil {
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to update event",
+			errors.WithContext("event_id", eventData.ID),
+		)
 	}
 
-	// Call repository to update event
-	return s.eventRepo.Update(ctx, &eventData)
+	// Fetch and return updated event details
+	updatedEventDTO, err := s.getEventDetails(ctx, updatedEvent.ID.String())
+	if err != nil {
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to retrieve updated event details",
+			errors.WithContext("event_id", updatedEvent.ID),
+		)
+	}
+
+	return updatedEventDTO, nil
+}
+
+// Helper methods for updating values
+func (s *eventService) getUpdatedValue(newValue, existingValue string) string {
+	if newValue != "" && newValue != existingValue {
+		return newValue
+	}
+	return existingValue
+}
+
+func (s *eventService) getUpdatedTime(newTime, existingTime time.Time) time.Time {
+	if !newTime.IsZero() && newTime != existingTime {
+		return newTime
+	}
+	return existingTime
+}
+
+func (s *eventService) getUpdatedBool(newBool, existingBool bool) bool {
+	if newBool != existingBool {
+		return newBool
+	}
+	return existingBool
 }
 
 func (s *eventService) DeleteEvent(ctx context.Context, id string) error {
-	// Validate ID
 	if id == "" {
-		return fmt.Errorf("event ID cannot be empty")
+		return errors.New(
+			errors.ErrValidation,
+			"Event ID cannot be empty",
+			nil,
+		)
 	}
 
-	// Call repository to delete event
 	return s.eventRepo.Delete(ctx, id)
 }
 
-func (s *eventService) CountEvents(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (s *eventService) CountEvents(ctx context.Context, filters []base.FilterOption) (int, error) {
 	return s.eventRepo.Count(ctx, filters)
 }
 
@@ -354,22 +364,26 @@ func (s *eventService) UpdateEventViews(ctx context.Context, userID, eventID str
 	return s.eventRepo.UpdateViews(ctx, userID, eventID)
 }
 
-func (s *eventService) GetTrendingEvents(ctx context.Context, limit int) ([]models.ResponseEvent, error) {
+func (s *eventService) GetTrendingEvents(ctx context.Context, limit int) ([]models.EventDTO, error) {
 	return s.eventRepo.FindPopularEvents(ctx, limit)
 }
 
-func (s *eventService) GetRelatedEvents(ctx context.Context, eventID string, limit int) ([]models.ResponseEvent, error) {
-	return s.eventRepo.FindRelatedEvents(ctx, eventID, limit)
+func (s *eventService) GetRelatedEvents(ctx context.Context, eventID, locationID string, limit int) ([]models.EventDTO, error) {
+	return s.eventRepo.FindRelatedEvents(ctx, eventID, locationID, limit)
 }
 
-func (s *eventService) SearchEvents(ctx context.Context, query string, opts repository.ListOptions) ([]models.ResponseEvent, error) {
-	// Modify the list options to include search query
-	opts.SearchQuery = query
+func (s *eventService) SearchEvents(ctx context.Context, query string, opts base.ListOptions) ([]models.EventDTO, int, error) {
+	// Attach search term
+	opts.Search = query
 
-	events, _, err := s.eventRepo.Search(ctx, opts)
+	events, total, err := s.eventRepo.Search(ctx, opts)
 	if err != nil {
-		return nil, err
+		return nil, 0, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to search events",
+			errors.WithContext("query", query),
+		)
 	}
 
-	return events, nil
+	return events, total, nil
 }

@@ -5,9 +5,11 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/discussion/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
 	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
@@ -24,52 +26,51 @@ func NewMessageRepository(supabaseClient *supabase.Client) MessageRepository {
 	}
 }
 
-func (r *messageRepository) Create(ctx context.Context, message *models.Message) error {
-	var participants []models.ResponseParticipant
-	participantQuery := r.supabaseClient.
-		From("discussion_participants").
-		Select("*", "", false).
-		Eq("thread_id", message.ThreadID.String()).
-		Eq("user_id", message.UserID.String())
-
-	_, err := participantQuery.ExecuteTo(&participants)
-	if err != nil {
-		return fmt.Errorf("error checking thread participant: %v", err)
-	}
-
-	if len(participants) == 0 {
-		return fmt.Errorf("user is not a participant of this thread")
-	}
-
-	_, _, err = r.supabaseClient.
+func (r *messageRepository) Create(ctx context.Context, message *models.Message) (*models.Message, error) {
+	_, _, err := r.supabaseClient.
 		From(r.table).
 		Insert(message, false, "", "minimal", "").
 		Execute()
-	return err
-}
-
-func (r *messageRepository) FindByID(ctx context.Context, id string) (*models.ResponseMessage, error) {
-	var responseMessage *models.ResponseMessage
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select("*", "", false).
-		Eq("id", id).
-		Single().
-		ExecuteTo(&responseMessage)
 	if err != nil {
 		return nil, err
 	}
 
-	return responseMessage, nil
+	return message, nil
 }
 
-func (r *messageRepository) Update(ctx context.Context, message *models.Message) error {
+func (r *messageRepository) FindByID(ctx context.Context, id string) (*models.MessageDTO, error) {
+	var messageDTO models.MessageDTO
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*, sender:users_view(*, profile:users_profile(*))", "", false).
+		Eq("id", id).
+		Single().
+		ExecuteTo(&messageDTO)
+	if err != nil {
+		return nil, err
+	}
+
+	return &messageDTO, nil
+}
+
+func (r *messageRepository) Update(ctx context.Context, message *models.Message) (*models.Message, error) {
+	updateMessage := map[string]interface{}{
+		"sender_id":  message.SenderID,
+		"content":    message.Content,
+		"updated_at": message.UpdatedAt,
+		"type":       message.Type,
+	}
+
 	_, _, err := r.supabaseClient.
 		From(r.table).
-		Update(message, "minimal", "").
+		Update(updateMessage, "minimal", "").
 		Eq("id", message.ID.String()).
 		Execute()
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	return message, nil
 }
 
 func (r *messageRepository) Delete(ctx context.Context, id string) error {
@@ -81,40 +82,41 @@ func (r *messageRepository) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-func (r *messageRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.ResponseMessage, error) {
-	var responseMessages []models.ResponseMessage
+func (r *messageRepository) List(ctx context.Context, opts base.ListOptions) ([]models.MessageDTO, error) {
+	var messageDTOs []models.MessageDTO
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false)
+		Select("*, sender:users_view(*, profile:users_profile(*))", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	// Apply sorting
 	if opts.SortBy != "" {
-		ascending := opts.SortOrder == repository.SortAscending
+		ascending := opts.SortOrder == base.SortAscending
 		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
 	}
 
 	// Apply pagination
-	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+	limit, offset := opts.LimitOffset()
+	query = query.Range(offset, offset+limit-1, "")
 
-	_, err := query.ExecuteTo(&responseMessages)
+	_, err := query.ExecuteTo(&messageDTOs)
 	if err != nil {
 		return nil, err
 	}
 
-	return responseMessages, nil
+	return messageDTOs, nil
 }
 
-func (r *messageRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (r *messageRepository) Count(ctx context.Context, filters []base.FilterOption) (int, error) {
 	query := r.supabaseClient.
 		From(r.table).
 		Select("id", "exact", false)
@@ -122,9 +124,9 @@ func (r *messageRepository) Count(ctx context.Context, filters []repository.Filt
 	// Apply filters
 	for _, filter := range filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
@@ -145,93 +147,47 @@ func (r *messageRepository) Exists(ctx context.Context, id string) (bool, error)
 	return true, nil
 }
 
-func (r *messageRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ResponseMessage, error) {
-	var responseMessages []models.ResponseMessage
+func (r *messageRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.MessageDTO, error) {
+	var messageDTOs []models.MessageDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, sender:users_view(*, profile:users_profile(*))", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
-		ExecuteTo(&responseMessages)
+		ExecuteTo(&messageDTOs)
 	if err != nil {
 		return nil, err
 	}
 
-	return responseMessages, nil
+	return messageDTOs, nil
 }
 
-// Specialized methods for messages
-func (r *messageRepository) FindMessagesByThread(ctx context.Context, threadID string) ([]models.ResponseMessage, error) {
-	var responseMessages []models.ResponseMessage
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select("*", "", false).
-		Eq("thread_id", threadID).
-		Order("created_at", &postgrest.OrderOpts{Ascending: true}).
-		ExecuteTo(&responseMessages)
-	if err != nil {
-		return nil, err
-	}
-
-	return responseMessages, nil
-}
-
-func (r *messageRepository) FindMessagesByUser(ctx context.Context, userID string) ([]models.ResponseMessage, error) {
-	var responseMessages []models.ResponseMessage
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select("*", "", false).
-		Eq("user_id", userID).
-		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
-		ExecuteTo(&responseMessages)
-	if err != nil {
-		return nil, err
-	}
-
-	return responseMessages, nil
-}
-
-func (r *messageRepository) FindRecentMessages(ctx context.Context, limit int) ([]models.ResponseMessage, error) {
-	var responseMessages []models.ResponseMessage
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select("*", "", false).
-		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
-		Limit(limit, "").
-		ExecuteTo(&responseMessages)
-	if err != nil {
-		return nil, err
-	}
-
-	return responseMessages, nil
-}
-
-func (r *messageRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.ResponseMessage, int, error) {
-	var responseMessages []models.ResponseMessage
+func (r *messageRepository) Search(ctx context.Context, opts base.ListOptions) ([]models.MessageDTO, int, error) {
+	var messageDTOs []models.MessageDTO
 
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false)
+		Select("*, sender:users_view(*, profile:users_profile(*))", "", false)
 
 	// Apply search query if provided
-	if opts.SearchQuery != "" {
+	if opts.Search != "" {
 		query = query.Or(
-			fmt.Sprintf("content.ilike.%%%s%%", opts.SearchQuery),
-			fmt.Sprintf("thread_id.ilike.%%%s%%", opts.SearchQuery),
+			fmt.Sprintf("content.ilike.%%%s%%", opts.Search),
+			fmt.Sprintf("thread_id.ilike.%%%s%%", opts.Search),
 		)
 	}
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	// Execute query to get results
-	_, err := query.ExecuteTo(&responseMessages)
+	_, err := query.ExecuteTo(&messageDTOs)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to search messages: %w", err)
 	}
@@ -242,5 +198,99 @@ func (r *messageRepository) Search(ctx context.Context, opts repository.ListOpti
 		return nil, 0, fmt.Errorf("failed to count messages: %w", err)
 	}
 
-	return responseMessages, int(count), nil
+	return messageDTOs, int(count), nil
+}
+
+func (r *messageRepository) BulkCreate(ctx context.Context, messages []*models.Message) ([]models.Message, error) {
+	var createdMessages []models.Message
+
+	for _, message := range messages {
+		// Generate UUID if not provided
+		if base.IsZero(message.ID) {
+			message.ID = uuid.New()
+		}
+
+		_, _, err := r.supabaseClient.
+			From(r.table).
+			Insert(message, false, "", "minimal", "").
+			Execute()
+		if err != nil {
+			return nil, err
+		}
+
+		createdMessages = append(createdMessages, *message)
+	}
+
+	return createdMessages, nil
+}
+
+func (r *messageRepository) BulkUpdate(ctx context.Context, messages []*models.Message) ([]models.Message, error) {
+	var updatedMessages []models.Message
+
+	for _, message := range messages {
+		_, _, err := r.supabaseClient.
+			From(r.table).
+			Update(message, "minimal", "").
+			Eq("id", message.ID.String()).
+			Execute()
+		if err != nil {
+			return nil, err
+		}
+
+		updatedMessages = append(updatedMessages, *message)
+	}
+
+	return updatedMessages, nil
+}
+
+func (r *messageRepository) BulkDelete(ctx context.Context, ids []string) error {
+	_, _, err := r.supabaseClient.
+		From(r.table).
+		Delete("minimal", "").
+		In("id", ids).
+		Execute()
+	return err
+}
+
+func (r *messageRepository) FindMessagesByThread(ctx context.Context, threadID string) ([]models.MessageDTO, error) {
+	var messages []models.MessageDTO
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*, sender:users_view(*, profile:users_profile(*))", "", false).
+		Eq("thread_id", threadID).
+		Order("created_at", &postgrest.OrderOpts{Ascending: true}).
+		ExecuteTo(&messages)
+
+	// If no messages found, return empty slice instead of error
+	if err != nil && !strings.Contains(err.Error(), "no rows") {
+		return nil, err
+	}
+
+	return messages, nil
+}
+
+func (r *messageRepository) FindMessagesByUser(ctx context.Context, userID string) ([]models.MessageDTO, error) {
+	var messages []models.MessageDTO
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*, sender:users_view(*, profile:users_profile(*))", "", false).
+		Eq("sender_id", userID).
+		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
+		ExecuteTo(&messages)
+	return messages, err
+}
+
+func (r *messageRepository) FindRecentMessages(ctx context.Context, limit int) ([]models.MessageDTO, error) {
+	var messageDTOs []models.MessageDTO
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*, sender:users_view(*, profile:users_profile(*))", "", false).
+		Order("created_at", &postgrest.OrderOpts{Ascending: false}).
+		Limit(limit, "").
+		ExecuteTo(&messageDTOs)
+	if err != nil {
+		return nil, err
+	}
+
+	return messageDTOs, nil
 }

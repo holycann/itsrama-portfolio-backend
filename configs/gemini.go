@@ -22,9 +22,9 @@ func loadGeminiAIConfig() GeminiAIConfig {
 			return &val
 		}(),
 		TopP: func() *float32 {
-			val := getEnvAsFloat32("GEMINI_TOP_P", 0.8)
+			val := getEnvAsFloat32("GEMINI_TOP_P", 0.85)
 			return &val
 		}(),
-		MaxTokens: getEnvAsInt("GEMINI_MAX_TOKEN", 2048),
+		MaxTokens: getEnvAsInt("GEMINI_MAX_TOKEN", 256),
 	}
 }

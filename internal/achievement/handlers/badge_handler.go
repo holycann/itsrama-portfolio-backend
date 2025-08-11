@@ -1,292 +1,335 @@
 package handlers
 
 import (
-	"encoding/json"
-	"math"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/holycann/cultour-backend/internal/achievement/models"
 	"github.com/holycann/cultour-backend/internal/achievement/services"
-	"github.com/holycann/cultour-backend/internal/logger"
-	"github.com/holycann/cultour-backend/internal/response"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
+	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/cultour-backend/pkg/logger"
+	_ "github.com/holycann/cultour-backend/pkg/response"
+	"github.com/holycann/cultour-backend/pkg/validator"
 )
 
 // BadgeHandler handles HTTP requests related to badges
+// @Description Manages badge-related operations such as creation, retrieval, update, and deletion
 type BadgeHandler struct {
+	base.BaseHandler
 	service services.BadgeService
-	logger  *logger.Logger
 }
 
 // NewBadgeHandler creates a new instance of BadgeHandler
+// @Description Initializes a new BadgeHandler with the provided BadgeService and logger
 func NewBadgeHandler(service services.BadgeService, logger *logger.Logger) *BadgeHandler {
 	return &BadgeHandler{
-		service: service,
-		logger:  logger,
+		BaseHandler: *base.NewBaseHandler(logger),
+		service:     service,
 	}
 }
 
 // CreateBadge godoc
-// @Summary Create a new badge
-// @Description Add a new badge to the system
-// @Tags badges
+// @Summary Create a new badge in the system
+// @Description Allows administrators to create a new achievement badge with detailed metadata
+// @Description Requires admin authentication and authorization
+// @Tags Badges
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param badge body models.BadgeCreate true "Badge Information"
-// @Success 201 {object} response.APIResponse{data=models.Badge} "Badge created successfully"
-// @Failure 400 {object} response.APIResponse "Invalid badge creation details"
-// @Failure 500 {object} response.APIResponse "Internal server error"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param badge body models.BadgeCreate true "Badge Creation Details"
+// @Success 201 {object} response.APIResponse{data=models.BadgeDTO} "Badge successfully created with full details"
+// @Failure 400 {object} response.APIResponse "Invalid badge creation payload or validation error"
+// @Failure 401 {object} response.APIResponse "Authentication required - missing or invalid token"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges (admin role required)"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge creation"
 // @Router /badges [post]
 func (h *BadgeHandler) CreateBadge(c *gin.Context) {
 	var badgeCreate models.BadgeCreate
+
+	// Validate request body
 	if err := c.ShouldBindJSON(&badgeCreate); err != nil {
-		h.logger.Error("Error binding badge: %v", err)
-		response.BadRequest(c, "Invalid badge creation details", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid request body"))
 		return
 	}
 
-	// Validate required fields
-	if badgeCreate.Name == "" {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"name": badgeCreate.Name == "",
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
+	// Validate badge creation payload
+	if err := validator.ValidateStruct(badgeCreate); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Validation failed"))
 		return
 	}
 
-	err := h.service.CreateBadge(c.Request.Context(), &badgeCreate)
+	// Create badge through service
+	createdBadge, err := h.service.CreateBadge(c.Request.Context(), &badgeCreate)
 	if err != nil {
-		h.logger.Error("Failed to create badge: %v", err)
-		response.InternalServerError(c, "Failed to create badge", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to create badge"))
 		return
 	}
 
-	response.SuccessCreated(c, badgeCreate, "Badge created successfully")
-}
-
-// GetBadgeByID godoc
-// @Summary Get a specific badge
-// @Description Retrieve a badge by its unique identifier
-// @Tags badges
-// @Produce json
-// @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Badge ID"
-// @Success 200 {object} response.APIResponse{data=models.Badge} "Badge retrieved successfully"
-// @Failure 400 {object} response.APIResponse "Badge ID is required"
-// @Failure 404 {object} response.APIResponse "Badge not found"
-// @Router /badges/{id} [get]
-func (h *BadgeHandler) GetBadgeByID(c *gin.Context) {
-	// Get badge ID from path parameter
-	badgeID := c.Param("id")
-	if badgeID == "" {
-		response.BadRequest(c, "Badge ID is required", "Missing badge ID", "")
-		return
-	}
-
-	badge, err := h.service.GetBadgeByID(c.Request.Context(), badgeID)
-	if err != nil {
-		h.logger.Error("Failed to retrieve badge: %v", err)
-		response.NotFound(c, "Badge not found", err.Error(), "")
-		return
-	}
-
-	response.SuccessOK(c, badge, "Badge retrieved successfully")
+	// Respond with created badge
+	h.HandleCreated(c, createdBadge, "Badge created successfully")
 }
 
 // ListBadges godoc
-// @Summary List badges
-// @Description Retrieve a list of badges with pagination and filtering
-// @Tags badges
+// @Summary Retrieve a list of badges
+// @Description Fetches a paginated list of badges with optional filtering and sorting
+// @Description Supports pagination, sorting, and name-based filtering
+// @Tags Badges
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param limit query int false "Number of badges to retrieve" default(10)
-// @Param offset query int false "Number of badges to skip" default(0)
-// @Param sort_by query string false "Field to sort by" default("created_at")
-// @Param sort_order query string false "Sort order (asc/desc)" default("desc")
-// @Success 200 {object} response.APIResponse{data=[]models.Badge} "Badges retrieved successfully"
-// @Failure 500 {object} response.APIResponse "Failed to list badges"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param limit query int false "Maximum number of badges to return" default(10) minimum(1) maximum(100)
+// @Param offset query int false "Number of badges to skip for pagination" default(0) minimum(0)
+// @Param sort_by query string false "Field to sort badges by" default("created_at)" Enum(created_at,name,id)
+// @Param sort_order query string false "Sort direction" default("desc)" Enum(asc,desc)
+// @Param name query string false "Filter badges by partial name match"
+// @Success 200 {object} response.APIResponse{data=[]models.BadgeDTO} "Successfully retrieved badge list"
+// @Success 204 {object} response.APIResponse "No badges found"
+// @Failure 400 {object} response.APIResponse "Invalid query parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge retrieval"
 // @Router /badges [get]
 func (h *BadgeHandler) ListBadges(c *gin.Context) {
-	// Parse pagination parameters with defaults
+	// Parse pagination parameters
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 	sortBy := c.DefaultQuery("sort_by", "created_at")
 	sortOrder := c.DefaultQuery("sort_order", "desc")
 
-	// Validate pagination parameters
-	if limit <= 0 {
-		limit = 10
+	// Prepare list options
+	listOptions := base.ListOptions{
+		Page:      offset/limit + 1,
+		PerPage:   limit,
+		SortBy:    sortBy,
+		SortOrder: base.SortDescending,
 	}
-	if offset < 0 {
-		offset = 0
+	if sortOrder == "asc" {
+		listOptions.SortOrder = base.SortAscending
 	}
 
 	// Optional filtering
-	filters := []repository.FilterOption{}
 	if name := c.Query("name"); name != "" {
-		filters = append(filters, repository.FilterOption{
+		listOptions.Filters = append(listOptions.Filters, base.FilterOption{
 			Field:    "name",
-			Operator: "like",
+			Operator: base.OperatorLike,
 			Value:    name,
 		})
 	}
 
 	// Retrieve badges
-	badges, err := h.service.ListBadges(c.Request.Context(), repository.ListOptions{
-		Limit:     limit,
-		Offset:    offset,
-		SortBy:    sortBy,
-		SortOrder: repository.SortDescending,
-		Filters:   filters,
-	})
-	if sortOrder == "asc" {
-		badges, err = h.service.ListBadges(c.Request.Context(), repository.ListOptions{
-			Limit:     limit,
-			Offset:    offset,
-			SortBy:    sortBy,
-			SortOrder: repository.SortAscending,
-			Filters:   filters,
-		})
-	}
+	badges, totalBadges, err := h.service.ListBadges(c.Request.Context(), listOptions)
 	if err != nil {
-		h.logger.Error("Failed to list badges: %v", err)
-		response.InternalServerError(c, "Failed to list badges", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to retrieve badges"))
 		return
-	}
-
-	// Count total badges for pagination
-	totalBadges, err := h.service.CountBadges(c.Request.Context(), filters)
-	if err != nil {
-		h.logger.Error("Failed to count badges: %v", err)
-		response.InternalServerError(c, "Failed to count badges", err.Error(), "")
-		return
-	}
-
-	// Create pagination struct
-	pagination := &response.Pagination{
-		Total:       totalBadges,
-		Page:        offset/limit + 1,
-		PerPage:     limit,
-		TotalPages:  int(math.Ceil(float64(totalBadges) / float64(limit))),
-		HasNextPage: offset+limit < totalBadges,
 	}
 
 	// Respond with badges and pagination
-	response.SuccessOK(c, badges, "Badges retrieved successfully", pagination)
+	h.HandlePagination(c, badges, totalBadges, listOptions)
+}
+
+// SearchBadges godoc
+// @Summary Search badges by query
+// @Description Performs a full-text search across badge name, description, and other relevant fields
+// @Description Supports advanced search with pagination and relevance ranking
+// @Tags Badges
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param query query string true "Search term for finding badges" minlength(2)
+// @Param limit query int false "Maximum number of search results" default(10) minimum(1) maximum(100)
+// @Param offset query int false "Number of results to skip" default(0) minimum(0)
+// @Success 200 {object} response.APIResponse{data=[]models.BadgeDTO} "Successfully found matching badges"
+// @Success 204 {object} response.APIResponse "No badges match the search query"
+// @Failure 400 {object} response.APIResponse "Invalid search parameters"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge search"
+// @Router /badges/search [get]
+func (h *BadgeHandler) SearchBadges(c *gin.Context) {
+	// Get search query
+	query := c.Query("query")
+	if query == "" {
+		h.HandleError(c, errors.New(errors.ErrValidation, "Search query is required", nil))
+		return
+	}
+
+	// Parse pagination parameters
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	// Prepare list options for search
+	listOptions := base.ListOptions{
+		Page:    offset/limit + 1,
+		PerPage: limit,
+		Search:  query,
+	}
+
+	// Search badges
+	badges, totalBadges, err := h.service.SearchBadges(c.Request.Context(), listOptions)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to search badges"))
+		return
+	}
+
+	// Respond with badges and pagination
+	h.HandlePagination(c, badges, totalBadges, listOptions)
 }
 
 // UpdateBadge godoc
-// @Summary Update a badge
-// @Description Update an existing badge by its ID
-// @Tags badges
+// @Summary Update an existing badge
+// @Description Allows administrators to modify badge details by its unique identifier
+// @Description Supports partial updates with optional fields
+// @Tags Badges
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Badge ID"
-// @Param badge body models.BadgeCreate true "Badge Update Information"
-// @Success 200 {object} response.APIResponse{data=models.Badge} "Badge updated successfully"
-// @Failure 400 {object} response.APIResponse "Invalid badge update details or missing ID"
-// @Failure 500 {object} response.APIResponse "Failed to update badge"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Badge Identifier" format(uuid)
+// @Param badge body models.BadgeUpdate true "Badge Update Payload"
+// @Success 200 {object} response.APIResponse{data=models.BadgeDTO} "Badge successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid badge update payload or ID"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
+// @Failure 404 {object} response.APIResponse "Badge not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge update"
 // @Router /badges/{id} [put]
 func (h *BadgeHandler) UpdateBadge(c *gin.Context) {
 	// Get badge ID from path parameter
-	badgeID := c.Param("id")
-	if badgeID == "" {
-		response.BadRequest(c, "Badge ID is required", "Missing badge ID", "")
-		return
-	}
-
-	var badgeUpdate models.BadgeCreate
-	if err := c.ShouldBindJSON(&badgeUpdate); err != nil {
-		h.logger.Error("Error binding badge update: %v", err)
-		response.BadRequest(c, "Invalid badge update details", err.Error(), "")
-		return
-	}
-
-	// Validate required fields
-	if badgeUpdate.Name == "" {
-		// Convert map to JSON string for error details
-		details, _ := json.Marshal(map[string]interface{}{
-			"name": badgeUpdate.Name == "",
-		})
-		response.BadRequest(c, "Missing required fields", string(details), "")
-		return
-	}
-
-	err := h.service.UpdateBadge(c.Request.Context(), badgeID, &badgeUpdate)
+	badgeIDStr := c.Param("id")
+	badgeID, err := h.ValidateUUID(badgeIDStr, "badge_id")
 	if err != nil {
-		h.logger.Error("Failed to update badge: %v", err)
-		response.InternalServerError(c, "Failed to update badge", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid badge ID"))
 		return
 	}
 
-	response.SuccessOK(c, badgeUpdate, "Badge updated successfully")
+	// Create a badge update model to bind request body
+	var updateBadge models.BadgeUpdate
+
+	// Bind and validate input
+	if err := c.ShouldBindJSON(&updateBadge); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid request body"))
+		return
+	}
+
+	// Validate badge update payload
+	if err := validator.ValidateStruct(updateBadge); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Validation failed"))
+		return
+	}
+
+	// Set the ID from path parameter
+	updateBadge.ID = badgeID
+
+	// Update badge
+	updatedBadge, err := h.service.UpdateBadge(c.Request.Context(), badgeIDStr, &updateBadge)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to update badge"))
+		return
+	}
+
+	// Respond with success
+	h.HandleSuccess(c, updatedBadge, "Badge updated successfully")
 }
 
 // DeleteBadge godoc
 // @Summary Delete a badge
-// @Description Remove a badge from the system by its ID
-// @Tags badges
+// @Description Permanently removes a badge from the system by its unique identifier
+// @Description Requires administrative privileges
+// @Tags Badges
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Param id path string true "Badge ID"
-// @Success 200 {object} response.APIResponse "Deleted successfully"
-// @Failure 400 {object} response.APIResponse "Badge ID is required"
-// @Failure 500 {object} response.APIResponse "Failed to delete badge"
+// @Param Authorization header string true "Admin JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Badge Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse "Badge successfully deleted"
+// @Failure 400 {object} response.APIResponse "Invalid badge ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 403 {object} response.APIResponse "Forbidden - insufficient privileges"
+// @Failure 404 {object} response.APIResponse "Badge not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge deletion"
 // @Router /badges/{id} [delete]
 func (h *BadgeHandler) DeleteBadge(c *gin.Context) {
 	// Get badge ID from path parameter
-	badgeID := c.Param("id")
-	if badgeID == "" {
-		response.BadRequest(c, "Badge ID is required", "Missing badge ID", "")
-		return
-	}
-
-	err := h.service.DeleteBadge(c.Request.Context(), badgeID)
+	badgeIDStr := c.Param("id")
+	badgeID, err := h.ValidateUUID(badgeIDStr, "badge_id")
 	if err != nil {
-		h.logger.Error("Failed to delete badge: %v", err)
-		response.InternalServerError(c, "Failed to delete badge", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid badge ID"))
 		return
 	}
 
-	response.SuccessOK(c, nil, "Badge deleted successfully")
+	// Delete badge
+	if err := h.service.DeleteBadge(c.Request.Context(), badgeIDStr); err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to delete badge"))
+		return
+	}
+
+	// Respond with success
+	h.HandleSuccess(c, gin.H{
+		"id": badgeID,
+	}, "Badge deleted successfully")
+}
+
+// GetBadgeByID godoc
+// @Summary Retrieve a specific badge
+// @Description Fetches detailed information about a badge by its unique identifier
+// @Tags Badges
+// @Produce json
+// @Security ApiKeyAuth
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param id path string true "Unique Badge Identifier" format(uuid)
+// @Success 200 {object} response.APIResponse{data=models.BadgeDTO} "Successfully retrieved badge details"
+// @Failure 400 {object} response.APIResponse "Invalid badge ID format"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 404 {object} response.APIResponse "Badge not found"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge retrieval"
+// @Router /badges/{id} [get]
+func (h *BadgeHandler) GetBadgeByID(c *gin.Context) {
+	// Get badge ID from path parameter
+	badgeIDStr := c.Param("id")
+	_, err := h.ValidateUUID(badgeIDStr, "badge_id")
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid badge ID"))
+		return
+	}
+
+	// Retrieve badge
+	badge, err := h.service.GetBadgeByID(c.Request.Context(), badgeIDStr)
+	if err != nil {
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Badge not found"))
+		return
+	}
+
+	// Respond with badge details
+	h.HandleSuccess(c, badge, "Badge retrieved successfully")
 }
 
 // CountBadges godoc
-// @Summary Count badges
-// @Description Retrieve the total number of badges in the system
-// @Tags badges
+// @Summary Count total number of badges
+// @Description Returns the total count of badges in the system, with optional name filtering
+// @Tags Badges
 // @Produce json
 // @Security ApiKeyAuth
-// @Param Authorization header string false "JWT Token (without 'Bearer ' prefix)"
-// @Success 200 {object} response.APIResponse{data=int} "Badge count retrieved successfully"
-// @Failure 500 {object} response.APIResponse "Failed to count badges"
+// @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
+// @Param name query string false "Optional filter to count badges by name"
+// @Success 200 {object} response.APIResponse{data=int} "Successfully retrieved badge count"
+// @Failure 401 {object} response.APIResponse "Authentication required"
+// @Failure 500 {object} response.APIResponse "Internal server error during badge count"
 // @Router /badges/count [get]
 func (h *BadgeHandler) CountBadges(c *gin.Context) {
 	// Optional filtering
-	filters := []repository.FilterOption{}
+	filters := []base.FilterOption{}
 	if name := c.Query("name"); name != "" {
-		filters = append(filters, repository.FilterOption{
+		filters = append(filters, base.FilterOption{
 			Field:    "name",
-			Operator: "like",
+			Operator: base.OperatorLike,
 			Value:    name,
 		})
 	}
 
 	count, err := h.service.CountBadges(c.Request.Context(), filters)
 	if err != nil {
-		h.logger.Error("Failed to count badges: %v", err)
-		response.InternalServerError(c, "Failed to count badges", err.Error(), "")
+		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to count badges"))
 		return
 	}
 
-	response.SuccessOK(c, count, "Badge count retrieved successfully")
+	h.HandleSuccess(c, count, "Badge count retrieved successfully")
 }

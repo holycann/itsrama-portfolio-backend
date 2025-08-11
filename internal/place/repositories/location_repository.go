@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/holycann/cultour-backend/internal/place/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
 	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
@@ -24,32 +24,32 @@ func NewLocationRepository(supabaseClient *supabase.Client) LocationRepository {
 	}
 }
 
-func (r *locationRepository) Create(ctx context.Context, location *models.Location) error {
+func (r *locationRepository) Create(ctx context.Context, location *models.Location) (*models.Location, error) {
 	_, _, err := r.supabaseClient.
 		From(r.table).
 		Insert(location, false, "", "minimal", "").
 		Execute()
-	return err
+	return location, err
 }
 
-func (r *locationRepository) FindByID(ctx context.Context, id string) (*models.Location, error) {
-	var location *models.Location
+func (r *locationRepository) FindByID(ctx context.Context, id string) (*models.LocationDTO, error) {
+	var location *models.LocationDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, city:cities(*)", "", false).
 		Eq("id", id).
 		Single().
 		ExecuteTo(&location)
 	return location, err
 }
 
-func (r *locationRepository) Update(ctx context.Context, location *models.Location) error {
+func (r *locationRepository) Update(ctx context.Context, location *models.Location) (*models.Location, error) {
 	_, _, err := r.supabaseClient.
 		From(r.table).
 		Update(location, "minimal", "").
 		Eq("id", location.ID.String()).
 		Execute()
-	return err
+	return location, err
 }
 
 func (r *locationRepository) Delete(ctx context.Context, id string) error {
@@ -61,36 +61,37 @@ func (r *locationRepository) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-func (r *locationRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.Location, error) {
-	var locations []models.Location
+func (r *locationRepository) List(ctx context.Context, opts base.ListOptions) ([]models.LocationDTO, error) {
+	var locations []models.LocationDTO
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false)
+		Select("*, city:cities(*)", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	// Apply sorting
 	if opts.SortBy != "" {
-		ascending := opts.SortOrder == repository.SortAscending
+		ascending := opts.SortOrder == base.SortAscending
 		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
 	}
 
 	// Apply pagination
-	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+	limit, offset := opts.LimitOffset()
+	query = query.Range(offset, offset+limit-1, "")
 
 	_, err := query.ExecuteTo(&locations)
 	return locations, err
 }
 
-func (r *locationRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (r *locationRepository) Count(ctx context.Context, filters []base.FilterOption) (int, error) {
 	query := r.supabaseClient.
 		From(r.table).
 		Select("id", "exact", false)
@@ -98,9 +99,9 @@ func (r *locationRepository) Count(ctx context.Context, filters []repository.Fil
 	// Apply filters
 	for _, filter := range filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
@@ -121,58 +122,37 @@ func (r *locationRepository) Exists(ctx context.Context, id string) (bool, error
 	return true, nil
 }
 
-func (r *locationRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.Location, error) {
-	var locations []models.Location
+func (r *locationRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.LocationDTO, error) {
+	var locations []models.LocationDTO
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false).
+		Select("*, city:cities(*)", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
 		ExecuteTo(&locations)
 	return locations, err
 }
 
-// Specialized methods for locations
-func (r *locationRepository) FindLocationsByCity(ctx context.Context, cityID string) ([]models.Location, error) {
-	var locations []models.Location
-	_, err := r.supabaseClient.
-		From(r.table).
-		Select("*", "", false).
-		Eq("city_id", cityID).
-		ExecuteTo(&locations)
-	return locations, err
-}
-
-// func (r *locationRepository) FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.Location, error) {
-// 	var locations []models.Location
-// 	_, err := r.supabaseClient.
-// 		From(r.table).
-// 		Select("*", "", false).
-// 		Or(fmt.Sprintf("(6371 * acos(cos(radians(%f)) * cos(radians(latitude)) * cos(radians(longitude) - radians(%f)) + sin(radians(%f)) * sin(radians(latitude)))) <= %f", latitude, longitude, latitude, radius), "").
-// 		ExecuteTo(&locations)
-// 	return locations, err
-// }
-
-func (r *locationRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.Location, int, error) {
-	var locations []models.Location
+func (r *locationRepository) Search(ctx context.Context, opts base.ListOptions) ([]models.LocationDTO, int, error) {
+	var locations []models.LocationDTO
 
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*", "", false)
+		Select("*, city:cities(*)", "", false)
 
 	// Apply search query if provided
-	if opts.SearchQuery != "" {
+	if opts.Search != "" {
 		query = query.Or(
-			fmt.Sprintf("name.ilike.%%%s%%", opts.SearchQuery),
-			fmt.Sprintf("description.ilike.%%%s%%", opts.SearchQuery),
+			fmt.Sprintf("name.ilike.%%%s%%", opts.Search),
+			"",
 		)
 	}
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
@@ -190,4 +170,79 @@ func (r *locationRepository) Search(ctx context.Context, opts repository.ListOpt
 	}
 
 	return locations, int(count), nil
+}
+
+func (r *locationRepository) BulkCreate(ctx context.Context, locations []*models.Location) ([]models.Location, error) {
+	var createdLocations []models.Location
+	for _, location := range locations {
+		_, err := r.supabaseClient.
+			From(r.table).
+			Insert(location, false, "", "minimal", "").
+			ExecuteTo(&location)
+		if err != nil {
+			return nil, err
+		}
+		createdLocations = append(createdLocations, *location)
+	}
+	return createdLocations, nil
+}
+
+func (r *locationRepository) BulkUpdate(ctx context.Context, locations []*models.Location) ([]models.Location, error) {
+	var updatedLocations []models.Location
+	for _, location := range locations {
+		_, _, err := r.supabaseClient.
+			From(r.table).
+			Update(location, "minimal", "").
+			Eq("id", location.ID.String()).
+			Execute()
+		if err != nil {
+			return nil, err
+		}
+		updatedLocations = append(updatedLocations, *location)
+	}
+	return updatedLocations, nil
+}
+
+func (r *locationRepository) BulkDelete(ctx context.Context, ids []string) error {
+	_, _, err := r.supabaseClient.
+		From(r.table).
+		Delete("minimal", "").
+		In("id", ids).
+		Execute()
+	return err
+}
+
+// Specialized methods for locations
+func (r *locationRepository) FindLocationsByCity(ctx context.Context, cityID string) ([]models.LocationDTO, error) {
+	var locations []models.LocationDTO
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*, city:cities(*)", "", false).
+		Eq("city_id", cityID).
+		ExecuteTo(&locations)
+	return locations, err
+}
+
+func (r *locationRepository) FindLocationsByProximity(ctx context.Context, latitude, longitude float64, radius float64) ([]models.LocationDTO, error) {
+	var locations []models.LocationDTO
+
+	// Use the PostGIS ST_DWithin function that works with the location field (geography type)
+	// ST_DWithin checks if locations are within the specified radius (in meters)
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*, city:cities(*)", "", false).
+		Or(fmt.Sprintf("ST_DWithin(location, ST_MakePoint(%f, %f)::geography, %f)", longitude, latitude, radius), "").
+		ExecuteTo(&locations)
+
+	return locations, err
+}
+
+func (r *locationRepository) SearchLocationsByName(ctx context.Context, queryStr string) ([]models.LocationDTO, error) {
+	var locations []models.LocationDTO
+	_, err := r.supabaseClient.
+		From(r.table).
+		Select("*, city:cities(*)", "", false).
+		Like("name", fmt.Sprintf("%%%s%%", queryStr)).
+		ExecuteTo(&locations)
+	return locations, err
 }

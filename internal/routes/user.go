@@ -2,129 +2,140 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	achievementRepo "github.com/holycann/cultour-backend/internal/achievement/repositories"
-	achievementSvc "github.com/holycann/cultour-backend/internal/achievement/services"
-	"github.com/holycann/cultour-backend/internal/logger"
 	"github.com/holycann/cultour-backend/internal/middleware"
-	"github.com/holycann/cultour-backend/internal/supabase"
 	"github.com/holycann/cultour-backend/internal/users/handlers"
-	"github.com/holycann/cultour-backend/internal/users/repositories"
-	"github.com/holycann/cultour-backend/internal/users/services"
 )
 
 func RegisterUserRoutes(
 	r *gin.Engine,
-	supabaseAuth *supabase.SupabaseAuth,
+	userHandler *handlers.UserHandler,
 	routerMiddleware *middleware.Middleware,
 ) {
-	userRepository := repositories.NewUserRepository(supabaseAuth.GetClient())
-	userService := services.NewUserService(userRepository)
-	userHandler := handlers.NewUserHandler(userService)
-
 	user := r.Group("/users")
 	{
-		user.POST("",
-			routerMiddleware.VerifyJWT(),
-			userHandler.CreateUser)
+		// Create a new user account
+		user.POST("", userHandler.CreateUser)
+
+		// List users (requires authentication and admin privileges)
 		user.GET("",
 			routerMiddleware.VerifyJWT(),
+			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			userHandler.ListUsers)
+
+		// Search users (requires authentication and admin privileges)
 		user.GET("/search",
 			routerMiddleware.VerifyJWT(),
+			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			userHandler.SearchUsers)
+
+		// Get user by ID (requires authentication)
 		user.GET("/:id",
 			routerMiddleware.VerifyJWT(),
-			userHandler.GetUserByID) // detail by id
+			userHandler.GetUserByID)
+
+		// Update user (requires authentication and admin privileges)
 		user.PUT("/:id",
 			routerMiddleware.VerifyJWT(),
+			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			userHandler.UpdateUser)
+
+		// Delete user (requires authentication and admin privileges)
 		user.DELETE("/:id",
 			routerMiddleware.VerifyJWT(),
+			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			userHandler.DeleteUser)
 	}
 }
 
 func RegisterUserProfileRoutes(
 	r *gin.Engine,
-	supabaseClient *supabase.SupabaseClient,
-	supabaseAuth *supabase.SupabaseAuth,
-	supabaseStorage *supabase.SupabaseStorage,
+	userProfileHandler *handlers.UserProfileHandler,
 	routerMiddleware *middleware.Middleware,
 ) {
-	userRepository := repositories.NewUserRepository(supabaseAuth.GetClient())
-	userProfileRepository := repositories.NewUserProfileRepository(supabaseClient.GetClient())
-
-	userBadgeRepository := repositories.NewUserBadgeRepository(supabaseClient.GetClient())
-	userProfileBadgeRepository := services.NewUserBadgeService(userBadgeRepository)
-
-	badgeRepository := achievementRepo.NewBadgeRepository(supabaseClient.GetClient())
-	badgeService := achievementSvc.NewBadgeService(badgeRepository)
-
-	userProfileService := services.NewUserProfileService(userProfileRepository, userRepository, userProfileBadgeRepository, badgeService, supabaseStorage)
-	userProfileHandler := handlers.NewUserProfileHandler(userProfileService)
-
-	profile := r.Group("/profile")
+	profile := r.Group("/users/profiles")
 	{
+		// Create a new user profile (requires authentication)
 		profile.POST("",
+			routerMiddleware.VerifyJWT(),
 			userProfileHandler.CreateUserProfile)
+
+		// List user profiles (requires authentication and admin privileges)
 		profile.GET("",
 			routerMiddleware.VerifyJWT(),
+			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			userProfileHandler.ListUsersProfile)
+
+		// Search user profiles (requires authentication and admin privileges)
 		profile.GET("/search",
 			routerMiddleware.VerifyJWT(),
+			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			userProfileHandler.SearchUserProfile)
+
+		// Get authenticated user's profile (requires authentication)
 		profile.GET("/me",
 			routerMiddleware.VerifyJWT(),
 			userProfileHandler.GetAuthenticatedUserProfile)
+
+		// Get user profile by ID (requires authentication)
 		profile.GET("/:id",
 			routerMiddleware.VerifyJWT(),
 			userProfileHandler.GetUserProfileById)
+
+		// Update user profile (requires authentication)
 		profile.PUT("/:id",
 			routerMiddleware.VerifyJWT(),
 			userProfileHandler.UpdateUserProfile)
+
+		// Update user profile avatar (requires authentication)
+		profile.PUT("/:id/avatar",
+			routerMiddleware.VerifyJWT(),
+			userProfileHandler.UpdateUserAvatar)
+
+		// Verify user identity (requires authentication)
+		profile.PUT("/:id/verify",
+			routerMiddleware.VerifyJWT(),
+			userProfileHandler.VerifyIdentity)
+
+		// Delete user profile (requires authentication and admin privileges)
 		profile.DELETE("/:id",
 			routerMiddleware.VerifyJWT(),
+			routerMiddleware.RequireRoleOrBadge("admin", ""),
 			userProfileHandler.DeleteUserProfile)
 	}
 }
 
 func RegisterUserBadgeRoutes(
 	r *gin.Engine,
-	supabaseClient *supabase.SupabaseClient,
+	userBadgeHandler *handlers.UserBadgeHandler,
 	routerMiddleware *middleware.Middleware,
-	appLogger *logger.Logger,
 ) {
-	userBadgeRepository := repositories.NewUserBadgeRepository(supabaseClient.GetClient())
-	userBadgeService := services.NewUserBadgeService(userBadgeRepository)
-	userBadgeHandler := handlers.NewUserBadgeHandler(userBadgeService, appLogger)
-
 	badges := r.Group("/users/badges")
 	{
+		// Assign a badge to a user (admin or specific role only)
 		badges.POST("",
 			routerMiddleware.VerifyJWT(),
 			routerMiddleware.RequireRoleOrBadge("admin", ""),
-			userBadgeHandler.AssignBadge,
-		)
+			userBadgeHandler.AssignBadge)
+
+		// Get user badges (requires authentication)
 		badges.GET("",
 			routerMiddleware.VerifyJWT(),
-			userBadgeHandler.GetUserBadges,
-		)
-		badges.GET("/search",
+			userBadgeHandler.GetUserBadges)
+
+		// Get user badges by specific user (requires authentication)
+		badges.GET("/:user_id",
 			routerMiddleware.VerifyJWT(),
-			userBadgeHandler.GetUserBadges, // Reuse GetUserBadges with query parameter
-		)
+			userBadgeHandler.GetUserBadgesByUser)
+
+		// Count user badges (requires authentication)
+		badges.GET("/count",
+			routerMiddleware.VerifyJWT(),
+			userBadgeHandler.CountUserBadges)
+
+		// Remove a badge from a user (admin or specific role only)
 		badges.DELETE("",
 			routerMiddleware.VerifyJWT(),
 			routerMiddleware.RequireRoleOrBadge("admin", ""),
-			userBadgeHandler.RemoveBadge,
-		)
-		badges.GET("/count",
-			routerMiddleware.VerifyJWT(),
-			userBadgeHandler.CountUserBadges,
-		)
-		badges.GET("/:user_id",
-			routerMiddleware.VerifyJWT(),
-			userBadgeHandler.GetUserBadgesByUser,
-		)
+			userBadgeHandler.RemoveBadge)
 	}
 }

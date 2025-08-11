@@ -6,8 +6,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/holycann/cultour-backend/internal/discussion/models"
-	"github.com/holycann/cultour-backend/pkg/repository"
+	"github.com/holycann/cultour-backend/pkg/base"
 	"github.com/supabase-community/postgrest-go"
 	"github.com/supabase-community/supabase-go"
 )
@@ -24,40 +25,47 @@ func NewThreadRepository(supabaseClient *supabase.Client) ThreadRepository {
 	}
 }
 
-func (r *threadRepository) Create(ctx context.Context, thread *models.Thread) error {
+func (r *threadRepository) Create(ctx context.Context, thread *models.Thread) (*models.Thread, error) {
 	_, _, err := r.supabaseClient.
 		From(r.table).
 		Insert(thread, false, "", "minimal", "").
 		Execute()
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	return thread, nil
 }
 
-func (r *threadRepository) FindByID(ctx context.Context, id string) (*models.ResponseThread, error) {
-	var responseThread *models.ResponseThread
+func (r *threadRepository) FindByID(ctx context.Context, id string) (*models.ThreadDTO, error) {
+	var threadDTO models.ThreadDTO
 
 	// Use join to fetch thread and participant in a single query
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*)", "", false).
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false).
 		Eq("id", id).
 		Single().
-		ExecuteTo(&responseThread)
+		ExecuteTo(&threadDTO)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return responseThread, nil
+	return &threadDTO, nil
 }
 
-func (r *threadRepository) Update(ctx context.Context, thread *models.Thread) error {
-	// Update only the thread part
+func (r *threadRepository) Update(ctx context.Context, thread *models.Thread) (*models.Thread, error) {
 	_, _, err := r.supabaseClient.
 		From(r.table).
-		Update(&thread, "minimal", "").
+		Update(thread, "minimal", "").
 		Eq("id", thread.ID.String()).
 		Execute()
-	return err
+	if err != nil {
+		return nil, err
+	}
+
+	return thread, nil
 }
 
 func (r *threadRepository) Delete(ctx context.Context, id string) error {
@@ -69,41 +77,42 @@ func (r *threadRepository) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-func (r *threadRepository) List(ctx context.Context, opts repository.ListOptions) ([]models.ResponseThread, error) {
-	var responseThreads []models.ResponseThread
+func (r *threadRepository) List(ctx context.Context, opts base.ListOptions) ([]models.ThreadDTO, error) {
+	var threads []models.ThreadDTO
 
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*)", "", false)
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	// Apply sorting
 	if opts.SortBy != "" {
-		ascending := opts.SortOrder == repository.SortAscending
+		ascending := opts.SortOrder == base.SortAscending
 		query = query.Order(opts.SortBy, &postgrest.OrderOpts{Ascending: ascending})
 	}
 
 	// Apply pagination
-	query = query.Range(opts.Offset, opts.Offset+opts.Limit-1, "")
+	limit, offset := opts.LimitOffset()
+	query = query.Range(offset, offset+limit-1, "")
 
-	_, err := query.ExecuteTo(&responseThreads)
+	_, err := query.ExecuteTo(&threads)
 	if err != nil {
 		return nil, err
 	}
 
-	return responseThreads, nil
+	return threads, nil
 }
 
-func (r *threadRepository) Count(ctx context.Context, filters []repository.FilterOption) (int, error) {
+func (r *threadRepository) Count(ctx context.Context, filters []base.FilterOption) (int, error) {
 	query := r.supabaseClient.
 		From(r.table).
 		Select("id", "exact", false)
@@ -111,9 +120,9 @@ func (r *threadRepository) Count(ctx context.Context, filters []repository.Filte
 	// Apply filters
 	for _, filter := range filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
@@ -127,89 +136,93 @@ func (r *threadRepository) Count(ctx context.Context, filters []repository.Filte
 }
 
 func (r *threadRepository) Exists(ctx context.Context, id string) (bool, error) {
-	_, err := r.FindByID(ctx, id)
+	_, count, err := r.supabaseClient.
+		From(r.table).
+		Select("id", "exact", true).
+		Eq("id", id).
+		Limit(1, "").
+		Execute()
 	if err != nil {
 		return false, err
 	}
-	return true, nil
+	return count > 0, nil
 }
 
-func (r *threadRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ResponseThread, error) {
-	var responseThreads []models.ResponseThread
+func (r *threadRepository) FindByField(ctx context.Context, field string, value interface{}) ([]models.ThreadDTO, error) {
+	var threads []models.ThreadDTO
 
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*)", "", false).
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
-		ExecuteTo(&responseThreads)
+		ExecuteTo(&threads)
 	if err != nil {
 		return nil, err
 	}
 
-	return responseThreads, nil
+	return threads, nil
 }
 
-func (r *threadRepository) FindThreadByEvent(ctx context.Context, eventID string) (*models.ResponseThread, error) {
-	var responseThread *models.ResponseThread
+func (r *threadRepository) FindThreadByEvent(ctx context.Context, eventID string) (*models.ThreadDTO, error) {
+	var thread *models.ThreadDTO
 
-	// Find the thread using a join to get the first participant
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*)", "", false).
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false).
 		Eq("event_id", eventID).
 		Single().
-		ExecuteTo(&responseThread)
+		ExecuteTo(&thread)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return responseThread, nil
+	return thread, nil
 }
 
-func (r *threadRepository) FindActiveThreads(ctx context.Context, limit int) ([]models.ResponseThread, error) {
-	var responseThreads []models.ResponseThread
+func (r *threadRepository) FindActiveThreads(ctx context.Context, limit int) ([]models.ThreadDTO, error) {
+	var threads []models.ThreadDTO
 
 	_, err := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*)", "", false).
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false).
 		Eq("status", "active").
 		Limit(limit, "").
-		ExecuteTo(&responseThreads)
+		ExecuteTo(&threads)
 	if err != nil {
 		return nil, err
 	}
 
-	return responseThreads, nil
+	return threads, nil
 }
 
-func (r *threadRepository) Search(ctx context.Context, opts repository.ListOptions) ([]models.ResponseThread, int, error) {
-	var responseThreads []models.ResponseThread
+func (r *threadRepository) Search(ctx context.Context, opts base.ListOptions) ([]models.ThreadDTO, int, error) {
+	var threads []models.ThreadDTO
 
 	query := r.supabaseClient.
 		From(r.table).
-		Select("*, discussion_participants(*)", "", false)
+		Select("*, discussion_participants(*), creator:users_view!threads_creator_id_fkey(*)", "", false)
 
 	// Apply search query if provided
-	if opts.SearchQuery != "" {
+	if opts.Search != "" {
 		query = query.Or(
-			fmt.Sprintf("title.ilike.%%%s%%", opts.SearchQuery),
-			fmt.Sprintf("description.ilike.%%%s%%", opts.SearchQuery),
+			fmt.Sprintf("title.ilike.%%%s%%", opts.Search),
+			fmt.Sprintf("description.ilike.%%%s%%", opts.Search),
 		)
 	}
 
 	// Apply filters
 	for _, filter := range opts.Filters {
 		switch filter.Operator {
-		case "=":
+		case base.OperatorEqual:
 			query = query.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
-		case "like":
+		case base.OperatorLike:
 			query = query.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
 		}
 	}
 
 	// Execute query to get results
-	_, err := query.ExecuteTo(&responseThreads)
+	_, err := query.ExecuteTo(&threads)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to search threads: %w", err)
 	}
@@ -220,25 +233,81 @@ func (r *threadRepository) Search(ctx context.Context, opts repository.ListOptio
 		return nil, 0, fmt.Errorf("failed to count threads: %w", err)
 	}
 
-	return responseThreads, int(count), nil
+	return threads, int(count), nil
 }
 
-func (r *threadRepository) JoinThread(ctx context.Context, threadID, userID string) error {
-	// Prepare the data for insertion into discussion_participants table
-	data := map[string]interface{}{
-		"thread_id": threadID,
-		"user_id":   userID,
+func (r *threadRepository) BulkCreate(ctx context.Context, threads []*models.Thread) ([]models.Thread, error) {
+	var createdThreads []models.Thread
+
+	for _, thread := range threads {
+		// Generate UUID if not provided
+		if base.IsZero(thread.ID) {
+			thread.ID = uuid.New()
+		}
+
+		_, _, err := r.supabaseClient.
+			From(r.table).
+			Insert(thread, false, "", "minimal", "").
+			Execute()
+		if err != nil {
+			return nil, err
+		}
+
+		createdThreads = append(createdThreads, *thread)
 	}
 
-	// Insert the participant into the discussion_participants table
+	return createdThreads, nil
+}
+
+func (r *threadRepository) BulkUpdate(ctx context.Context, threads []*models.Thread) ([]models.Thread, error) {
+	var updatedThreads []models.Thread
+
+	for _, thread := range threads {
+		_, _, err := r.supabaseClient.
+			From(r.table).
+			Update(thread, "minimal", "").
+			Eq("id", thread.ID.String()).
+			Execute()
+		if err != nil {
+			return nil, err
+		}
+
+		updatedThreads = append(updatedThreads, *thread)
+	}
+
+	return updatedThreads, nil
+}
+
+func (r *threadRepository) BulkDelete(ctx context.Context, ids []string) error {
 	_, _, err := r.supabaseClient.
-		From("discussion_participants").
-		Insert(data, false, "", "minimal", "").
+		From(r.table).
+		Delete("minimal", "").
+		In("id", ids).
 		Execute()
+	return err
+}
 
-	if err != nil {
-		return fmt.Errorf("failed to join thread: %w", err)
+func (r *threadRepository) BulkUpsert(ctx context.Context, threads []*models.Thread) ([]models.ThreadDTO, error) {
+	var upsertedThreads []models.ThreadDTO
+
+	for _, thread := range threads {
+		// Generate UUID if not provided
+		if base.IsZero(thread.ID) {
+			thread.ID = uuid.New()
+		}
+
+		var upsertedThread models.ThreadDTO
+		_, err := r.supabaseClient.
+			From(r.table).
+			Upsert(thread, "id", "minimal", "").
+			Single().
+			ExecuteTo(&upsertedThread)
+		if err != nil {
+			return nil, err
+		}
+
+		upsertedThreads = append(upsertedThreads, upsertedThread)
 	}
 
-	return nil
+	return upsertedThreads, nil
 }
