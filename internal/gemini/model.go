@@ -125,6 +125,10 @@ type CreateChatSessionResponse struct {
 // SendMessageRequest represents the request payload for sending a message in a chat session
 // @Description Request structure for sending a message to the AI with content validation
 type SendMessageRequest struct {
+	// Unique identifier for the created chat session, used for message exchange
+	// @Example "session789"
+	SessionID string `json:"session_id"`
+
 	// Message content to be sent to the AI, with length restriction
 	// @Required true
 	// @Max length 500

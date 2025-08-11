@@ -97,15 +97,10 @@ func abs(x float64) float64 {
 	return x
 }
 
-func (s *eventService) CreateEvent(ctx context.Context, event *models.EventPayload, image *multipart.FileHeader) (*models.EventDTO, error) {
+func (s *eventService) CreateEvent(ctx context.Context, event *models.EventPayload) (*models.EventDTO, error) {
 	// Validate input
 	if err := base.ValidateModel(event); err != nil {
-		return nil, errors.New(
-			errors.ErrValidation,
-			"Invalid event payload",
-			err,
-			errors.WithContext("payload", event),
-		)
+		return nil, err
 	}
 
 	// Find or create location
@@ -133,8 +128,8 @@ func (s *eventService) CreateEvent(ctx context.Context, event *models.EventPaylo
 	}
 
 	// Upload image if provided
-	if image != nil {
-		imageURL, err := s.uploadEventImage(ctx, eventData.ID.String(), image)
+	if event.Image != nil {
+		imageURL, err := s.uploadEventImage(ctx, eventData.ID.String(), event.Image)
 		if err != nil {
 			return nil, errors.Wrap(err,
 				errors.ErrInternal,
@@ -243,7 +238,7 @@ func (s *eventService) ListEvents(ctx context.Context, opts base.ListOptions) ([
 	return events, total, nil
 }
 
-func (s *eventService) UpdateEvent(ctx context.Context, event *models.EventPayload, image *multipart.FileHeader) (*models.EventDTO, error) {
+func (s *eventService) UpdateEvent(ctx context.Context, event *models.EventPayload) (*models.EventDTO, error) {
 	// Validate input
 	if err := base.ValidateModel(event); err != nil {
 		return nil, errors.New(
@@ -253,8 +248,6 @@ func (s *eventService) UpdateEvent(ctx context.Context, event *models.EventPaylo
 			errors.WithContext("payload", event),
 		)
 	}
-
-	fmt.Println("event:", event.ID)
 
 	// Retrieve existing event
 	existingEvent, err := s.getEventDetails(ctx, event.ID.String())
@@ -291,8 +284,8 @@ func (s *eventService) UpdateEvent(ctx context.Context, event *models.EventPaylo
 	}
 
 	// Upload new image if provided
-	if image != nil {
-		imageURL, err := s.uploadEventImage(ctx, eventData.ID.String(), image)
+	if event.Image != nil {
+		imageURL, err := s.uploadEventImage(ctx, eventData.ID.String(), event.Image)
 		if err != nil {
 			return nil, errors.Wrap(err,
 				errors.ErrInternal,

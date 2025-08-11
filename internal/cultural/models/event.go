@@ -47,8 +47,8 @@ type Event struct {
 	// @Description Detailed explanation of the event's purpose, activities, and highlights
 	// @Description Provides comprehensive context for potential attendees
 	// @Example "A vibrant music festival featuring local and international artists"
-	// @MaxLength 500
-	Description string `json:"description" db:"description" validate:"required,max=500"`
+	// @MaxLength 5000
+	Description string `json:"description" db:"description" validate:"required,max=5000"`
 
 	// Event image URL
 	// @Description Public URL pointing to the event's primary image
@@ -238,8 +238,8 @@ type EventPayload struct {
 	// @Description Detailed explanation of the event's purpose, activities, and highlights
 	// @Description Provides comprehensive context for potential attendees
 	// @Example "A vibrant music festival featuring local and international artists"
-	// @MaxLength 500
-	Description string `form:"description" json:"description" validate:"required,max=500"`
+	// @MaxLength 5000
+	Description string `form:"description" json:"description" validate:"required,max=5000"`
 
 	// Location details
 	// @Description Comprehensive location information for the event

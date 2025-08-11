@@ -24,7 +24,7 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   -- ACEH
   (gen_random_uuid(), 'Banda Aceh', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/banda.png'),
   (gen_random_uuid(), 'Langsa', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/langsa.png'),
-  (gen_random_uuid(), 'Lhokseumawe', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/ilokseumawe.png'),
+  (gen_random_uuid(), 'Lhokseumawe', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/liokseumawe.png'),
   (gen_random_uuid(), 'Sabang', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/sabang.png'),
   (gen_random_uuid(), 'Subulussalam', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Subulussalam'),
   (gen_random_uuid(), 'Aceh Besar', (SELECT id FROM provinces WHERE name = 'Aceh'), 'https://placehold.co/600x400.jpg?text=Aceh+Besar'),
@@ -282,7 +282,7 @@ INSERT INTO public.cities (id, name, province_id, image_url) VALUES
   (gen_random_uuid(), 'Lebak', (SELECT id FROM provinces WHERE name = 'Banten'), 'https://placehold.co/600x400.jpg?text=Lebak'),
 
   -- BALI
-  (gen_random_uuid(), 'Denpasar', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/city/denpasar.png'),
+  (gen_random_uuid(), 'Denpasar', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://placehold.co/600x400.jpg?text=Denpasar'),
   (gen_random_uuid(), 'Badung', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://placehold.co/600x400.jpg?text=Badung'),
   (gen_random_uuid(), 'Gianyar', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://placehold.co/600x400.jpg?text=Gianyar'),
   (gen_random_uuid(), 'Tabanan', (SELECT id FROM provinces WHERE name = 'Bali'), 'https://placehold.co/600x400.jpg?text=Tabanan'),

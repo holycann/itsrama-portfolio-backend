@@ -104,8 +104,10 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 		return
 	}
 
+	eventInput.Image = fileHeader
+
 	// Create event via service
-	event, err := h.eventService.CreateEvent(c.Request.Context(), &eventInput, fileHeader)
+	event, err := h.eventService.CreateEvent(c.Request.Context(), &eventInput)
 	if err != nil {
 		h.HandleError(c, err)
 		return
@@ -162,8 +164,6 @@ func (h *EventHandler) validateAndExtractEventInput(c *gin.Context, eventInput *
 		)
 	}
 	eventInput.Location = &loc
-
-	eventInput.Location.CityID = uuid.MustParse(c.PostForm("city_id"))
 
 	return nil
 }
@@ -395,8 +395,10 @@ func (h *EventHandler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
+	eventInput.Image = fileHeader
+
 	// Update event via service
-	event, err := h.eventService.UpdateEvent(c.Request.Context(), &eventInput, fileHeader)
+	event, err := h.eventService.UpdateEvent(c.Request.Context(), &eventInput)
 	if err != nil {
 		h.HandleError(c, err)
 		return

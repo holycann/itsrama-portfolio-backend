@@ -26,9 +26,9 @@ type AIGenerationInterface interface {
 // AISessionInterface defines methods for managing chat sessions
 type AISessionInterface interface {
 	// Session management
-	CreateChatSession(userID string, eventID *string) (string, error)
+	CreateChatSession(payload CreateChatSessionRequest) (string, error)
 	GetChatSession(sessionID string) (*ChatSession, error)
-	SendMessage(sessionID, message string) (string, error)
+	SendMessage(payload SendMessageRequest) (string, error)
 	SendMessageWithContext(sessionID string, message string, context map[string]interface{}) (string, error)
 }
 
@@ -221,8 +221,8 @@ func (s *AIService) BuildContextAwarePrompt(ctx context.Context, params map[stri
 }
 
 // CreateChatSession creates a new chat session
-func (s *AIService) CreateChatSession(userID string, eventID *string) (string, error) {
-	session, err := s.client.CreateSession(userID, eventID)
+func (s *AIService) CreateChatSession(payload CreateChatSessionRequest) (string, error) {
+	session, err := s.client.CreateSession(payload.UserID, payload.EventID)
 	if err != nil {
 		return "", errors.Wrap(err, errors.ErrInternal, "failed to create chat session")
 	}
@@ -232,16 +232,16 @@ func (s *AIService) CreateChatSession(userID string, eventID *string) (string, e
 	defer cancel()
 
 	s.logger.Info("Creating chat session", map[string]interface{}{
-		"user_id":  userID,
-		"event_id": eventID,
+		"user_id":  payload.UserID,
+		"event_id": payload.EventID,
 	})
 
 	// Load user knowledge
-	_ = s.LoadUserKnowledge(ctx, userID)
+	_ = s.LoadUserKnowledge(ctx, payload.UserID)
 
 	// Load event knowledge if provided
-	if eventID != nil && *eventID != "" {
-		_ = s.LoadEventKnowledge(ctx, *eventID)
+	if payload.EventID != nil && *payload.EventID != "" {
+		_ = s.LoadEventKnowledge(ctx, *payload.EventID)
 	}
 
 	return session.ID, nil
@@ -253,14 +253,14 @@ func (s *AIService) GetChatSession(sessionID string) (*ChatSession, error) {
 }
 
 // SendMessage sends a message in an existing chat session
-func (s *AIService) SendMessage(sessionID, message string) (string, error) {
+func (s *AIService) SendMessage(payload SendMessageRequest) (string, error) {
 	// Add message to session
-	if err := s.client.AddMessage(sessionID, "user", message); err != nil {
+	if err := s.client.AddMessage(payload.SessionID, "user", payload.Message); err != nil {
 		return "", errors.Wrap(err, errors.ErrInternal, "failed to add message to session")
 	}
 
 	// Generate response
-	return s.client.GenerateResponse(sessionID, message)
+	return s.client.GenerateResponse(payload.SessionID, payload.Message)
 }
 
 // SendMessageWithContext sends a message with additional context
@@ -303,7 +303,10 @@ func (s *AIService) GenerateContent(ctx context.Context, query string, params ma
 		return "", errors.New(errors.ErrBadRequest, "user ID is required", nil)
 	}
 
-	sessionID, err := s.CreateChatSession(userID, &eventID)
+	sessionID, err := s.CreateChatSession(CreateChatSessionRequest{
+		UserID:  userID,
+		EventID: &eventID,
+	})
 	if err != nil {
 		return "", errors.Wrap(err, errors.ErrInternal, "failed to create temporary session")
 	}
@@ -339,6 +342,7 @@ func (s *AIService) buildEventDescriptionPrompt(params map[string]interface{}) s
 		prompt += "Additional Context: " + additional + "\n"
 	}
 	prompt += "\nFocus on cultural significance, unique highlights, audience appeal, and why it's special."
+	prompt += "\nMax 1000 characters with Indonesian language."
 	return prompt
 }
 

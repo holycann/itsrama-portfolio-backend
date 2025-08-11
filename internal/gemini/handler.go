@@ -126,13 +126,14 @@ func (h *GeminiHandler) CreateChatSession(c *gin.Context) {
 	}
 
 	var req CreateChatSessionRequest
+	req.UserID = userID
 	if err := h.ValidateRequest(c, &req); err != nil {
 		h.HandleError(c, errors.Wrap(err, errors.ErrBadRequest, "Invalid request format. Please provide a valid event ID."))
 		return
 	}
 
 	// Create chat session with event context if provided
-	sessionID, err := h.aiService.CreateChatSession(userID, req.EventID)
+	sessionID, err := h.aiService.CreateChatSession(req)
 	if err != nil {
 		h.HandleError(c, errors.Wrap(err, errors.ErrInternal, "Gagal membuat sesi. Silakan coba lagi."))
 		return
@@ -260,6 +261,7 @@ func (h *GeminiHandler) GenerateEventDescription(c *gin.Context) {
 
 	// Parse request body
 	var req GenerateEventDescriptionRequest
+
 	if err := h.ValidateRequest(c, &req); err != nil {
 		h.HandleError(c, errors.Wrap(err, errors.ErrBadRequest, "Invalid event title. Please provide a valid title."))
 		return

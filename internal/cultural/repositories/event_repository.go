@@ -257,6 +257,41 @@ func (r *eventRepository) FindPopularEvents(ctx context.Context, limit int) ([]m
 
 func (r *eventRepository) Search(ctx context.Context, opts base.ListOptions) ([]models.EventDTO, int, error) {
 	var events []models.EventDTO
+
+	// First, get the total count without pagination
+	countQuery := r.supabaseClient.
+		From(r.table).
+		Select("*", "exact", false)
+
+	// Apply search if provided
+	if opts.Search != "" {
+		countQuery = countQuery.Or(
+			fmt.Sprintf("name.ilike.%%%s%%",
+				opts.Search,
+			),
+			"",
+		)
+	}
+
+	// Apply filters to count query
+	for _, filter := range opts.Filters {
+		switch filter.Operator {
+		case base.OperatorEqual:
+			countQuery = countQuery.Eq(filter.Field, fmt.Sprintf("%v", filter.Value))
+		case base.OperatorLike:
+			countQuery = countQuery.Like(filter.Field, fmt.Sprintf("%%%v%%", filter.Value))
+		}
+	}
+
+	// Execute count query
+	var countResult []map[string]interface{}
+	_, err := countQuery.ExecuteTo(&countResult)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, errors.ErrDatabase, "failed to count search results")
+	}
+	totalCount := len(countResult)
+
+	// Now build the main query with full select and relations
 	query := r.supabaseClient.
 		From(r.table).
 		Select("*, location:locations(*, city:cities(*, province:provinces(*))), creator:users_view!events_user_id_fkey(*), views:event_with_views(views)", "", false)
@@ -264,8 +299,10 @@ func (r *eventRepository) Search(ctx context.Context, opts base.ListOptions) ([]
 	// Apply search if provided
 	if opts.Search != "" {
 		query = query.Or(
-			fmt.Sprintf("name.ilike.%%%s%%", opts.Search),
-			fmt.Sprintf("description.ilike.%%%s%%", opts.Search),
+			fmt.Sprintf("name.ilike.%%%s%%",
+				opts.Search,
+			),
+			"",
 		)
 	}
 
@@ -279,22 +316,17 @@ func (r *eventRepository) Search(ctx context.Context, opts base.ListOptions) ([]
 		}
 	}
 
-	// Count total results
-	_, totalCount, err := query.Execute()
-	if err != nil {
-		return nil, 0, errors.Wrap(err, errors.ErrDatabase, "failed to count search results")
-	}
-
 	// Apply pagination
 	offset := (opts.Page - 1) * opts.PerPage
 	query = query.Range(offset, offset+opts.PerPage-1, "")
 
+	// Execute main query
 	_, err = query.ExecuteTo(&events)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, errors.ErrDatabase, "failed to execute search")
 	}
 
-	return events, int(totalCount), nil
+	return events, totalCount, nil
 }
 
 func (r *eventRepository) BulkCreate(ctx context.Context, events []*models.Event) ([]models.Event, error) {

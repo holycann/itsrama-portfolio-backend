@@ -71,7 +71,7 @@ VALUES (
         '2025-08-10 10:00:00+07',
         '2025-08-10 18:00:00+07',
         true,
-        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/Asia.jpg'
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/Asia.png'
     ),
     (
         gen_random_uuid(),
@@ -87,7 +87,7 @@ VALUES (
         '2025-08-23 00:00:00+07',
         '2025-08-24 23:59:59+07',
         true,
-        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/Dieng.jpg'
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/Dieng.png'
     ),
     (
         gen_random_uuid(),
@@ -119,7 +119,7 @@ VALUES (
         '2025-10-29 00:00:00+07',
         '2025-11-02 23:59:59+07',
         false,
-        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/ubud.jpg'
+        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/ubud.webp'
     ),
     (
         gen_random_uuid(),
@@ -135,7 +135,7 @@ VALUES (
         '2025-08-09 14:00:00+07',
         '2025-08-11 22:00:00+07',
         true,
-        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/bali.jpg'
+        'https://placehold.co/600x400.jpg?text=Bali+Cultural+Festival'
     ),
     (
         gen_random_uuid(),
@@ -151,7 +151,7 @@ VALUES (
         '2025-09-15 08:00:00+07',
         '2025-09-15 16:00:00+07',
         true,
-        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/jakarta.jpg'
+        'https://placehold.co/600x400.jpg?text=Jakarta+Heritage+Walk'
     ),
     (
         gen_random_uuid(),
@@ -167,7 +167,7 @@ VALUES (
         '2025-10-18 19:00:00+07',
         '2025-10-18 23:00:00+07',
         false,
-        'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/events/semarang.jpg'
+        'https://placehold.co/600x400.jpg?text=Semarang+Night+Heritage+Tour'
     );
 
 -- Verify the insertion

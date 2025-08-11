@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"mime/multipart"
+	"path/filepath"
 	"time"
 
 	"github.com/google/uuid"
@@ -192,7 +193,7 @@ func (s *userProfileService) UpdateProfileAvatar(ctx context.Context, payload *m
 	}
 
 	// Upload avatar
-	avatarUrl, err := s.updateAvatar(ctx, existingProfile.ID.String(), payload.Image)
+	avatarUrl, err := s.updateAvatar(ctx, existingProfile.User.ID.String(), payload.Image)
 	if err != nil {
 		return nil, errors.Wrap(err, errors.ErrInternal, "failed to update avatar")
 	}
@@ -223,7 +224,7 @@ func (s *userProfileService) UpdateProfileIdentity(ctx context.Context, payload 
 	}
 
 	// Upload identity image
-	identityUrl, err := s.updateIdentity(ctx, existingProfile.ID.String(), payload.Image)
+	identityUrl, err := s.updateIdentity(ctx, existingProfile.User.ID.String(), payload.Image)
 	if err != nil {
 		return nil, errors.Wrap(err, errors.ErrInternal, "failed to update identity image")
 	}
@@ -333,16 +334,16 @@ func (s *userProfileService) SearchProfiles(ctx context.Context, opts base.ListO
 // Private helper methods for file uploads using Supabase storage
 func (s *userProfileService) updateAvatar(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
 	// Generate a unique path for the avatar
-	avatarPath := fmt.Sprintf("images/avatars/%s", userID)
+	avatarPath := "images/avatars/" + userID + filepath.Ext(file.Filename)
 
 	// Upload the file to Supabase storage
-	uploadedPath, err := s.storage.Upload(ctx, file, avatarPath)
+	_, err := s.storage.Upload(ctx, file, avatarPath)
 	if err != nil {
 		return "", errors.Wrap(err, errors.ErrInternal, "failed to upload avatar")
 	}
 
 	// Get the public URL for the uploaded file
-	publicURL, err := s.storage.GetPublicURL(uploadedPath)
+	publicURL, err := s.storage.GetPublicURL(avatarPath)
 	if err != nil {
 		return "", errors.Wrap(err, errors.ErrInternal, "failed to get avatar URL")
 	}
@@ -352,16 +353,16 @@ func (s *userProfileService) updateAvatar(ctx context.Context, userID string, fi
 
 func (s *userProfileService) updateIdentity(ctx context.Context, userID string, file *multipart.FileHeader) (string, error) {
 	// Generate a unique path for the identity image
-	identityPath := fmt.Sprintf("images/identity/%s", userID)
+	identityPath := "images/identity/" + userID + filepath.Ext(file.Filename)
 
 	// Upload the file to Supabase storage
-	uploadedPath, err := s.storage.Upload(ctx, file, identityPath)
+	_, err := s.storage.Upload(ctx, file, identityPath)
 	if err != nil {
 		return "", errors.Wrap(err, errors.ErrInternal, "failed to upload identity image")
 	}
 
 	// Get the public URL for the uploaded file
-	publicURL, err := s.storage.GetPublicURL(uploadedPath)
+	publicURL, err := s.storage.GetPublicURL(identityPath)
 	if err != nil {
 		return "", errors.Wrap(err, errors.ErrInternal, "failed to get identity image URL")
 	}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -195,7 +196,7 @@ func (h *UserProfileHandler) SearchUserProfile(c *gin.Context) {
 // @Failure 403 {object} response.APIResponse "Forbidden - can only update own profile"
 // @Failure 404 {object} response.APIResponse "User profile not found"
 // @Failure 500 {object} response.APIResponse "Internal server error during profile update"
-// @Router /users/profiles [put]
+// @Router /users/profiles/{id} [put]
 func (h *UserProfileHandler) UpdateUserProfile(c *gin.Context) {
 	// Get authenticated user ID from context
 	userID, _, _, _, err := middleware.GetUserFromContext(c)
@@ -268,20 +269,13 @@ func (h *UserProfileHandler) UpdateUserProfile(c *gin.Context) {
 // @Failure 403 {object} response.APIResponse "Forbidden - can only update own avatar"
 // @Failure 404 {object} response.APIResponse "User profile not found"
 // @Failure 500 {object} response.APIResponse "Internal server error during avatar update"
-// @Router /users/profiles/avatar [put]
+// @Router /users/profiles/{id}/avatar [put]
 func (h *UserProfileHandler) UpdateUserAvatar(c *gin.Context) {
 	// Get user profile ID from path parameter
 	profileIDStr := c.Param("id")
 	profileID, err := h.ValidateUUID(profileIDStr, "profile_id")
 	if err != nil {
 		h.HandleError(c, errors.Wrap(err, errors.ErrValidation, "Invalid user profile ID"))
-		return
-	}
-
-	// Retrieve authenticated user ID from context
-	_, _, _, _, err = middleware.GetUserFromContext(c)
-	if err != nil {
-		h.HandleError(c, err)
 		return
 	}
 
@@ -322,23 +316,27 @@ func (h *UserProfileHandler) UpdateUserAvatar(c *gin.Context) {
 }
 
 // VerifyIdentity godoc
-// @Summary Verify user's identity by uploading KTP image
-// @Description Allows users to upload their government-issued ID (KTP) for identity verification
+// @Summary Update user profile identity
+// @Description Allows users to upload a new identity document
+// @Description Supports multipart file upload for identity verification
 // @Tags User Profiles
 // @Accept multipart/form-data
 // @Produce json
 // @Security ApiKeyAuth
 // @Param Authorization header string true "JWT Token (without 'Bearer ' prefix)"
 // @Param id path string true "Unique User Profile Identifier" format(uuid)
-// @Param identity_image formData file true "KTP/Identity Document Image" format(binary)
-// @Success 200 {object} response.APIResponse{data=models.UserProfileDTO} "Identity document uploaded successfully"
-// @Failure 400 {object} response.APIResponse "Invalid profile ID or file upload error"
+// @Param identity_image formData file true "Identity Document Image" format(binary)
+// @Success 200 {object} response.APIResponse{data=models.UserProfileDTO} "Identity document successfully updated"
+// @Failure 400 {object} response.APIResponse "Invalid identity update payload or file"
 // @Failure 401 {object} response.APIResponse "Authentication required"
-// @Failure 403 {object} response.APIResponse "Forbidden - user can only verify their own profile"
-// @Failure 500 {object} response.APIResponse "Internal server error during identity verification"
+// @Failure 403 {object} response.APIResponse "Forbidden - can only update own identity"
+// @Failure 404 {object} response.APIResponse "User profile not found"
+// @Failure 413 {object} response.APIResponse "File size too large"
+// @Failure 415 {object} response.APIResponse "Unsupported file type"
+// @Failure 500 {object} response.APIResponse "Internal server error during identity update"
 // @Router /users/profiles/{id}/verify [post]
 func (h *UserProfileHandler) VerifyIdentity(c *gin.Context) {
-	// Get profile ID from path parameter
+	// Get user profile ID from path parameter
 	profileIDStr := c.Param("id")
 	profileID, err := h.ValidateUUID(profileIDStr, "profile_id")
 	if err != nil {
@@ -359,6 +357,11 @@ func (h *UserProfileHandler) VerifyIdentity(c *gin.Context) {
 		return
 	}
 
+	// Log form field keys
+	for key := range c.Request.Form {
+		fmt.Printf("Form field key: %s\n", key)
+	}
+
 	// Get the identity document file from multipart form
 	identityFile, err := c.FormFile("identity_image")
 	if err != nil {
@@ -366,12 +369,12 @@ func (h *UserProfileHandler) VerifyIdentity(c *gin.Context) {
 		return
 	}
 
-	// Create a user profile identity verification model
+	// Create a user profile identity update model
 	var updateIdentityProfile models.UserProfileIdentityUpdate
 	updateIdentityProfile.ID = profileID
 	updateIdentityProfile.Image = identityFile
 
-	// Update user profile with identity document
+	// Update user profile identity
 	updatedProfile, err := h.userProfileService.UpdateProfileIdentity(c.Request.Context(), &updateIdentityProfile)
 	if err != nil {
 		h.HandleError(c, errors.Wrap(err, errors.ErrDatabase, "Failed to update user profile identity document"))
@@ -379,7 +382,7 @@ func (h *UserProfileHandler) VerifyIdentity(c *gin.Context) {
 	}
 
 	// Respond with success
-	h.HandleSuccess(c, updatedProfile, "User identity document uploaded successfully")
+	h.HandleSuccess(c, updatedProfile, "User profile identity document updated successfully")
 }
 
 // DeleteUserProfile godoc

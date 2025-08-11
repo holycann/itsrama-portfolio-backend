@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"mime/multipart"
 
 	"github.com/holycann/cultour-backend/internal/cultural/models"
 	"github.com/holycann/cultour-backend/pkg/base"
@@ -11,8 +10,8 @@ import (
 // EventService defines operations for managing events
 type EventService interface {
 	// Event Creation and Management
-	CreateEvent(ctx context.Context, event *models.EventPayload, image *multipart.FileHeader) (*models.EventDTO, error)
-	UpdateEvent(ctx context.Context, event *models.EventPayload, image *multipart.FileHeader) (*models.EventDTO, error)
+	CreateEvent(ctx context.Context, event *models.EventPayload) (*models.EventDTO, error)
+	UpdateEvent(ctx context.Context, event *models.EventPayload) (*models.EventDTO, error)
 	DeleteEvent(ctx context.Context, id string) error
 
 	// Event Retrieval Operations

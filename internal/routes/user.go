@@ -92,7 +92,7 @@ func RegisterUserProfileRoutes(
 			userProfileHandler.UpdateUserAvatar)
 
 		// Verify user identity (requires authentication)
-		profile.POST("/:id/verify",
+		profile.PUT("/:id/verify",
 			routerMiddleware.VerifyJWT(),
 			userProfileHandler.VerifyIdentity)
 

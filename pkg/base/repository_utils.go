@@ -12,10 +12,9 @@ import (
 // ValidateModel performs comprehensive validation for a model
 func ValidateModel[T any](model T) error {
 	if err := validator.ValidateStruct(model); err != nil {
-		return errors.New(
+		return errors.Wrap(err,
 			errors.ErrValidation,
 			"Model validation failed",
-			err,
 			errors.WithContext("validation_errors", err.Error()),
 		)
 	}

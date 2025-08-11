@@ -10,11 +10,11 @@ CREATE TABLE public.badges (
 
 -- Dummy data for badges
 INSERT INTO public.badges (name, description, icon_url) VALUES 
-  ('Warlok', 'Terverifikasi sebagai warga lokal', 'https://placehold.co/100x100.png?text=Warlok'),
-  ('Penjelajah', 'Menjelajahi situs budaya', 'https://placehold.co/100x100.png?text=Explorer'),
-  ('Event Enthusiast', 'Attended 3 local events', 'https://placehold.co/100x100.png?text=Event'),
-  ('Province Traveler', 'Explored locations in 3 different provinces', 'https://placehold.co/100x100.png?text=Travel'),
-  ('Community Contributor', 'Actively participated in discussions', 'https://placehold.co/100x100.png?text=Community');
+  ('Warlok', 'Terverifikasi sebagai warga lokal', 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/badges/warlok.png'),
+  ('Penjelajah', 'Menjelajahi situs budaya', 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/badges/eksproler.png'),
+  ('Event Enthusiast', 'Attended 3 local events', 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/badges/event.png'),
+  ('Province Traveler', 'Explored locations in 3 different provinces', 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/badges/province.png'),
+  ('Community Contributor', 'Actively participated in discussions', 'https://rhfhplcxngijmfanrxzo.supabase.co/storage/v1/object/public/cultour/cultour/images/badges/community.png');
 
 -- Verify the insertion
 SELECT COUNT(*) as total_badges FROM public.badges;
