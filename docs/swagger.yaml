@@ -1577,6 +1577,11 @@ definitions:
           @Example "Tell me about the cultural significance of this event"
         maxLength: 500
         type: string
+      session_id:
+        description: |-
+          Unique identifier for the created chat session, used for message exchange
+          @Example "session789"
+        type: string
     required:
     - message
     type: object
@@ -5341,61 +5346,6 @@ paths:
       summary: Create a new user profile
       tags:
       - User Profiles
-    put:
-      consumes:
-      - application/json
-      description: |-
-        Allows users to modify their profile details
-        Supports partial updates with optional fields
-      parameters:
-      - description: JWT Token (without 'Bearer ' prefix)
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: User Profile Update Payload
-        in: body
-        name: profile
-        required: true
-        schema:
-          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileUpdate'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: User profile successfully updated
-          schema:
-            allOf:
-            - $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileDTO'
-              type: object
-        "400":
-          description: Invalid profile update payload or ID
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
-        "401":
-          description: Authentication required
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
-        "403":
-          description: Forbidden - can only update own profile
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
-        "404":
-          description: User profile not found
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
-        "500":
-          description: Internal server error during profile update
-          schema:
-            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: Update an existing user profile
-      tags:
-      - User Profiles
   /users/profiles/{id}:
     delete:
       description: |-
@@ -5494,35 +5444,29 @@ paths:
       summary: Retrieve a specific user profile
       tags:
       - User Profiles
-  /users/profiles/{id}/verify:
-    post:
+    put:
       consumes:
-      - multipart/form-data
-      description: Allows users to upload their government-issued ID (KTP) for identity
-        verification
+      - application/json
+      description: |-
+        Allows users to modify their profile details
+        Supports partial updates with optional fields
       parameters:
       - description: JWT Token (without 'Bearer ' prefix)
         in: header
         name: Authorization
         required: true
         type: string
-      - description: Unique User Profile Identifier
-        format: uuid
-        in: path
-        name: id
+      - description: User Profile Update Payload
+        in: body
+        name: profile
         required: true
-        type: string
-      - description: KTP/Identity Document Image
-        format: binary
-        in: formData
-        name: identity_image
-        required: true
-        type: file
+        schema:
+          $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileUpdate'
       produces:
       - application/json
       responses:
         "200":
-          description: Identity document uploaded successfully
+          description: User profile successfully updated
           schema:
             allOf:
             - $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
@@ -5531,7 +5475,7 @@ paths:
                   $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileDTO'
               type: object
         "400":
-          description: Invalid profile ID or file upload error
+          description: Invalid profile update payload or ID
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
         "401":
@@ -5539,19 +5483,23 @@ paths:
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
         "403":
-          description: Forbidden - user can only verify their own profile
+          description: Forbidden - can only update own profile
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
+        "404":
+          description: User profile not found
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
         "500":
-          description: Internal server error during identity verification
+          description: Internal server error during profile update
           schema:
             $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
       security:
       - ApiKeyAuth: []
-      summary: Verify user's identity by uploading KTP image
+      summary: Update an existing user profile
       tags:
       - User Profiles
-  /users/profiles/avatar:
+  /users/profiles/{id}/avatar:
     put:
       consumes:
       - multipart/form-data
@@ -5615,6 +5563,76 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Update user profile avatar
+      tags:
+      - User Profiles
+  /users/profiles/{id}/verify:
+    post:
+      consumes:
+      - multipart/form-data
+      description: |-
+        Allows users to upload a new identity document
+        Supports multipart file upload for identity verification
+      parameters:
+      - description: JWT Token (without 'Bearer ' prefix)
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Unique User Profile Identifier
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Identity Document Image
+        format: binary
+        in: formData
+        name: identity_image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Identity document successfully updated
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileDTO'
+              type: object
+        "400":
+          description: Invalid identity update payload or file
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
+        "403":
+          description: Forbidden - can only update own identity
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
+        "404":
+          description: User profile not found
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
+        "413":
+          description: File size too large
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
+        "415":
+          description: Unsupported file type
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
+        "500":
+          description: Internal server error during identity update
+          schema:
+            $ref: '#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update user profile identity
       tags:
       - User Profiles
   /users/profiles/me:

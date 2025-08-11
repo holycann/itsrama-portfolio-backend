@@ -5380,92 +5380,6 @@ const docTemplate = `{
                     }
                 }
             },
-            "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Allows users to modify their profile details\nSupports partial updates with optional fields",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User Profiles"
-                ],
-                "summary": "Update an existing user profile",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "JWT Token (without 'Bearer ' prefix)",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "User Profile Update Payload",
-                        "name": "profile",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileUpdate"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "User profile successfully updated",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileDTO"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid profile update payload or ID",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Authentication required",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden - can only update own profile",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "User profile not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error during profile update",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    }
-                }
-            },
             "post": {
                 "security": [
                     {
@@ -5546,107 +5460,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error during profile creation",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/users/profiles/avatar": {
-            "put": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Allows users to upload a new profile picture\nSupports multipart file upload or URL-based avatar update",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "User Profiles"
-                ],
-                "summary": "Update user profile avatar",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "JWT Token (without 'Bearer ' prefix)",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Unique User Profile Identifier",
-                        "name": "id",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "URL of the new avatar image",
-                        "name": "avatar_url",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "New Avatar Image File",
-                        "name": "image",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Avatar successfully updated",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileDTO"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid avatar update payload or file",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Authentication required",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden - can only update own avatar",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "User profile not found",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error during avatar update",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
                         }
@@ -5907,6 +5720,92 @@ const docTemplate = `{
                     }
                 }
             },
+            "put": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Allows users to modify their profile details\nSupports partial updates with optional fields",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Profiles"
+                ],
+                "summary": "Update an existing user profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "User Profile Update Payload",
+                        "name": "profile",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileUpdate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User profile successfully updated",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid profile update payload or ID",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - can only update own profile",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User profile not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during profile update",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -5978,14 +5877,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/profiles/{id}/verify": {
-            "post": {
+        "/users/profiles/{id}/avatar": {
+            "put": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Allows users to upload their government-issued ID (KTP) for identity verification",
+                "description": "Allows users to upload a new profile picture\nSupports multipart file upload or URL-based avatar update",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -5995,7 +5894,108 @@ const docTemplate = `{
                 "tags": [
                     "User Profiles"
                 ],
-                "summary": "Verify user's identity by uploading KTP image",
+                "summary": "Update user profile avatar",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT Token (without 'Bearer ' prefix)",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Unique User Profile Identifier",
+                        "name": "id",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "URL of the new avatar image",
+                        "name": "avatar_url",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "New Avatar Image File",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Avatar successfully updated",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_holycann_cultour-backend_internal_users_models.UserProfileDTO"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid avatar update payload or file",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - can only update own avatar",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User profile not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during avatar update",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/profiles/{id}/verify": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Allows users to upload a new identity document\nSupports multipart file upload for identity verification",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User Profiles"
+                ],
+                "summary": "Update user profile identity",
                 "parameters": [
                     {
                         "type": "string",
@@ -6015,7 +6015,7 @@ const docTemplate = `{
                     {
                         "type": "file",
                         "format": "binary",
-                        "description": "KTP/Identity Document Image",
+                        "description": "Identity Document Image",
                         "name": "identity_image",
                         "in": "formData",
                         "required": true
@@ -6023,7 +6023,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Identity document uploaded successfully",
+                        "description": "Identity document successfully updated",
                         "schema": {
                             "allOf": [
                                 {
@@ -6041,7 +6041,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid profile ID or file upload error",
+                        "description": "Invalid identity update payload or file",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
                         }
@@ -6053,13 +6053,31 @@ const docTemplate = `{
                         }
                     },
                     "403": {
-                        "description": "Forbidden - user can only verify their own profile",
+                        "description": "Forbidden - can only update own identity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User profile not found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "File size too large",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
+                        }
+                    },
+                    "415": {
+                        "description": "Unsupported file type",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal server error during identity verification",
+                        "description": "Internal server error during identity update",
                         "schema": {
                             "$ref": "#/definitions/github_com_holycann_cultour-backend_pkg_response.APIResponse"
                         }
@@ -7635,6 +7653,10 @@ const docTemplate = `{
                     "description": "Message content to be sent to the AI, with length restriction\n@Required true\n@Max length 500\n@Example \"Tell me about the cultural significance of this event\"",
                     "type": "string",
                     "maxLength": 500
+                },
+                "session_id": {
+                    "description": "Unique identifier for the created chat session, used for message exchange\n@Example \"session789\"",
+                    "type": "string"
                 }
             }
         },
