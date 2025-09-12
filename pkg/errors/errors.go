@@ -26,6 +26,8 @@ const (
 	ErrCanceled         ErrorType = "CANCELED_ERROR"
 	ErrForbidden        ErrorType = "FORBIDDEN_ERROR"
 	ErrMethodNotAllowed ErrorType = "METHOD_NOT_ALLOWED_ERROR"
+	ErrFileUpload       ErrorType = "FILE_UPLOAD_ERROR"
+	ErrStorage          ErrorType = "STORAGE_ERROR"
 )
 
 // CustomError represents a structured error with additional context

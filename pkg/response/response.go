@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/holycann/cultour-backend/pkg/errors"
+	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 )
 
 // ResponseOption allows for optional configuration of responses

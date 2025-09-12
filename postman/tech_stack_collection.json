@@ -1,0 +1,213 @@
+{
+    "info": {
+        "_postman_id": "itsrama-portfolio-tech-stack",
+        "name": "Tech Stack API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "description": "Tech Stack management endpoints for Itsrama Portfolio Backend"
+    },
+    "item": [
+        {
+            "name": "List Tech Stacks",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{BASE_URL}}/tech-stack?page=1&per_page=10&sort_by=created_at&sort_order=desc&category=programming",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["tech-stack"],
+                    "query": [
+                        {"key": "page", "value": "1"},
+                        {"key": "per_page", "value": "10"},
+                        {"key": "sort_by", "value": "created_at"},
+                        {"key": "sort_order", "value": "desc"},
+                        {"key": "category", "value": "programming", "disabled": true}
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Create Tech Stack",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {"key": "Content-Type", "value": "application/json"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"name\": \"React\",\n    \"category\": \"Frontend Technologies\",\n    \"version\": \"18.2\",\n    \"role\": \"Frontend Development\",\n    \"is_core_skill\": true\n}"
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/tech-stack",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["tech-stack"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Get Tech Stack by ID",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{BASE_URL}}/tech-stack/{{TECH_STACK_ID}}",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["tech-stack", "{{TECH_STACK_ID}}"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Update Tech Stack",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {"key": "Content-Type", "value": "application/json"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"id\": \"{{TECH_STACK_ID}}\",\n    \"name\": \"TypeScript\",\n    \"version\": \"5.0\",\n    \"is_core_skill\": true\n}"
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/tech-stack/{{TECH_STACK_ID}}",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["tech-stack", "{{TECH_STACK_ID}}"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Delete Tech Stack",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{BASE_URL}}/tech-stack/{{TECH_STACK_ID}}",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["tech-stack", "{{TECH_STACK_ID}}"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Get Tech Stacks by Category",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{BASE_URL}}/tech-stack/category/Frontend Technologies",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["tech-stack", "category", "Frontend Technologies"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Bulk Create Tech Stacks",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {"key": "Content-Type", "value": "application/json"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "[\n    {\n        \"name\": \"Go\",\n        \"category\": \"Backend Technologies\",\n        \"version\": \"1.21\",\n        \"role\": \"Backend Development\",\n        \"is_core_skill\": true\n    },\n    {\n        \"name\": \"React\",\n        \"category\": \"Frontend Technologies\",\n        \"version\": \"18.2\",\n        \"role\": \"Frontend Development\",\n        \"is_core_skill\": true\n    },\n    {\n        \"name\": \"HTML5\",\n        \"category\": \"Frontend Technologies\",\n        \"version\": \"5\",\n        \"role\": \"Frontend Development\",\n        \"is_core_skill\": true\n    },\n    {\n        \"name\": \"TailwindCSS\",\n        \"category\": \"Frontend Technologies\",\n        \"version\": \"3.3\",\n        \"role\": \"Frontend Styling\",\n        \"is_core_skill\": true\n    },\n    {\n        \"name\": \"Git\",\n        \"category\": \"Version Control\",\n        \"version\": \"2.41\",\n        \"role\": \"Code Management\",\n        \"is_core_skill\": true\n    },\n    {\n        \"name\": \"Github\",\n        \"category\": \"Version Control Platforms\",\n        \"version\": \"N/A\",\n        \"role\": \"Code Hosting\",\n        \"is_core_skill\": true\n    },\n    {\n        \"name\": \"PostgreSQL\",\n        \"category\": \"Database Systems\",\n        \"version\": \"15\",\n        \"role\": \"Database Management\",\n        \"is_core_skill\": true\n    },\n    {\n        \"name\": \"MariaDB\",\n        \"category\": \"Database Systems\",\n        \"version\": \"10.11\",\n        \"role\": \"Database Management\",\n        \"is_core_skill\": true\n    },\n    {\n        \"name\": \"NodeJs\",\n        \"category\": \"Backend Technologies\",\n        \"version\": \"18.16\",\n        \"role\": \"Backend Development\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"TypeScript\",\n        \"category\": \"Frontend Technologies\",\n        \"version\": \"5.0\",\n        \"role\": \"Frontend Development\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"NextJs\",\n        \"category\": \"Frameworks\",\n        \"version\": \"13\",\n        \"role\": \"Frontend Framework\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"JavaScript\",\n        \"category\": \"Frontend Technologies\",\n        \"version\": \"ES2023\",\n        \"role\": \"Frontend Development\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"PHP\",\n        \"category\": \"Backend Technologies\",\n        \"version\": \"8.2\",\n        \"role\": \"Backend Development\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Laravel\",\n        \"category\": \"Frameworks\",\n        \"version\": \"10\",\n        \"role\": \"Backend Framework\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"CSS3\",\n        \"category\": \"Frontend Technologies\",\n        \"version\": \"3\",\n        \"role\": \"Frontend Styling\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Vercel\",\n        \"category\": \"DevOps\",\n        \"version\": \"N/A\",\n        \"role\": \"Deployment Platform\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"AWS EC2\",\n        \"category\": \"DevOps\",\n        \"version\": \"N/A\",\n        \"role\": \"Cloud Infrastructure\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Azure VM\",\n        \"category\": \"DevOps\",\n        \"version\": \"N/A\",\n        \"role\": \"Cloud Infrastructure\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Google Console\",\n        \"category\": \"DevOps\",\n        \"version\": \"N/A\",\n        \"role\": \"Cloud Management\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"CPanel\",\n        \"category\": \"DevOps\",\n        \"version\": \"N/A\",\n        \"role\": \"Hosting Management\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Postman\",\n        \"category\": \"Tools\",\n        \"version\": \"10.15\",\n        \"role\": \"API Testing\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Swagger\",\n        \"category\": \"Tools\",\n        \"version\": \"N/A\",\n        \"role\": \"API Documentation\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Notion\",\n        \"category\": \"Tools\",\n        \"version\": \"N/A\",\n        \"role\": \"Project Management\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Figma\",\n        \"category\": \"Tools\",\n        \"version\": \"N/A\",\n        \"role\": \"Design\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Canva\",\n        \"category\": \"Tools\",\n        \"version\": \"N/A\",\n        \"role\": \"Design\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"ClickUp\",\n        \"category\": \"Tools\",\n        \"version\": \"N/A\",\n        \"role\": \"Project Management\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"WordPress\",\n        \"category\": \"CMS & Platforms\",\n        \"version\": \"6.2\",\n        \"role\": \"Content Management\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Supabase\",\n        \"category\": \"CMS & Platforms\",\n        \"version\": \"N/A\",\n        \"role\": \"Backend as a Service\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Firebase\",\n        \"category\": \"CMS & Platforms\",\n        \"version\": \"N/A\",\n        \"role\": \"Backend as a Service\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Cloudflare\",\n        \"category\": \"CMS & Platforms\",\n        \"version\": \"N/A\",\n        \"role\": \"CDN & Security\",\n        \"is_core_skill\": false\n    },\n    {\n        \"name\": \"Cloudinary\",\n        \"category\": \"CMS & Platforms\",\n        \"version\": \"N/A\",\n        \"role\": \"Media Management\",\n        \"is_core_skill\": false\n    }\n]"
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/tech-stack/bulk",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["tech-stack", "bulk"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Bulk Update Tech Stacks",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {"key": "Content-Type", "value": "application/json"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "[\n    {\n        \"id\": \"{{TECH_STACK_ID_1}}\",\n        \"name\": \"React\",\n        \"version\": \"18.3\",\n        \"is_core_skill\": true\n    },\n    {\n        \"id\": \"{{TECH_STACK_ID_2}}\",\n        \"category\": \"Frontend Technologies\"\n    }\n]"
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/tech-stack/bulk",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["tech-stack", "bulk"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Bulk Delete Tech Stacks",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {"key": "Content-Type", "value": "application/json"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "[\n    \"{{TECH_STACK_ID_1}}\",\n    \"{{TECH_STACK_ID_2}}\"\n]"
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/tech-stack/bulk",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["tech-stack", "bulk"]
+                }
+            },
+            "response": []
+        }
+    ]
+} 

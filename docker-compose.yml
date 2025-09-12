@@ -1,0 +1,36 @@
+version: "3.9"
+
+# Shared environment configuration
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-production}
+  SERVER_HOST: 0.0.0.0
+  SERVER_PORT: 8080
+
+# Shared logging configuration
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # Main application service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: itsrama-portfolio-backend
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - ./logs:/app/logs
+      - ./.env.production:/app/.env.production
+    networks:
+      - backend
+    logging: *default-logging
+
+# Network definition
+networks:
+  backend:
+    driver: bridge

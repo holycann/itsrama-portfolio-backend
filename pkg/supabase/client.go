@@ -2,7 +2,6 @@ package supabase
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/supabase-community/supabase-go"
 )
@@ -10,10 +9,10 @@ import (
 type SupabaseClientConfig struct {
 	ProjectID string
 	ApiSecret string
+	Schema    string
 }
 
 type SupabaseClient struct {
-	mu     sync.RWMutex
 	client *supabase.Client
 }
 
@@ -22,7 +21,9 @@ func NewSupabaseClient(cfg SupabaseClientConfig) (*SupabaseClient, error) {
 		return nil, fmt.Errorf("Supabase Api Key & Project ID Cannot Be Empty")
 	}
 
-	client, err := supabase.NewClient(fmt.Sprintf("https://%s.supabase.co", cfg.ProjectID), cfg.ApiSecret, &supabase.ClientOptions{})
+	client, err := supabase.NewClient(fmt.Sprintf("https://%s.supabase.co", cfg.ProjectID), cfg.ApiSecret, &supabase.ClientOptions{
+		Schema: cfg.Schema,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("Failed To Initialize Supabase Client: %v", err)
 	}

@@ -32,44 +32,56 @@ type StorageConfig struct {
 // SupabaseStorage provides enhanced storage management capabilities
 type SupabaseStorage struct {
 	client *storage_go.Client
-	config StorageConfig
+	Config StorageConfig
 }
 
-// NewSupabaseStorage creates an enhanced Supabase storage client
-func NewSupabaseStorage(cfg StorageConfig) *SupabaseStorage {
+// NewSupabaseStorage creates an enhanced Supabase storage client with robust configuration
+func NewSupabaseStorage(cfg StorageConfig) (*SupabaseStorage, error) {
+	// Validate required configuration parameters
+	if cfg.ProjectID == "" {
+		return nil, fmt.Errorf("project ID is required")
+	}
+	if cfg.JwtApiSecret == "" {
+		return nil, fmt.Errorf("JWT API secret is required")
+	}
+
 	// Use default headers if not provided
 	if cfg.Headers == nil {
 		cfg.Headers = make(map[string]string)
 	}
 
 	// Set default max file size if not specified
-	if cfg.MaxFileSize == 0 {
+	if cfg.MaxFileSize <= 0 {
 		cfg.MaxFileSize = 10 * 1024 * 1024 // 10MB default
 	}
 
 	// Set default allowed file types if not specified
 	if len(cfg.AllowedFileTypes) == 0 {
 		cfg.AllowedFileTypes = []string{
-			"image/jpeg", "image/png", "image/gif",
-			"image/webp", "application/pdf",
+			"image/jpeg", "image/png", "application/pdf",
 		}
 	}
 
 	// Set default cache control if not specified
 	if cfg.DefaultCacheControl == "" {
-		cfg.DefaultCacheControl = "max-age=3600"
+		cfg.DefaultCacheControl = "public, max-age=3600, must-revalidate"
 	}
 
+	// Construct Supabase storage client URL
+	storageURL := fmt.Sprintf("https://%s.supabase.co/storage/v1", cfg.ProjectID)
+
+	// Create storage client with comprehensive configuration
 	storageClient := storage_go.NewClient(
-		fmt.Sprintf("https://%s.supabase.co/storage/v1", cfg.ProjectID),
+		storageURL,
 		cfg.JwtApiSecret,
 		cfg.Headers,
 	)
 
+	// Return configured Supabase storage instance
 	return &SupabaseStorage{
 		client: storageClient,
-		config: cfg,
-	}
+		Config: cfg,
+	}, nil
 }
 
 // Upload handles file upload with comprehensive validation and storage
@@ -80,9 +92,9 @@ func (s *SupabaseStorage) Upload(
 	opts ...storage_go.FileOptions,
 ) (string, error) {
 	// Validate file size
-	if file.Size > s.config.MaxFileSize {
+	if file.Size > s.Config.MaxFileSize {
 		return "", fmt.Errorf("file size %d bytes exceeds maximum limit of %d",
-			file.Size, s.config.MaxFileSize)
+			file.Size, s.Config.MaxFileSize)
 	}
 
 	// Validate file type
@@ -98,16 +110,10 @@ func (s *SupabaseStorage) Upload(
 	}
 	defer src.Close()
 
-	// Construct full path
-	fullPath := filepath.ToSlash(filepath.Join(
-		s.config.DefaultFolder,
-		path,
-	))
-
 	// Prepare file options
 	fileOpts := storage_go.FileOptions{
 		Upsert:       boolPtr(true),
-		CacheControl: stringPtr(s.config.DefaultCacheControl),
+		CacheControl: stringPtr(s.Config.DefaultCacheControl),
 		ContentType:  stringPtr(fileType),
 	}
 
@@ -116,17 +122,22 @@ func (s *SupabaseStorage) Upload(
 		fileOpts = mergeFileOptions(fileOpts, opts[0])
 	}
 
+	if !strings.HasPrefix(path, s.Config.DefaultFolder) {
+		path = filepath.Clean(filepath.Join(s.Config.DefaultFolder, path))
+	}
+	path = filepath.ToSlash(path)
+
 	// Upload file
 	_, err = s.client.UploadFile(
-		s.config.BucketID,
-		fullPath,
+		s.Config.BucketID,
+		path,
 		src,
 		fileOpts,
 	)
 	if err != nil {
 		return "", err
 	}
-	return fullPath, nil
+	return path, nil
 }
 
 // mergeFileOptions combines default and custom file options
@@ -146,7 +157,7 @@ func mergeFileOptions(defaultOpts, customOpts storage_go.FileOptions) storage_go
 // isAllowedFileType checks if the file type is in the allowed list
 func (s *SupabaseStorage) isAllowedFileType(fileType string) bool {
 	// If no allowed types specified, allow all
-	if len(s.config.AllowedFileTypes) == 0 {
+	if len(s.Config.AllowedFileTypes) == 0 {
 		return true
 	}
 
@@ -154,7 +165,7 @@ func (s *SupabaseStorage) isAllowedFileType(fileType string) bool {
 	fileType = strings.ToLower(strings.TrimSpace(fileType))
 
 	// Check if file type matches any allowed type
-	for _, allowedType := range s.config.AllowedFileTypes {
+	for _, allowedType := range s.Config.AllowedFileTypes {
 		if strings.ToLower(allowedType) == fileType {
 			return true
 		}
@@ -163,13 +174,39 @@ func (s *SupabaseStorage) isAllowedFileType(fileType string) bool {
 	return false
 }
 
+// GetFileType determines the general category of a file based on its MIME type
+func (s *SupabaseStorage) GetFileType(fileType string) string {
+	// Normalize file type
+	fileType = strings.ToLower(strings.TrimSpace(fileType))
+
+	// Image types
+	imagePrefixes := []string{"image/"}
+	for _, prefix := range imagePrefixes {
+		if strings.HasPrefix(fileType, prefix) {
+			return "image"
+		}
+	}
+
+	// Document types
+	documentTypes := []string{
+		"application/pdf",
+	}
+	for _, docType := range documentTypes {
+		if fileType == docType {
+			return "document"
+		}
+	}
+
+	return "other"
+}
+
 // Delete removes a file from storage
 func (s *SupabaseStorage) Delete(
 	ctx context.Context,
 	filepath string,
 ) (string, error) {
 	_, err := s.client.RemoveFile(
-		s.config.BucketID,
+		s.Config.BucketID,
 		[]string{filepath},
 	)
 	if err != nil {
@@ -192,7 +229,7 @@ func (s *SupabaseStorage) ListFiles(
 	}
 
 	return s.client.ListFiles(
-		s.config.BucketID,
+		s.Config.BucketID,
 		path,
 		searchOpts,
 	)
@@ -203,12 +240,14 @@ func (s *SupabaseStorage) GetPublicURL(
 	path string,
 	transformOpts ...storage_go.UrlOptions,
 ) (string, error) {
+	if !strings.HasPrefix(path, s.Config.DefaultFolder) {
+		path = filepath.Clean(filepath.Join(s.Config.DefaultFolder, path))
+	}
+	path = filepath.ToSlash(path)
+
 	resp := s.client.GetPublicUrl(
-		s.config.BucketID,
-		filepath.ToSlash(filepath.Join(
-			s.config.DefaultFolder,
-			path,
-		)),
+		s.Config.BucketID,
+		path,
 		transformOpts...,
 	)
 	return resp.SignedURL, nil
@@ -221,8 +260,4 @@ func stringPtr(s string) *string {
 
 func boolPtr(b bool) *bool {
 	return &b
-}
-
-func int64Ptr(i int64) *int64 {
-	return &i
 }

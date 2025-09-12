@@ -1,0 +1,273 @@
+{
+    "info": {
+        "_postman_id": "itsrama-portfolio-experience",
+        "name": "Experience API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "description": "Professional Experience management endpoints for Itsrama Portfolio Backend"
+    },
+    "item": [
+        {
+            "name": "List Experiences",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{BASE_URL}}/experience?page=1&per_page=10&sort_by=start_date&sort_order=desc&company=TechCorp",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience"],
+                    "query": [
+                        {"key": "page", "value": "1"},
+                        {"key": "per_page", "value": "10"},
+                        {"key": "sort_by", "value": "start_date"},
+                        {"key": "sort_order", "value": "desc"},
+                        {"key": "company", "value": "TechCorp", "disabled": true}
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Create Experience",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {"key": "Content-Type", "value": "multipart/form-data"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "payload",
+                            "value": "{\n    \"role\": \"Senior Software Engineer\",\n    \"company\": \"TechCorp\",\n    \"job_type\": \"Full-time\",\n    \"start_date\": \"2022-01-15T00:00:00Z\",\n    \"end_date\": null,\n    \"location\": \"San Francisco, CA\",\n    \"arrangement\": \"Hybrid\",\n    \"work_description\": \"Developed scalable backend services\",\n    \"impact\": [\"Improved system performance by 40%\"],\n    \"tech_stack_ids\": [\"{{TECH_STACK_ID_1}}\", \"{{TECH_STACK_ID_2}}\"]\n}",
+                            "contentType": "application/json",
+                            "type": "text"
+                        },
+                        {"key": "logo_image", "type": "file", "src": []},
+                        {"key": "images", "type": "file", "src": []}
+                    ]
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/experience",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Get Experience by ID",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{BASE_URL}}/experience/{{EXPERIENCE_ID}}",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience", "{{EXPERIENCE_ID}}"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Update Experience",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {"key": "Content-Type", "value": "multipart/form-data"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "payload",
+                            "value": "{\n    \"id\": \"{{EXPERIENCE_ID}}\",\n    \"role\": \"Lead Software Engineer\",\n    \"company\": \"TechCorp\",\n    \"job_type\": \"Full-time\",\n    \"start_date\": \"2022-01-15T00:00:00Z\",\n    \"end_date\": null,\n    \"location\": \"San Francisco, CA\",\n    \"arrangement\": \"Remote\",\n    \"work_description\": \"Led backend architecture and development\",\n    \"impact\": [\"Improved system performance by 40%\"],\n    \"tech_stack_ids\": [\"{{TECH_STACK_ID_1}}\", \"{{TECH_STACK_ID_3}}\"]\n}",
+                            "contentType": "application/json",
+                            "type": "text"
+                        },
+                        {"key": "logo_image", "type": "file", "src": []},
+                        {"key": "images", "type": "file", "src": []}
+                    ]
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/experience/{{EXPERIENCE_ID}}",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience", "{{EXPERIENCE_ID}}"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Delete Experience",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{BASE_URL}}/experience/{{EXPERIENCE_ID}}",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience", "{{EXPERIENCE_ID}}"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Get Experiences by Company",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{BASE_URL}}/experience/company/TechCorp",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience", "company", "TechCorp"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Search Experiences",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "url": {
+                    "raw": "{{BASE_URL}}/experience/search?query=engineer&page=1&per_page=10",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience", "search"],
+                    "query": [
+                        {"key": "query", "value": "engineer"},
+                        {"key": "page", "value": "1"},
+                        {"key": "per_page", "value": "10"}
+                    ]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Bulk Create Experiences",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {"key": "Content-Type", "value": "multipart/form-data"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "payload",
+                            "value": "[\n    {\n        \"role\": \"Full Stack Developer\",\n        \"company\": \"Freelance\",\n        \"job_type\": \"Freelance\",\n        \"start_date\": \"2024-01-01T00:00:00Z\",\n        \"location\": \"Remote\",\n        \"work_description\": \"Delivered multiple client projects (websites and mobile apps) using HTML, CSS, JavaScript, WordPress, and React Native\",\n        \"impact\": [\n            \"Delivered multiple client projects meeting client objectives and deadlines\",\n            \"Built scalable back-end solutions with MariaDB and Firebase\",\n            \"Designed and implemented responsive user interfaces\",\n            \"Deployed secure media storage system with Cloudinary\",\n            \"Debugged and reviewed codebase to improve stability\"\n        ],\n        \"tech_stack_ids\": [\"{{TECH_STACK_HTML}}\", \"{{TECH_STACK_CSS}}\", \"{{TECH_STACK_JAVASCRIPT}}\", \"{{TECH_STACK_WORDPRESS}}\", \"{{TECH_STACK_REACT_NATIVE}}\", \"{{TECH_STACK_MARIADB}}\", \"{{TECH_STACK_FIREBASE}}\", \"{{TECH_STACK_CLOUDINARY}}\"]\n    },\n    {\n        \"role\": \"Tech Support Intern\",\n        \"company\": \"eFishery\",\n        \"job_type\": \"Internship\",\n        \"start_date\": \"2023-07-01T00:00:00Z\",\n        \"end_date\": \"2024-01-01T00:00:00Z\",\n        \"location\": \"Bandung, Indonesia\",\n        \"work_description\": \"Provided first-level support for field bugs, resolving issues using documentation and analysis\",\n        \"impact\": [\n            \"Resolved 30–50% of monthly bug reports and human error cases\",\n            \"Reduced escalation time by 20% through root-cause analysis\",\n            \"Developed WhatsApp automation bot using Laravel, Node.js, and WhatsApp Web JS\",\n            \"Managed defect reporting in ClickUp and conducted monthly SLA reviews\"\n        ],\n        \"tech_stack_ids\": [\"{{TECH_STACK_LARAVEL}}\", \"{{TECH_STACK_NODEJS}}\", \"{{TECH_STACK_CLICKUP}}\", \"{{TECH_STACK_WHATSAPP}}\"]\n    }\n]",
+                            "contentType": "application/json",
+                            "type": "text"
+                        },
+                        {"key": "logo_image", "type": "file", "src": []},
+                        {"key": "images", "type": "file", "src": []}
+                    ]
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/experience/bulk",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience", "bulk"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Bulk Update Experiences",
+            "request": {
+                "method": "PUT",
+                "header": [
+                    {"key": "Content-Type", "value": "multipart/form-data"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "payload",
+                            "value": "[\n    {\n        \"id\": \"{{EXPERIENCE_ID_1}}\",\n        \"role\": \"Senior Software Engineer\",\n        \"work_description\": \"Advanced backend architecture\"\n    },\n    {\n        \"id\": \"{{EXPERIENCE_ID_2}}\",\n        \"location\": \"San Francisco, CA\",\n        \"job_type\": \"Full-time\"\n    }\n]",
+                            "contentType": "application/json",
+                            "type": "text"
+                        },
+                        {"key": "logo_image", "type": "file", "src": []},
+                        {"key": "images", "type": "file", "src": []}
+                    ]
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/experience/bulk",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience", "bulk"]
+                }
+            },
+            "response": []
+        },
+        {
+            "name": "Bulk Delete Experiences",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {"key": "Content-Type", "value": "application/json"},
+                    {
+                        "key": "Authorization",
+                        "value": "Bearer {{BEARER_TOKEN}}",
+                        "type": "text"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "[\n    \"{{EXPERIENCE_ID_1}}\",\n    \"{{EXPERIENCE_ID_2}}\"\n]"
+                },
+                "url": {
+                    "raw": "{{BASE_URL}}/experience/bulk",
+                    "host": ["{{BASE_URL}}"],
+                    "path": ["experience", "bulk"]
+                }
+            },
+            "response": []
+        }
+    ]
+} 

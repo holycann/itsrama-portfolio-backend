@@ -13,12 +13,17 @@ import (
 )
 
 func main() {
-	// Load .env with detailed logging
-	err := godotenv.Load()
-	if err != nil {
-		log.Printf("[ENV] Warning: Failed to load .env file. Error: %v\n", err)
-	} else {
-		log.Println("[ENV] Successfully loaded .env configuration")
+	env := os.Getenv("APP_ENV")
+
+	if env == "" {
+		env = "local"
+	}
+
+	envFile := fmt.Sprintf(".env.%s", env)
+
+	if err := godotenv.Load(envFile); err != nil {
+		fmt.Printf("No %s file found, fallback ke .env\n", envFile)
+		_ = godotenv.Load(".env")
 	}
 
 	// Flag untuk menentukan aksi migrasi
@@ -47,6 +52,7 @@ func main() {
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
+	dbSchema := os.Getenv("DB_SCHEMA")
 
 	if dbHost == "" {
 		dbHost = "localhost"
@@ -58,15 +64,16 @@ func main() {
 	}
 
 	connectionString := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		"postgres://%s:%s@%s:%s/%s?sslmode=disable&x-migrations-table=%s_migrations",
 		dbUser,
 		dbPassword,
 		dbHost,
 		dbPort,
 		dbName,
+		dbSchema,
 	)
 
-	log.Printf("[DB] Attempting to create migration with host: %s, port: %s, database: %s\n", dbHost, dbPort, dbName)
+	log.Printf("[DB] Attempting to create migration with host: %s, port: %s, database: %s, schema: %s\n", dbHost, dbPort, dbName, dbSchema)
 
 	m, err := migrate.New("file://db/migrations", connectionString)
 	if err != nil {

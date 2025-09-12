@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,437 +12,401 @@ import (
 	"github.com/MicahParks/keyfunc"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/holycann/cultour-backend/configs"
-	"github.com/holycann/cultour-backend/docs"
-	_ "github.com/holycann/cultour-backend/docs"
-
-	// Achievement module
-	achievementHandlers "github.com/holycann/cultour-backend/internal/achievement/handlers"
-	achievementRepositories "github.com/holycann/cultour-backend/internal/achievement/repositories"
-	achievementServices "github.com/holycann/cultour-backend/internal/achievement/services"
-
-	// Cultural module
-	culturalHandlers "github.com/holycann/cultour-backend/internal/cultural/handlers"
-	culturalRepositories "github.com/holycann/cultour-backend/internal/cultural/repositories"
-	culturalServices "github.com/holycann/cultour-backend/internal/cultural/services"
-
-	// Discussion module
-	discussionHandlers "github.com/holycann/cultour-backend/internal/discussion/handlers"
-	discussionRepositories "github.com/holycann/cultour-backend/internal/discussion/repositories"
-	discussionServices "github.com/holycann/cultour-backend/internal/discussion/services"
-
-	// Gemini module
-	"github.com/holycann/cultour-backend/internal/gemini"
-
-	// Place module
-	placeHandlers "github.com/holycann/cultour-backend/internal/place/handlers"
-	placeRepositories "github.com/holycann/cultour-backend/internal/place/repositories"
-	placeServices "github.com/holycann/cultour-backend/internal/place/services"
-
-	// User module
-	userHandlers "github.com/holycann/cultour-backend/internal/users/handlers"
-	userRepositories "github.com/holycann/cultour-backend/internal/users/repositories"
-	userServices "github.com/holycann/cultour-backend/internal/users/services"
-
-	"github.com/holycann/cultour-backend/internal/middleware"
-	"github.com/holycann/cultour-backend/internal/routes"
-	"github.com/holycann/cultour-backend/pkg/logger"
-	"github.com/holycann/cultour-backend/pkg/supabase"
-	"github.com/supabase-community/auth-go"
-	supabaseGoClient "github.com/supabase-community/supabase-go"
+	"github.com/holycann/itsrama-portfolio-backend/configs"
+	"github.com/holycann/itsrama-portfolio-backend/internal/experience"
+	"github.com/holycann/itsrama-portfolio-backend/internal/health"
+	"github.com/holycann/itsrama-portfolio-backend/internal/middleware"
+	"github.com/holycann/itsrama-portfolio-backend/internal/project"
+	"github.com/holycann/itsrama-portfolio-backend/internal/routes"
+	"github.com/holycann/itsrama-portfolio-backend/internal/tech_stack"
+	"github.com/holycann/itsrama-portfolio-backend/pkg/logger"
+	"github.com/holycann/itsrama-portfolio-backend/pkg/response"
+	"github.com/holycann/itsrama-portfolio-backend/pkg/supabase"
 )
 
-// @title           Cultour API
-// @version         1.0
-// @description     Backend API for Cultour Project
-// @contact.name    Cultour Development Team
+// AppDependencies holds all the initialized dependencies
+type AppDependencies struct {
+	Config        *configs.Config
+	Logger        *logger.Logger
+	JWKS          *keyfunc.JWKS
+	JWTMiddleware *middleware.Middleware
+	Router        *gin.Engine
 
-// @host            localhost:8181
-// @schemes         http
+	// Supabase Dependencies
+	SupabaseDefault *supabase.SupabaseClient
+	SupabaseAuth    *supabase.SupabaseAuth
+	SupabaseStorage *supabase.SupabaseStorage
+}
 
-// @securityDefinitions.apikey ApiKeyAuth
-// @in header
-// @name Authorization
-// @description Insert Your JWT Token. Do NOT include "Bearer " prefix. Example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-// @bearerFormat JWT
+type FeatureDependencies struct {
+	// Health Dependencies
+	HealthHandler *health.HealthHandler
+
+	// Experience Dependencies
+	ExperienceHandler    *experience.ExperienceHandler
+	ExperienceService    *experience.ExperienceService
+	ExperienceRepository *experience.ExperienceRepository
+
+	// Project Dependencies
+	ProjectHandler    *project.ProjectHandler
+	ProjectService    *project.ProjectService
+	ProjectRepository *project.ProjectRepository
+
+	// Tech Stack Dependencies
+	TechStackHandler    *tech_stack.TechStackHandler
+	TechStackService    *tech_stack.TechStackService
+	TechStackRepository *tech_stack.TechStackRepository
+}
 
 func main() {
-	// Load configuration
-	cfg, err := loadConfiguration()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
-
-	// Initialize logger
-	appLogger := initializeLogger(cfg)
-
-	// Set mode based on environment
-	setMode(cfg)
-
-	// Initialize infrastructure components
-	infrastructure := initializeInfrastructure(cfg, appLogger)
-
-	// Initialize repositories
-	repositories := initializeRepositories(infrastructure)
-
-	// Initialize services
-	services := initializeServices(repositories, infrastructure)
-
-	// Initialize handlers
-	handlers := initializeHandlers(services, appLogger, cfg)
-
-	// Initialize middleware
-	routeMiddleware := initializeMiddleware(infrastructure, services, appLogger)
-
-	// Create router
-	router := createRouter(appLogger)
-
-	// Register routes
-	registerApplicationRoutes(router, routeMiddleware, handlers)
-
-	// Start server
-	startServer(router, cfg, appLogger)
-}
-
-// Infrastructure holds all external services and clients
-type Infrastructure struct {
-	SupabaseClient  *supabaseGoClient.Client
-	SupabaseAuth    auth.Client
-	SupabaseStorage *supabase.SupabaseStorage
-	JWKS            *keyfunc.JWKS
-}
-
-// Repositories holds all repository instances
-type Repositories struct {
-	BadgeRepository       achievementRepositories.BadgeRepository
-	EventRepository       culturalRepositories.EventRepository
-	ThreadRepository      discussionRepositories.ThreadRepository
-	MessageRepository     discussionRepositories.MessageRepository
-	ParticipantRepository discussionRepositories.ParticipantRepository
-	ProvinceRepository    placeRepositories.ProvinceRepository
-	CityRepository        placeRepositories.CityRepository
-	LocationRepository    placeRepositories.LocationRepository
-	UserRepository        userRepositories.UserRepository
-	UserProfileRepository userRepositories.UserProfileRepository
-	UserBadgeRepository   userRepositories.UserBadgeRepository
-}
-
-// Services holds all service instances
-type Services struct {
-	BadgeService       achievementServices.BadgeService
-	EventService       culturalServices.EventService
-	ThreadService      discussionServices.ThreadService
-	MessageService     discussionServices.MessageService
-	ProvinceService    placeServices.ProvinceService
-	CityService        placeServices.CityService
-	LocationService    placeServices.LocationService
-	UserService        userServices.UserService
-	UserProfileService userServices.UserProfileService
-	UserBadgeService   userServices.UserBadgeService
-}
-
-// Handlers holds all handler instances
-type Handlers struct {
-	BadgeHandler       *achievementHandlers.BadgeHandler
-	EventHandler       *culturalHandlers.EventHandler
-	ThreadHandler      *discussionHandlers.ThreadHandler
-	MessageHandler     *discussionHandlers.MessageHandler
-	GeminiHandler      *gemini.GeminiHandler
-	ProvinceHandler    *placeHandlers.ProvinceHandler
-	CityHandler        *placeHandlers.CityHandler
-	LocationHandler    *placeHandlers.LocationHandler
-	UserHandler        *userHandlers.UserHandler
-	UserProfileHandler *userHandlers.UserProfileHandler
-	UserBadgeHandler   *userHandlers.UserBadgeHandler
-}
-
-// loadConfiguration loads application configuration
-func loadConfiguration() (*configs.Config, error) {
-	cfg, err := configs.LoadConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configurations: %w", err)
-	}
-	return cfg, nil
-}
-
-// initializeLogger sets up application logging
-func initializeLogger(cfg *configs.Config) *logger.Logger {
-	loggerConfig := logger.LoggerConfig{
-		Path: cfg.Logging.FilePath,
-	}
-	appLogger := logger.NewLogger(loggerConfig)
-	appLogger.Info("Application initialization started...")
-	return appLogger
-}
-
-// setMode configures Gin mode and Swagger info
-func setMode(cfg *configs.Config) {
-	if cfg.Environment == "production" {
-		gin.SetMode(gin.ReleaseMode)
-		docs.SwaggerInfo.Host = cfg.Server.ProductionDomain
-		docs.SwaggerInfo.Schemes = []string{"https"}
-	} else {
-		gin.SetMode(gin.DebugMode)
-		docs.SwaggerInfo.Schemes = []string{"http"}
-	}
-}
-
-// initializeInfrastructure sets up external services and connections
-func initializeInfrastructure(cfg *configs.Config, appLogger *logger.Logger) *Infrastructure {
-	// Initialize Supabase client
-	supabaseClientConfig := supabase.SupabaseClientConfig{
-		ProjectID: cfg.Supabase.ProjectID,
-		ApiSecret: cfg.Supabase.ApiSecretKey,
-	}
-	supabaseClientInstance, err := supabase.NewSupabaseClient(supabaseClientConfig)
-	if err != nil {
-		appLogger.Error("Failed to initialize Supabase client", map[string]interface{}{"error": err.Error()})
-		os.Exit(1)
-	}
-
-	// Initialize Supabase auth
-	supabaseAuthConfig := supabase.SupabaseAuthConfig{
-		ApiKey:    cfg.Supabase.ApiSecretKey,
-		ProjectID: cfg.Supabase.ProjectID,
-	}
-	supabaseAuthInstance := supabase.NewSupabaseAuth(supabaseAuthConfig)
-
-	// Initialize Supabase storage
-	supabaseStorageConfig := supabase.StorageConfig{
-		JwtApiSecret:  cfg.Supabase.JwtApiKeySecret,
-		ProjectID:     cfg.Supabase.ProjectID,
-		BucketID:      cfg.Supabase.StorageBucketID,
-		DefaultFolder: cfg.Supabase.DefaultFolder,
-	}
-	supabaseStorageInstance := supabase.NewSupabaseStorage(supabaseStorageConfig)
-
-	// Initialize JWKS
-	jwksURL := fmt.Sprintf("https://%s.supabase.co/auth/v1/.well-known/jwks.json", cfg.Supabase.ProjectID)
-	jwks, err := keyfunc.Get(jwksURL, keyfunc.Options{
-		RefreshUnknownKID: true,
-		RefreshErrorHandler: func(err error) {
-			appLogger.Error("JWKS refresh error", map[string]interface{}{"error": err.Error()})
-		},
-	})
-	if err != nil {
-		appLogger.Error("Failed to retrieve JWKS keys", map[string]interface{}{"error": err.Error()})
-		os.Exit(1)
-	}
-
-	return &Infrastructure{
-		SupabaseClient:  supabaseClientInstance.GetClient(),
-		SupabaseAuth:    supabaseAuthInstance.GetClient(),
-		SupabaseStorage: supabaseStorageInstance,
-		JWKS:            jwks,
-	}
-}
-
-// initializeRepositories creates all repository instances
-func initializeRepositories(infra *Infrastructure) *Repositories {
-	return &Repositories{
-		BadgeRepository:       achievementRepositories.NewBadgeRepository(infra.SupabaseClient),
-		EventRepository:       culturalRepositories.NewEventRepository(infra.SupabaseClient),
-		ThreadRepository:      discussionRepositories.NewThreadRepository(infra.SupabaseClient),
-		MessageRepository:     discussionRepositories.NewMessageRepository(infra.SupabaseClient),
-		ParticipantRepository: discussionRepositories.NewParticipantRepository(infra.SupabaseClient),
-		ProvinceRepository:    placeRepositories.NewProvinceRepository(infra.SupabaseClient),
-		CityRepository:        placeRepositories.NewCityRepository(infra.SupabaseClient),
-		LocationRepository:    placeRepositories.NewLocationRepository(infra.SupabaseClient),
-		UserRepository:        userRepositories.NewUserRepository(infra.SupabaseAuth),
-		UserProfileRepository: userRepositories.NewUserProfileRepository(infra.SupabaseClient),
-		UserBadgeRepository:   userRepositories.NewUserBadgeRepository(infra.SupabaseClient),
-	}
-}
-
-// initializeServices creates all service instances
-func initializeServices(repos *Repositories, infra *Infrastructure) *Services {
-	locationService := placeServices.NewLocationService(repos.LocationRepository)
-	badgeService := achievementServices.NewBadgeService(repos.BadgeRepository)
-	userBadgeService := userServices.NewUserBadgeService(repos.UserBadgeRepository)
-	participantServices := discussionServices.NewParticipantService(repos.ParticipantRepository)
-	threadService := discussionServices.NewThreadService(repos.ThreadRepository, participantServices)
-
-	return &Services{
-		BadgeService: badgeService,
-		EventService: culturalServices.NewEventService(
-			repos.EventRepository,
-			locationService,
-			*infra.SupabaseStorage,
-			threadService,
-		),
-		ThreadService:   threadService,
-		MessageService:  discussionServices.NewMessageService(repos.MessageRepository),
-		ProvinceService: placeServices.NewProvinceService(repos.ProvinceRepository),
-		CityService:     placeServices.NewCityService(repos.CityRepository),
-		LocationService: locationService,
-		UserService:     userServices.NewUserService(repos.UserRepository),
-		UserProfileService: userServices.NewUserProfileService(
-			repos.UserProfileRepository,
-			repos.UserRepository,
-			repos.UserBadgeRepository, // Use repository directly to match function signature
-			badgeService,
-			infra.SupabaseStorage,
-		),
-		UserBadgeService: userBadgeService,
-	}
-}
-
-// initializeHandlers creates all handler instances
-func initializeHandlers(svcs *Services, appLogger *logger.Logger, cfg *configs.Config) *Handlers {
-	// Initialize Gemini handler
-	geminiHandler, err := gemini.NewGeminiHandler(
-		cfg,
-		appLogger,
-		svcs.EventService,
-		svcs.CityService,
-		svcs.ProvinceService,
-		svcs.LocationService,
-		svcs.UserService,
-		svcs.BadgeService,
-		svcs.UserProfileService,
-		svcs.UserBadgeService,
-	)
-	if err != nil {
-		appLogger.Error("Failed to initialize Gemini Handler", map[string]interface{}{"error": err.Error()})
-		os.Exit(1)
-	}
-
-	return &Handlers{
-		BadgeHandler:       achievementHandlers.NewBadgeHandler(svcs.BadgeService, appLogger),
-		EventHandler:       culturalHandlers.NewEventHandler(svcs.EventService, appLogger),
-		ThreadHandler:      discussionHandlers.NewThreadHandler(svcs.ThreadService, appLogger),
-		MessageHandler:     discussionHandlers.NewMessageHandler(svcs.MessageService, appLogger),
-		GeminiHandler:      geminiHandler,
-		ProvinceHandler:    placeHandlers.NewProvinceHandler(svcs.ProvinceService, appLogger),
-		CityHandler:        placeHandlers.NewCityHandler(svcs.CityService, appLogger),
-		LocationHandler:    placeHandlers.NewLocationHandler(svcs.LocationService, appLogger),
-		UserHandler:        userHandlers.NewUserHandler(svcs.UserService, appLogger),
-		UserProfileHandler: userHandlers.NewUserProfileHandler(svcs.UserProfileService, appLogger),
-		UserBadgeHandler:   userHandlers.NewUserBadgeHandler(svcs.UserBadgeService, appLogger),
-	}
-}
-
-// initializeMiddleware creates middleware
-func initializeMiddleware(infra *Infrastructure, svcs *Services, appLogger *logger.Logger) *middleware.Middleware {
-	return middleware.NewMiddleware(infra.SupabaseAuth, infra.JWKS, svcs.UserBadgeService, svcs.BadgeService, appLogger)
-}
-
-// createRouter sets up Gin router with middleware
-func createRouter(appLogger *logger.Logger) *gin.Engine {
-	router := gin.New()
-
-	// Disable automatic redirects
-	router.RedirectTrailingSlash = false
-	router.RedirectFixedPath = false
-
-	// Global middleware
-	router.Use(gin.Recovery())
-	router.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"}, // Allow all origins during development
-		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD"},
-		AllowHeaders: []string{
-			"Origin",
-			"Content-Length",
-			"Content-Type",
-			"Authorization",
-			"Accept",
-			"X-Requested-With",
-		},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour, // Cache preflight requests
-	}))
-
-	// Custom logging middleware
-	router.Use(func(c *gin.Context) {
-		start := time.Now()
-		c.Next()
-		duration := time.Since(start)
-
-		appLogger.Info("Request processed",
-			map[string]interface{}{
-				"status":  c.Writer.Status(),
-				"method":  c.Request.Method,
-				"path":    c.Request.URL.Path,
-				"latency": duration,
-				"origin":  c.GetHeader("Origin"),
-			},
-		)
-	})
-
-	// Add a catch-all route for debugging
-	router.NoRoute(func(c *gin.Context) {
-		appLogger.Error("No Route Found",
-			map[string]interface{}{
-				"method": c.Request.Method,
-				"path":   c.Request.URL.Path,
-			},
-		)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error":  "Route not found",
-			"path":   c.Request.URL.Path,
-			"method": c.Request.Method,
-		})
-	})
-
-	return router
-}
-
-// registerApplicationRoutes adds all application routes
-func registerApplicationRoutes(router *gin.Engine, routeMiddleware *middleware.Middleware, handlers *Handlers) {
-	// Setup basic routes and Swagger
-	routes.SetupRouter(router)
-
-	// Register all routes with their handlers
-	routes.SetupGeminiRoutes(router, handlers.GeminiHandler, routeMiddleware)
-	routes.RegisterEventRoutes(router, handlers.EventHandler, routeMiddleware)
-	routes.RegisterLocationRoutes(router, handlers.LocationHandler, routeMiddleware)
-	routes.RegisterUserRoutes(router, handlers.UserHandler, routeMiddleware)
-	routes.RegisterUserProfileRoutes(router, handlers.UserProfileHandler, routeMiddleware)
-	routes.RegisterUserBadgeRoutes(router, handlers.UserBadgeHandler, routeMiddleware)
-	routes.RegisterBadgeRoutes(router, handlers.BadgeHandler, routeMiddleware)
-	routes.RegisterCityRoutes(router, handlers.CityHandler, routeMiddleware)
-	routes.RegisterProvinceRoutes(router, handlers.ProvinceHandler, routeMiddleware)
-	routes.RegisterMessageRoutes(router, handlers.MessageHandler, routeMiddleware)
-	routes.RegisterThreadRoutes(router, handlers.ThreadHandler, routeMiddleware)
-}
-
-// startServer runs the HTTP server with graceful shutdown
-func startServer(router *gin.Engine, cfg *configs.Config, appLogger *logger.Logger) {
-	// Configure server
-	serverAddr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
-
-	// Create server
-	server := &http.Server{
-		Addr:         serverAddr,
-		Handler:      router,
-		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
-	}
-
-	// Start server in goroutine
-	go func() {
-		appLogger.Info("Starting server", map[string]interface{}{"address": serverAddr})
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			appLogger.Error("Server failed", map[string]interface{}{"error": err.Error()})
-			os.Exit(1)
+	// Initialize application context
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+		select {
+		case <-ctx.Done():
+		default:
 		}
 	}()
 
+	// Initialize dependencies
+	deps, err := initializeAppDependencies()
+	if err != nil {
+		fmt.Printf("Failed to initialize dependencies: %v\n", err)
+		os.Exit(1)
+	}
+	defer cleanupAppDependencies(deps)
+
+	// Initialize dependencies
+	featureDeps, err := initializeFeatureDependencies(deps.SupabaseDefault, *deps.SupabaseStorage, deps.Config, deps.Logger)
+	if err != nil {
+		fmt.Printf("Failed to initialize dependencies: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Setup routes
+	setupRoutes(deps, featureDeps)
+
+	// Start server
+	server := createHTTPServer(deps)
+
+	// Graceful server startup and shutdown
+	go startServer(server, deps.Logger, deps.Config)
+
+	// Wait for shutdown signal
+	waitForShutdown(server, deps.Logger, deps.Config)
+}
+
+// initializeDependencies sets up all application dependencies
+func initializeAppDependencies() (*AppDependencies, error) {
+	// Load configuration
+	cfg, err := configs.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	// Initialize logging
+	appLogger := initializeLogger(cfg)
+
+	// Initialize Supabase default schema client
+	supabaseDefault, err := supabase.NewSupabaseClient(supabase.SupabaseClientConfig{
+		ApiSecret: cfg.Supabase.ApiSecretKey,
+		ProjectID: cfg.Supabase.ProjectID,
+		Schema:    cfg.Database.Schema,
+	})
+	if err != nil {
+		appLogger.Error("Failed to initialize Supabase client with default schema", "error", err)
+		os.Exit(1)
+	}
+
+	// Initialize Supabase authentication
+	supabaseAuth, err := supabase.NewSupabaseAuth(supabase.SupabaseAuthConfig{
+		ApiKey:    cfg.Supabase.ApiSecretKey,
+		ProjectID: cfg.Supabase.ProjectID,
+	})
+	if err != nil {
+		appLogger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	// Initialize Supabase authentication
+	supabaseStorage, err := supabase.NewSupabaseStorage(supabase.StorageConfig{
+		ProjectID:           cfg.Supabase.ProjectID,
+		JwtApiSecret:        cfg.Supabase.JWTSecret,
+		BucketID:            cfg.Supabase.StorageBucketID,
+		DefaultFolder:       cfg.Supabase.DefaultStorageFolder,
+		MaxFileSize:         cfg.Supabase.MaxFileSize,
+		AllowedFileTypes:    cfg.Supabase.AllowedFileTypes,
+		DefaultCacheControl: cfg.Supabase.CacheControl,
+	})
+	if err != nil {
+		appLogger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	// Initialize JWKS
+	jwks := initializeJWKS(cfg, appLogger)
+
+	// Allowed Emails For Backend Access
+	allowedEmails := []string{
+		"ehhramaa212@gmail.com",
+		"muhamad.ramadhan.dev@gmail.com",
+	}
+
+	// Initialize JWT middleware
+	jwtMiddleware := initializeJWTMiddleware(jwks, allowedEmails, appLogger)
+
+	// Setup Gin router
+	router := initializeRouter(appLogger, cfg)
+
+	return &AppDependencies{
+		Config:          cfg,
+		Logger:          appLogger,
+		SupabaseDefault: supabaseDefault,
+		SupabaseAuth:    supabaseAuth,
+		SupabaseStorage: supabaseStorage,
+		JWKS:            jwks,
+		JWTMiddleware:   jwtMiddleware,
+		Router:          router,
+	}, nil
+}
+
+func initializeFeatureDependencies(supabaseDefault *supabase.SupabaseClient, supabaseStorage supabase.SupabaseStorage, cfg *configs.Config, appLogger *logger.Logger) (*FeatureDependencies, error) {
+	// Initialize health dependencies
+	healthHandler := health.NewHealthHandler(supabaseDefault.GetClient())
+
+	// Initialize experience dependencies
+	experienceRepo := experience.NewExperienceRepository(supabaseDefault, supabaseStorage)
+	experienceService := experience.NewExperienceService(experienceRepo, supabaseStorage)
+	experienceHandler := experience.NewExperienceHandler(experienceService, appLogger)
+
+	// Initialize project dependencies
+	projectRepo := project.NewProjectRepository(supabaseDefault, supabaseStorage)
+	projectService := project.NewProjectService(projectRepo, supabaseStorage)
+	projectHandler := project.NewProjectHandler(projectService, appLogger)
+
+	// Initialize tech stack dependencies
+	techStackRepo := tech_stack.NewTechStackRepository(supabaseDefault)
+	techStackService := tech_stack.NewTechStackService(techStackRepo)
+	techStackHandler := tech_stack.NewTechStackHandler(techStackService, appLogger)
+
+	return &FeatureDependencies{
+		// Health Dependencies
+		HealthHandler: healthHandler,
+
+		// Experience Dependencies
+		ExperienceHandler:    experienceHandler,
+		ExperienceService:    &experienceService,
+		ExperienceRepository: &experienceRepo,
+
+		// Project Dependencies
+		ProjectHandler:    projectHandler,
+		ProjectService:    &projectService,
+		ProjectRepository: &projectRepo,
+
+		// Tech Stack Dependencies
+		TechStackHandler:    techStackHandler,
+		TechStackService:    &techStackService,
+		TechStackRepository: &techStackRepo,
+	}, nil
+}
+
+// cleanupDependencies performs cleanup for all initialized dependencies
+func cleanupAppDependencies(deps *AppDependencies) {
+	// Close logger
+	if err := deps.Logger.Close(); err != nil {
+		fmt.Printf("Error closing logger: %v\n", err)
+	}
+}
+
+// setupRoutes configures all application routes
+func setupRoutes(deps *AppDependencies, featureDeps *FeatureDependencies) {
+	// Setup global error handler
+	deps.Router.NoRoute(func(c *gin.Context) {
+		response.NotFound(c, "route_not_found", "Endpoint not found", c.Request.URL.Path)
+	})
+
+	// Setup API routes
+	v1Group := deps.Router.Group("/api/v1")
+	{
+		v1Group.GET("/", func(c *gin.Context) {
+			apiInfo := map[string]string{
+				"name":          "Itsrama Portfolio Backend API",
+				"description":   "Comprehensive backend API for Itsrama Portfolio",
+				"documentation": "https://github.com/holycann/itsrama-portfolio-backend",
+				"status":        "operational",
+				"version":       "1.0.0",
+				"environment":   deps.Config.Environment,
+			}
+
+			response.Success(c, http.StatusOK, apiInfo, "API Info")
+		})
+
+		// Health check endpoint with comprehensive system checks
+		v1Group.GET("/health", featureDeps.HealthHandler.GetHealthStatus)
+
+		// Experience Routes
+		routes.RegisterExperienceRoutes(
+			v1Group,
+			featureDeps.ExperienceHandler,
+			deps.JWTMiddleware,
+		)
+
+		// Project Routes
+		routes.RegisterProjectRoutes(
+			v1Group,
+			featureDeps.ProjectHandler,
+			deps.JWTMiddleware,
+		)
+
+		// Tech Stack Routes
+		routes.RegisterTechStackRoutes(
+			v1Group,
+			featureDeps.TechStackHandler,
+			deps.JWTMiddleware,
+		)
+	}
+}
+
+// createHTTPServer creates and configures the HTTP server
+func createHTTPServer(deps *AppDependencies) *http.Server {
+	return &http.Server{
+		Addr:         fmt.Sprintf("%s:%d", deps.Config.Server.Host, deps.Config.Server.Port),
+		Handler:      deps.Router,
+		ReadTimeout:  time.Duration(deps.Config.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(deps.Config.Server.WriteTimeout) * time.Second,
+	}
+}
+
+// startServer handles the server startup process
+func startServer(server *http.Server, log *logger.Logger, cfg *configs.Config) {
+	log.Info("Starting server",
+		"host", cfg.Server.Host,
+		"port", cfg.Server.Port,
+	)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Error("Server startup failed", "error", err)
+		os.Exit(1)
+	}
+}
+
+// waitForShutdown handles graceful shutdown of the server
+func waitForShutdown(server *http.Server, log *logger.Logger, cfg *configs.Config) {
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	appLogger.Info("Shutting down server...")
+	log.Info("Shutting down server...")
 
-	// Context for shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(
+		context.Background(),
+		time.Duration(cfg.Server.ShutdownTimeout)*time.Second,
+	)
+	defer shutdownCancel()
 
-	if err := server.Shutdown(ctx); err != nil {
-		appLogger.Error("Server shutdown error", map[string]interface{}{"error": err.Error()})
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Error("Server shutdown failed", "error", err)
+	}
+
+	log.Info("Server exited")
+}
+
+// initializeLogger sets up the application logger
+func initializeLogger(cfg *configs.Config) *logger.Logger {
+	loggerConfig := logger.LoggerConfig{
+		Path:        cfg.Logging.FilePath,
+		Level:       logger.InfoLevel,
+		Development: cfg.Environment == "development",
+		MaxSize:     cfg.Logging.MaxSize,
+		MaxBackups:  cfg.Logging.MaxBackups,
+		MaxAge:      cfg.Logging.MaxAge,
+		Compress:    cfg.Logging.Compress,
+	}
+
+	return logger.NewLogger(loggerConfig)
+}
+
+// initializeJWKS retrieves JWKS keys for JWT validation
+func initializeJWKS(cfg *configs.Config, log *logger.Logger) *keyfunc.JWKS {
+	jwksURL := fmt.Sprintf("https://%s.supabase.co/auth/v1/.well-known/jwks.json", cfg.Supabase.ProjectID)
+
+	jwks, err := keyfunc.Get(jwksURL, keyfunc.Options{
+		RefreshUnknownKID: true,
+		RefreshErrorHandler: func(err error) {
+			log.Error("JWKS refresh error", "error", err)
+		},
+	})
+
+	if err != nil {
+		log.Error("Failed to retrieve JWKS keys", "error", err)
 		os.Exit(1)
 	}
 
-	appLogger.Info("Server exited")
+	log.Info("JWKS keys initialized successfully")
+	return jwks
+}
+
+// initializeJWTMiddleware creates JWT authentication middleware
+func initializeJWTMiddleware(
+	jwks *keyfunc.JWKS,
+	allowedEmails []string,
+	log *logger.Logger,
+) *middleware.Middleware {
+	return middleware.NewMiddleware(
+		jwks,
+		allowedEmails,
+		log,
+	)
+}
+
+// initializeRouter sets up the Gin router with global middleware
+func initializeRouter(log *logger.Logger, cfg *configs.Config) *gin.Engine {
+	// Set Gin mode based on environment
+	if cfg.Environment == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
+
+	router := gin.New()
+
+	// Global middleware
+	router.Use(gin.Recovery())
+
+	// CORS Middleware
+	// CORS Middleware
+	if cfg.CORS.CORSEnabled {
+		if cfg.Environment != "production" {
+			cfg.CORS.MaxAge = 0
+		}
+
+		corsConfig := cors.Config{
+			AllowOrigins:     cfg.CORS.AllowedOrigins,
+			AllowMethods:     cfg.CORS.AllowedMethods,
+			AllowHeaders:     cfg.CORS.AllowedHeaders,
+			ExposeHeaders:    cfg.CORS.ExposedHeaders,
+			AllowCredentials: cfg.CORS.AllowCredentials,
+			MaxAge:           time.Duration(cfg.CORS.MaxAge) * time.Second,
+		}
+
+		router.Use(cors.New(corsConfig))
+	} else {
+		router.Use(cors.New(cors.DefaultConfig()))
+	}
+
+	// Logging middleware
+	router.Use(func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+
+		log.Info("Request processed",
+			"method", c.Request.Method,
+			"path", c.Request.URL.Path,
+			"status", c.Writer.Status(),
+			"latency", time.Since(start),
+		)
+	})
+
+	return router
 }

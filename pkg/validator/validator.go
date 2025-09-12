@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 )
 
 // ValidationRule defines a custom validation rule
@@ -22,50 +23,96 @@ type ValidationContext struct {
 	CustomTag string
 }
 
-// ValidateStruct performs comprehensive validation for structs
+// ValidateStruct performs comprehensive validation for structs or slices of structs
 func ValidateStruct(s interface{}) error {
 	v := reflect.ValueOf(s)
 
-	// Check if the input is a pointer and dereference it
+	// Dereference pointer if needed
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 
-	t := v.Type()
-
 	var errors []string
 
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldType := t.Field(i)
-
-		// Get validation tag
-		tag := fieldType.Tag.Get("validate")
-		if tag == "" {
-			continue
+	switch v.Kind() {
+	case reflect.Struct:
+		errors = append(errors, validateStructValue(v)...)
+	case reflect.Slice:
+		for i := 0; i < v.Len(); i++ {
+			item := v.Index(i)
+			// Dereference pointer inside slice if any
+			if item.Kind() == reflect.Ptr {
+				item = item.Elem()
+			}
+			if item.Kind() != reflect.Struct {
+				return fmt.Errorf("ValidateStruct: slice contains non-struct type")
+			}
+			errors = append(errors, validateStructValue(item)...)
 		}
-
-		// Create validation context
-		ctx := ValidationContext{
-			Field:     fieldType.Name,
-			Value:     field.Interface(),
-			CustomTag: tag,
-		}
-
-		// Parse validation rules from tag
-		rules := parseValidationRules(tag)
-		ctx.Rules = rules
-
-		// Validate field
-		if err := validateField(ctx); err != nil {
-			errors = append(errors, err.Error())
-		}
+	default:
+		return fmt.Errorf("ValidateStruct: unsupported type %s", v.Kind())
 	}
 
 	if len(errors) > 0 {
 		return fmt.Errorf("validation errors: %s", strings.Join(errors, ", "))
 	}
+
 	return nil
+}
+
+// ValidateModel performs comprehensive validation for a model
+func ValidateModel[T any](model T) error {
+	if err := ValidateStruct(model); err != nil {
+		return errors.Wrap(err,
+			errors.ErrValidation,
+			"Model validation failed",
+			errors.WithContext("validation_errors", err.Error()),
+		)
+	}
+	return nil
+}
+
+// IsValueChanged checks if the new value is different from the existing one
+func IsValueChanged[T any](existing, new *T, ignoredFields ...string) bool {
+	if existing == nil || new == nil {
+		return true
+	}
+
+	existingValue := reflect.ValueOf(existing).Elem()
+	newValue := reflect.ValueOf(new).Elem()
+
+	if existingValue.Type() != newValue.Type() {
+		return true
+	}
+
+	ignoreMap := make(map[string]struct{})
+	for _, f := range ignoredFields {
+		ignoreMap[f] = struct{}{}
+	}
+
+	// Automatically ignore CreatedAt and UpdatedAt fields
+	ignoreMap["CreatedAt"] = struct{}{}
+	ignoreMap["UpdatedAt"] = struct{}{}
+
+	for i := 0; i < existingValue.NumField(); i++ {
+		fieldType := existingValue.Type().Field(i)
+		if _, ignored := ignoreMap[fieldType.Name]; ignored {
+			continue
+		}
+
+		field1 := existingValue.Field(i)
+		field2 := newValue.Field(i)
+
+		if !field1.CanInterface() {
+			continue
+		}
+
+		if !reflect.DeepEqual(field1.Interface(), field2.Interface()) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // parseValidationRules parses validation rules from a tag
@@ -239,6 +286,35 @@ func passwordRule(value interface{}) error {
 		return fmt.Errorf("must %s", strings.Join(errors, ", "))
 	}
 	return nil
+}
+
+// validateStructValue validates a single struct value and returns slice of error strings
+func validateStructValue(v reflect.Value) []string {
+	t := v.Type()
+	var errs []string
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+
+		tag := fieldType.Tag.Get("validate")
+		if tag == "" {
+			continue
+		}
+
+		ctx := ValidationContext{
+			Field:     fieldType.Name,
+			Value:     field.Interface(),
+			CustomTag: tag,
+			Rules:     parseValidationRules(tag),
+		}
+
+		if err := validateField(ctx); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+
+	return errs
 }
 
 // validateField validates a single field with its rules

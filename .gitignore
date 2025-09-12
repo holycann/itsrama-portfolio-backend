@@ -1,81 +1,79 @@
-# Golang specific ignores
-# Binaries for programs and plugins
-*.exe
-*.exe~
+# Compiled source #
+*.com
+*.class
 *.dll
+*.exe
+*.o
 *.so
-*.dylib
 
-# Test binary, built with `go test -c`
-*.test
+# Packages #
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
 
-# Output of the go coverage tool
-*.out
-coverage.txt
+# Logs and databases #
+*.log
+*.sqlite
+*.db
 
-# Dependency directories
+# OS generated files #
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment and sensitive files #
+.env
+*.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Credentials and sensitive configuration #
+*.pem
+*.key
+*.crt
+*.cert
+id_rsa
+id_ed25519
+
+# Dependency directories #
+node_modules/
 vendor/
-go.sum
+.vendor/
+dist/
+build/
 
-# IDE and Editor directories
+# IDE and editor files #
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 
-# Logs
-*.log
-logs/
-log/
+# Go-specific ignores #
+*.exe~
+*.test
+*.out
 
-# Environment files
-.env
-.env.local
-.env.development
-.env.production
+# Project-specific sensitive files #
+config.json
+secrets.yaml
+*.secret
+*.credentials
 
-# Temporary files
-tmp/
-temp/
-
-# macOS system files
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Windows system files
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Compiled Object files
-*.o
-*.a
-
-# Project-specific build outputs
-build/
-dist/
-bin/
-
-# Profiling data
-*.prof
-*.pprof
-
-# Local development configurations
-*.local.yaml
-*.local.json
-
-# Backup files
+# Backup files #
 *.bak
-*.backup
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Go workspace file
-go.work
-go.work.sum
-
-*.zip
-*.rar
+*.gho
+*.ori
+*.orig
+*.tmp

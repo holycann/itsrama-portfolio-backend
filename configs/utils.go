@@ -2,8 +2,8 @@ package configs
 
 import (
 	"os"
-	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -45,7 +45,7 @@ func getEnvAsStringSlice(key string, defaultValue []string) []string {
 		return defaultValue
 	}
 
-	return filepath.SplitList(valueStr)
+	return strings.Split(valueStr, ",")
 }
 
 func getEnvAsFloat64(key string, defaultValue float64) float64 {

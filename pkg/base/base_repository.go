@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/holycann/itsrama-portfolio-backend/pkg/response"
+	"github.com/supabase-community/postgrest-go"
 )
 
 // ListOptions provides common filtering, sorting, and pagination options
@@ -110,49 +112,10 @@ type BaseRepository[T any, R any] interface {
 	Exists(ctx context.Context, id string) (bool, error)
 	FindByField(ctx context.Context, field string, value interface{}) ([]R, error)
 	Search(ctx context.Context, opts ListOptions) ([]R, int, error)
-
-	// Additional methods for bulk operations
-	BulkCreate(ctx context.Context, values []*T) ([]T, error)
-	BulkUpdate(ctx context.Context, values []*T) ([]T, error)
-	BulkDelete(ctx context.Context, ids []string) error
-}
-
-// EnhancedRepository extends BaseRepository with additional robust methods
-type EnhancedRepository[T any, R any] interface {
-	BaseRepository[T, R]
-
-	// Advanced querying methods
-	FindByMultipleFields(ctx context.Context, filters map[string]interface{}) ([]R, error)
-
-	// Soft delete and restore operations
-	SoftDelete(ctx context.Context, id string) error
-	Restore(ctx context.Context, id string) error
-
-	// Bulk operations with more granular control
-	BulkUpsert(ctx context.Context, values []*T) ([]R, error)
-
-	// Transactional operations
-	WithTransaction(ctx context.Context, fn func(repo EnhancedRepository[T, R]) error) error
 }
 
 // RepositoryOption allows for flexible configuration of repositories
 type RepositoryOption[T any] func(interface{}) error
-
-// WithValidation adds validation to repository operations
-func WithValidation[T any](validator func(T) error) RepositoryOption[T] {
-	return func(repo interface{}) error {
-		// Implementation depends on specific repository type
-		return nil
-	}
-}
-
-// WithLogging adds logging to repository operations
-func WithLogging[T any](logger interface{}) RepositoryOption[T] {
-	return func(repo interface{}) error {
-		// Implementation depends on specific repository type
-		return nil
-	}
-}
 
 // BuildFilterOptions helps construct filter options dynamically
 func BuildFilterOptions(filters map[string]interface{}) []FilterOption {
@@ -166,6 +129,14 @@ func BuildFilterOptions(filters map[string]interface{}) []FilterOption {
 		})
 	}
 	return filterOpts
+}
+
+// applyFilters applies filter conditions to a query
+func ApplyFilters(query *postgrest.FilterBuilder, filters []FilterOption) *postgrest.FilterBuilder {
+	for _, filter := range filters {
+		query = query.Filter(filter.Field, filter.Operator, filter.Value.(string))
+	}
+	return query
 }
 
 // IsZero checks if a value is considered zero/empty
@@ -198,6 +169,68 @@ func IsZero(v interface{}) bool {
 		return false
 	default:
 		return false
+	}
+}
+
+// BuildFilterFromStruct dynamically creates filter options from a struct
+func BuildFilterFromStruct[T any](model T) []FilterOption {
+	v := reflect.ValueOf(model)
+	t := v.Type()
+	var filters []FilterOption
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldType := t.Field(i)
+
+		// Skip zero/empty values
+		if IsZero(field.Interface()) {
+			continue
+		}
+
+		// Use field name as filter key
+		filters = append(filters, FilterOption{
+			Field:    strings.ToLower(fieldType.Name),
+			Operator: OperatorEqual,
+			Value:    field.Interface(),
+		})
+	}
+
+	return filters
+}
+
+// PaginateResults applies pagination to a slice of results
+func PaginateResults[T any](
+	results []T,
+	page, perPage int,
+) ([]T, *response.Pagination) {
+	total := len(results)
+
+	// Calculate pagination
+	start := (page - 1) * perPage
+	end := start + perPage
+
+	if start > total {
+		return []T{}, &response.Pagination{
+			Total:       total,
+			Page:        page,
+			PerPage:     perPage,
+			TotalPages:  (total + perPage - 1) / perPage,
+			HasNextPage: false,
+		}
+	}
+
+	if end > total {
+		end = total
+	}
+
+	paginatedResults := results[start:end]
+
+	return paginatedResults, &response.Pagination{
+		Total:       total,
+		Page:        page,
+		PerPage:     perPage,
+		TotalPages:  (total + perPage - 1) / perPage,
+		HasNextPage: end < total,
 	}
 }
 
