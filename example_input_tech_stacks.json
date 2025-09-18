@@ -1,0 +1,219 @@
+[
+    {
+        "name": "Go",
+        "category": "Backend",
+        "version": "1.21",
+        "role": "Backend Development",
+        "is_core_skill": true
+    },
+    {
+        "name": "React",
+        "category": "Frameworks",
+        "version": "18.2",
+        "role": "Frontend Development",
+        "is_core_skill": true
+    },
+    {
+        "name": "HTML5",
+        "category": "Frontend",
+        "version": "5",
+        "role": "Frontend Development",
+        "is_core_skill": true
+    },
+    {
+        "name": "TailwindCSS",
+        "category": "Frontend",
+        "version": "3.3",
+        "role": "Frontend Styling",
+        "is_core_skill": true
+    },
+    {
+        "name": "Git",
+        "category": "Version Control",
+        "version": "2.41",
+        "role": "Code Management",
+        "is_core_skill": true
+    },
+    {
+        "name": "Github",
+        "category": "Version Control",
+        "version": "N/A",
+        "role": "Code Hosting",
+        "is_core_skill": true
+    },
+    {
+        "name": "PostgreSQL",
+        "category": "Database",
+        "version": "15",
+        "role": "Database Management",
+        "is_core_skill": true
+    },
+    {
+        "name": "MariaDB",
+        "category": "Database",
+        "version": "10.11",
+        "role": "Database Management",
+        "is_core_skill": true
+    },
+    {
+        "name": "NodeJs",
+        "category": "Backend",
+        "version": "18.16",
+        "role": "Backend Development",
+        "is_core_skill": false
+    },
+    {
+        "name": "TypeScript",
+        "category": "Frontend",
+        "version": "5.0",
+        "role": "Frontend Development",
+        "is_core_skill": false
+    },
+    {
+        "name": "NextJs",
+        "category": "Frameworks",
+        "version": "13",
+        "role": "Frontend Framework",
+        "is_core_skill": false
+    },
+    {
+        "name": "JavaScript",
+        "category": "Frontend",
+        "version": "ES2023",
+        "role": "Frontend Development",
+        "is_core_skill": false
+    },
+    {
+        "name": "PHP",
+        "category": "Backend",
+        "version": "8.2",
+        "role": "Backend Development",
+        "is_core_skill": false
+    },
+    {
+        "name": "Laravel",
+        "category": "Frameworks",
+        "version": "10",
+        "role": "Backend Framework",
+        "is_core_skill": false
+    },
+    {
+        "name": "CSS3",
+        "category": "Frontend",
+        "version": "3",
+        "role": "Frontend Styling",
+        "is_core_skill": false
+    },
+    {
+        "name": "Vercel",
+        "category": "DevOps",
+        "version": "N/A",
+        "role": "Deployment Platform",
+        "is_core_skill": false
+    },
+    {
+        "name": "AWS EC2",
+        "category": "DevOps",
+        "version": "N/A",
+        "role": "Cloud Infrastructure",
+        "is_core_skill": false
+    },
+    {
+        "name": "Azure VM",
+        "category": "DevOps",
+        "version": "N/A",
+        "role": "Cloud Infrastructure",
+        "is_core_skill": false
+    },
+    {
+        "name": "Google Console",
+        "category": "DevOps",
+        "version": "N/A",
+        "role": "Cloud Management",
+        "is_core_skill": false
+    },
+    {
+        "name": "CPanel",
+        "category": "DevOps",
+        "version": "N/A",
+        "role": "Hosting Management",
+        "is_core_skill": false
+    },
+    {
+        "name": "Postman",
+        "category": "Tools",
+        "version": "10.15",
+        "role": "API Testing",
+        "is_core_skill": false
+    },
+    {
+        "name": "Swagger",
+        "category": "Tools",
+        "version": "N/A",
+        "role": "API Documentation",
+        "is_core_skill": false
+    },
+    {
+        "name": "Notion",
+        "category": "Tools",
+        "version": "N/A",
+        "role": "Project Management",
+        "is_core_skill": false
+    },
+    {
+        "name": "Figma",
+        "category": "Tools",
+        "version": "N/A",
+        "role": "Design",
+        "is_core_skill": false
+    },
+    {
+        "name": "Canva",
+        "category": "Tools",
+        "version": "N/A",
+        "role": "Design",
+        "is_core_skill": false
+    },
+    {
+        "name": "ClickUp",
+        "category": "Tools",
+        "version": "N/A",
+        "role": "Project Management",
+        "is_core_skill": false
+    },
+    {
+        "name": "WordPress",
+        "category": "CMS & Platforms",
+        "version": "6.2",
+        "role": "Content Management",
+        "is_core_skill": false
+    },
+    {
+        "name": "Supabase",
+        "category": "CMS & Platforms",
+        "version": "N/A",
+        "role": "Backend as a Service",
+        "is_core_skill": false
+    },
+    {
+        "name": "Firebase",
+        "category": "CMS & Platforms",
+        "version": "N/A",
+        "role": "Backend as a Service",
+        "is_core_skill": false
+    },
+    {
+        "name": "Cloudflare",
+        "category": "CMS & Platforms",
+        "version": "N/A",
+        "role": "CDN & Security",
+        "is_core_skill": false
+    },
+    {
+        "name": "Cloudinary",
+        "category": "CMS & Platforms",
+        "version": "N/A",
+        "role": "Media Management",
+        "is_core_skill": false
+    }
+]

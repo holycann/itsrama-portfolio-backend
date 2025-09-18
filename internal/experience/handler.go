@@ -1,16 +1,15 @@
 package experience
 
 import (
-	"encoding/json"
-	"fmt"
 	"mime/multipart"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/response"
+	"github.com/holycann/itsrama-portfolio-backend/internal/utils"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/logger"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/response"
 )
 
 type ExperienceHandler struct {
@@ -26,6 +25,18 @@ func NewExperienceHandler(experienceService ExperienceService, logger *logger.Lo
 }
 
 // CreateExperience creates a new experience
+// @Summary Create a new experience
+// @Description Create a new experience with logo and images
+// @Tags Experiences
+// @Accept multipart/form-data
+// @Produce json
+// @Param logo_image formData file false "Logo Image"
+// @Param images formData file false "Experience Images"
+// @Param payload formData string true "Experience Details in JSON format (See ExperienceCreate Model)"
+// @Success 200 {object} response.APIResponse{data=Experience} "Experience created successfully"
+// @Failure 400 {object} response.APIResponse{data=ExperienceCreate} "Bad Request"
+// @Failure 500 {object} response.APIResponse "Internal Server Error"
+// @Router /experiences [post]
 func (h *ExperienceHandler) CreateExperience(c *gin.Context) {
 	var experienceInput ExperienceCreate
 
@@ -40,13 +51,13 @@ func (h *ExperienceHandler) CreateExperience(c *gin.Context) {
 	}
 
 	// Extract and validate form fields
-	if err := h.validateAndExtractExperienceInput(c, &experienceInput); err != nil {
+	if err := utils.ExtractFormDataPayload(c, &experienceInput); err != nil {
 		h.HandleError(c, err)
 		return
 	}
 
 	// Get logo file
-	logoFileHeaders, err := h.extractFileHeaders(c, "logo_image", 2)
+	logoFileHeaders, err := utils.ExtractFileHeaders(c, "logo_image", 2)
 	if err != nil {
 		h.HandleError(c, err)
 		return
@@ -57,7 +68,7 @@ func (h *ExperienceHandler) CreateExperience(c *gin.Context) {
 	}
 
 	// Get image files
-	imageFileHeaders, err := h.extractFileHeaders(c, "images", 2)
+	imageFileHeaders, err := utils.ExtractFileHeaders(c, "images", 2)
 	if err != nil {
 		h.HandleError(c, err)
 		return
@@ -78,6 +89,15 @@ func (h *ExperienceHandler) CreateExperience(c *gin.Context) {
 }
 
 // GetExperienceByID retrieves a specific experience
+// @Summary Get an experience by ID
+// @Description Retrieve a specific experience using its unique identifier
+// @Tags Experiences
+// @Produce json
+// @Param id path string true "Experience ID"
+// @Success 200 {object} response.APIResponse{data=Experience} "Experience retrieved successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Failure 404 {object} response.APIResponse "Experience not found"
+// @Router /experiences/{id} [get]
 func (h *ExperienceHandler) GetExperienceByID(c *gin.Context) {
 	experienceID := c.Param("id")
 	if experienceID == "" {
@@ -99,6 +119,19 @@ func (h *ExperienceHandler) GetExperienceByID(c *gin.Context) {
 }
 
 // UpdateExperience updates an existing experience
+// @Summary Update an experience
+// @Description Update an existing experience with new details and optional files
+// @Tags Experiences
+// @Accept multipart/form-data
+// @Produce json
+// @Param id path string true "Experience ID"
+// @Param logo_image formData file false "Logo Image"
+// @Param images formData file false "Experience Images"
+// @Param payload formData string true "Experience Details in JSON format (See ExperienceUpdate Model)"
+// @Success 200 {object} response.APIResponse{data=Experience} "Experience updated successfully"
+// @Failure 400 {object} response.APIResponse{data=ExperienceUpdate} "Bad Request"
+// @Failure 404 {object} response.APIResponse "Experience not found"
+// @Router /experiences/{id} [put]
 func (h *ExperienceHandler) UpdateExperience(c *gin.Context) {
 	var experienceInput ExperienceUpdate
 
@@ -128,26 +161,32 @@ func (h *ExperienceHandler) UpdateExperience(c *gin.Context) {
 	experienceInput.ID = experienceID
 
 	// Extract and validate form fields
-	if err := h.validateAndExtractExperienceInput(c, &experienceInput); err != nil {
+	if err := utils.ExtractFormDataPayload(c, &experienceInput); err != nil {
 		h.HandleError(c, err)
 		return
 	}
 
 	// Get logo file
-	logoFileHeaders, err := h.extractFileHeaders(c, "logo_image", 2)
+	logoFileHeaders, err := utils.ExtractFileHeaders(c, "logo_image", 2)
 	if err != nil {
 		h.HandleError(c, err)
 		return
 	}
-	experienceInput.LogoImage = logoFileHeaders[0]
+
+	if len(logoFileHeaders) > 0 {
+		experienceInput.LogoImage = logoFileHeaders[0]
+	}
 
 	// Get image files
-	imageFileHeaders, err := h.extractFileHeaders(c, "images", 2)
+	imageFileHeaders, err := utils.ExtractFileHeaders(c, "images", 2)
 	if err != nil {
 		h.HandleError(c, err)
 		return
 	}
-	experienceInput.Images = imageFileHeaders
+
+	if len(imageFileHeaders) > 0 {
+		experienceInput.Images = imageFileHeaders
+	}
 
 	// Update experience via service
 	experience, err := h.experienceService.UpdateExperience(c.Request.Context(), &experienceInput)
@@ -160,6 +199,15 @@ func (h *ExperienceHandler) UpdateExperience(c *gin.Context) {
 }
 
 // DeleteExperience deletes an existing experience
+// @Summary Delete an experience
+// @Description Delete an experience by its unique identifier
+// @Tags Experiences
+// @Produce json
+// @Param id path string true "Experience ID"
+// @Success 200 {object} response.APIResponse "Experience deleted successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Failure 404 {object} response.APIResponse "Experience not found"
+// @Router /experiences/{id} [delete]
 func (h *ExperienceHandler) DeleteExperience(c *gin.Context) {
 	experienceID := c.Param("id")
 	if experienceID == "" {
@@ -181,6 +229,17 @@ func (h *ExperienceHandler) DeleteExperience(c *gin.Context) {
 }
 
 // ListExperiences retrieves a paginated list of experience
+// @Summary List experiences
+// @Description Retrieve a paginated list of experiences with optional filtering
+// @Tags Experiences
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page" default(10)
+// @Param company query string false "Filter by company name"
+// @Param is_featured query string false "Filter by featured status"
+// @Success 200 {object} response.APIResponse{data=[]Experience} "Experiences retrieved successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Router /experiences [get]
 func (h *ExperienceHandler) ListExperiences(c *gin.Context) {
 	// Parse pagination and filtering options
 	opts, err := base.ParsePaginationParams(c)
@@ -203,6 +262,16 @@ func (h *ExperienceHandler) ListExperiences(c *gin.Context) {
 		})
 	}
 
+	// Optional company filter
+	isFeatured := c.Query("is_featured")
+	if isFeatured != "" {
+		opts.Filters = append(opts.Filters, base.FilterOption{
+			Field:    "is_featured",
+			Operator: base.OperatorEqual,
+			Value:    isFeatured,
+		})
+	}
+
 	// List experience
 	experience, err := h.experienceService.ListExperiences(c.Request.Context(), opts)
 	if err != nil {
@@ -221,28 +290,17 @@ func (h *ExperienceHandler) ListExperiences(c *gin.Context) {
 		response.WithPagination(total, opts.Page, opts.PerPage))
 }
 
-// GetExperiencesByCompany retrieves experience by company
-func (h *ExperienceHandler) GetExperiencesByCompany(c *gin.Context) {
-	company := c.Param("company")
-	if company == "" {
-		h.HandleError(c, errors.New(
-			errors.ErrValidation,
-			"Company is required",
-			nil,
-		))
-		return
-	}
-
-	experience, err := h.experienceService.GetExperiencesByCompany(c.Request.Context(), company)
-	if err != nil {
-		h.HandleError(c, err)
-		return
-	}
-
-	h.HandleSuccess(c, experience, "Experiences retrieved successfully")
-}
-
 // SearchExperiences performs a full-text search on experience
+// @Summary Search experiences
+// @Description Perform a full-text search on experiences with pagination
+// @Tags Experiences
+// @Produce json
+// @Param query query string true "Search query"
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page" default(10)
+// @Success 200 {object} response.APIResponse{data=[]Experience} "Experiences search completed successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Router /experiences/search [get]
 func (h *ExperienceHandler) SearchExperiences(c *gin.Context) {
 	query := c.Query("query")
 	opts, err := base.ParsePaginationParams(c)
@@ -269,17 +327,53 @@ func (h *ExperienceHandler) SearchExperiences(c *gin.Context) {
 }
 
 // BulkCreateExperiences creates multiple experience in bulk
+// @Summary Bulk create experiences
+// @Description Create multiple experiences in a single request
+// @Tags Experiences
+// @Accept multipart/form-data
+// @Produce json
+// @Param logo_image formData []file false "Logo Image"
+// @Param images formData []file false "Experience Images"
+// @Param payload formData string true "Experience Details in JSON array format (See ExperienceCreate Model)"
+// @Success 200 {object} response.APIResponse{data=[]Experience} "Experiences created successfully"
+// @Failure 400 {object} response.APIResponse{data=[]ExperienceCreate} "Bad Request"
+// @Failure 500 {object} response.APIResponse "Internal Server Error"
+// @Router /experiences/bulk [post]
 func (h *ExperienceHandler) BulkCreateExperiences(c *gin.Context) {
 	var experiencesInput []*ExperienceCreate
 
-	// Bind input
-	if err := c.ShouldBindJSON(&experiencesInput); err != nil {
-		h.HandleError(c, errors.New(
-			errors.ErrValidation,
-			"Invalid input",
-			err,
-		))
+	// Extract JSON payload
+	if err := utils.ExtractFormDataPayload(c, &experiencesInput); err != nil {
+		h.HandleError(c, err)
 		return
+	}
+
+	// Extract logo images
+	logoImages, err := utils.ExtractFileHeaders(c, "logo_image", 5)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Extract experience images
+	experienceImages, err := utils.ExtractFileHeaders(c, "images", 5)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	if len(logoImages) > 0 || len(experienceImages) > 0 {
+		for i := range experiencesInput {
+			// Match logo image to experience input if available
+			if i < len(logoImages) {
+				experiencesInput[i].LogoImage = logoImages[i]
+			}
+
+			// Match experience images to experience input if available
+			if i < len(experienceImages) {
+				experiencesInput[i].Images = []*multipart.FileHeader{experienceImages[i]}
+			}
+		}
 	}
 
 	// Bulk create experience
@@ -292,18 +386,52 @@ func (h *ExperienceHandler) BulkCreateExperiences(c *gin.Context) {
 	h.HandleSuccess(c, experience, "Experiences created successfully")
 }
 
-// BulkUpdateExperiences updates multiple experience in bulk
+// @Description Bulk update experiences with logo and images
+// @Tags Experiences
+// @Accept multipart/form-data
+// @Produce json
+// @Param logo_image formData file false "Logo Image"
+// @Param images formData file false "Experience Images"
+// @Param payload formData string true "Experience Details in JSON array format (See ExperienceUpdate Model)"
+// @Success 200 {object} response.APIResponse{data=[]Experience} "Experiences updated successfully"
+// @Failure 400 {object} response.APIResponse{data=[]ExperienceUpdate} "Bad Request"
+// @Failure 500 {object} response.APIResponse "Internal Server Error"
+// @Router /experiences/bulk [put]
 func (h *ExperienceHandler) BulkUpdateExperiences(c *gin.Context) {
 	var experiencesInput []*ExperienceUpdate
 
-	// Bind input
-	if err := c.ShouldBindJSON(&experiencesInput); err != nil {
-		h.HandleError(c, errors.New(
-			errors.ErrValidation,
-			"Invalid input",
-			err,
-		))
+	// Extract JSON payload
+	if err := utils.ExtractFormDataPayload(c, &experiencesInput); err != nil {
+		h.HandleError(c, err)
 		return
+	}
+
+	// Extract logo images
+	logoImages, err := utils.ExtractFileHeaders(c, "logo_image", 5)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Extract experience images
+	experienceImages, err := utils.ExtractFileHeaders(c, "images", 5)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	if len(logoImages) > 0 || len(experienceImages) > 0 {
+		for i := range experiencesInput {
+			// Match logo image to experience input if available
+			if i < len(logoImages) {
+				experiencesInput[i].LogoImage = logoImages[i]
+			}
+
+			// Match experience images to experience input if available
+			if i < len(experienceImages) {
+				experiencesInput[i].Images = []*multipart.FileHeader{experienceImages[i]}
+			}
+		}
 	}
 
 	// Bulk update experience
@@ -317,6 +445,15 @@ func (h *ExperienceHandler) BulkUpdateExperiences(c *gin.Context) {
 }
 
 // BulkDeleteExperiences deletes multiple experience in bulk
+// @Summary Bulk delete experiences
+// @Description Delete multiple experiences in a single request
+// @Tags Experiences
+// @Accept json
+// @Produce json
+// @Param ids body []string true "Experience IDs to delete"
+// @Success 200 {object} response.APIResponse "Experiences deleted successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Router /experiences/bulk [delete]
 func (h *ExperienceHandler) BulkDeleteExperiences(c *gin.Context) {
 	var idsInput []string
 
@@ -338,57 +475,4 @@ func (h *ExperienceHandler) BulkDeleteExperiences(c *gin.Context) {
 	}
 
 	h.HandleSuccess(c, nil, "Experiences deleted successfully")
-}
-
-// validateAndExtractExperienceInput handles validation and extraction of experience input fields
-func (h *ExperienceHandler) validateAndExtractExperienceInput(c *gin.Context, experienceInput interface{}) error {
-	// Extract JSON payload
-	jsonPayload := c.PostForm("payload")
-	if jsonPayload == "" {
-		return errors.New(
-			errors.ErrValidation,
-			"Experience payload is required",
-			nil,
-		)
-	}
-
-	// Unmarshal JSON payload
-	if err := json.Unmarshal([]byte(jsonPayload), experienceInput); err != nil {
-		return errors.New(
-			errors.ErrValidation,
-			"Invalid experience payload format: "+err.Error(),
-			err,
-		)
-	}
-
-	return nil
-}
-
-// extractFileHeaders handles extracting file headers from request
-func (h *ExperienceHandler) extractFileHeaders(c *gin.Context, fieldName string, maxSizeInMB int64) ([]*multipart.FileHeader, error) {
-	form, _ := c.MultipartForm()
-	var fileHeaders []*multipart.FileHeader
-
-	if form != nil && len(form.File[fieldName]) > 0 {
-		fileHeaders = form.File[fieldName]
-	} else {
-		// fallback to single file
-		f, err := c.FormFile(fieldName)
-		if err == nil {
-			fileHeaders = []*multipart.FileHeader{f}
-		}
-	}
-
-	// Validate file sizes
-	for _, fileHeader := range fileHeaders {
-		if fileHeader.Size > maxSizeInMB*1024*1024 {
-			return nil, errors.New(
-				errors.ErrValidation,
-				fmt.Sprintf("%s files must be less than %dMB each", fieldName, maxSizeInMB),
-				nil,
-			)
-		}
-	}
-
-	return fileHeaders, nil
 }

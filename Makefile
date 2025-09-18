@@ -32,11 +32,6 @@ GOLANGCI_LINT := golangci-lint
 DOCKER_COMPOSE := docker-compose
 DOCKERFILE := Dockerfile
 
-# Swagger parameters
-SWAGGER_BASE := swagger/base.yaml
-SWAGGER_PATHS := swagger/paths/*.yaml
-SWAGGER_BUNDLED := swagger/bundled.yaml
-
 # Postman parameters
 COLLECTION_DIR := postman
 COLLECTION_NAME := Itsrama
@@ -114,32 +109,18 @@ docker-push: docker-build
 	@docker push $(DOCKER_REGISTRY)/$(PROJECT_NAME):$(VERSION)
 
 # Development environment
-dev-up:
+dev-up: dev-down
 	@echo "Starting development environment..."
-	@$(DOCKER_COMPOSE) up -d
+	@$(DOCKER_COMPOSE) up -d --build
 
 dev-down:
 	@echo "Stopping development environment..."
 	@$(DOCKER_COMPOSE) down
-	@echo "Removing Docker images..."
-	@docker rmi $(PROJECT_NAME)
 
 # Swagger documentation
-swagger-merge:
+swagger-init:
 	@echo "Generating Swagger documentation..."
-	@swagger mixin $(SWAGGER_BASE) $(SWAGGER_PATHS) -o $(SWAGGER_BUNDLED)
-
-swagger-merge-win:
-	@echo "Generating Swagger documentation..."
-	@powershell -Command "swagger mixin '$(SWAGGER_BASE)'  (Get-ChildItem '$(SWAGGER_PATHS)').FullName -o '$(SWAGGER_BUNDLED)'"
-
-swagger-lint:
-	@echo "Linting Swagger documentation..."
-	@swagger validate $(SWAGGER_BUNDLED)
-
-swagger-serve:
-	@echo "Serving Swagger documentation..."
-	@swagger serve /F swagger $(SWAGGER_BUNDLED) -p 3333
+	@swag init -g cmd/main.go
 
 postman-merge:
 	@npx postman-combine-collections --name $(COLLECTION_NAME) -f '$(COLLECTION_DIR)/$(COLLECTION_FILES)' -o $(COLLECTION_DIR)/$(COLLECTION_OUTPUT_FILE)
@@ -171,7 +152,5 @@ help:
 	@echo "  dev-down      - Stop development environment containers"
 	@echo ""
 	@echo "Documentation:"
-	@echo "  swagger-merge - Generate combined Swagger API documentation"
-	@echo "  swagger-merge-win - Generate combined Swagger API documentation (Windows)"
-	@echo "  swagger-lint  - Lint Swagger documentation"
-	@echo "  swagger-serve - Serve Swagger documentation locally"
+	@echo "  swagger-init - Generate Swagger API documentation"
+	@echo "  postman-merge - Merge Postman API collections"

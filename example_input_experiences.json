@@ -1,0 +1,58 @@
+[
+    {
+        "role": "Full Stack Developer",
+        "company": "Freelance",
+        "job_type": "Remote",
+        "start_date": "2024-01-01",
+        "end_date": "2024-03-01",
+        "location": "Remote",
+        "arrangement": "Remote",
+        "impact": [
+            "Delivered multiple client projects (websites and mobile apps) using HTML, CSS, JavaScript, WordPress, and React Native, meeting client objectives and deadlines.",
+            "Built scalable back-end solutions with MariaDB and Firebase, enabling dynamic data handling and improved application performance.",
+            "Designed and implemented responsive user interfaces, optimizing usability and accessibility across desktop and mobile devices.",
+            "Deployed a secure media storage system with Cloudinary, reducing file management issues and improving media delivery efficiency.",
+            "Debugged and reviewed codebase, improving stability and reducing production errors by ensuring clean, maintainable code."
+        ],
+        "is_featured": true,
+        "tech_stack_ids": [
+            "ae22875a-d1c8-4244-aa22-f4b7648057cd",
+            "3a8eb284-1501-47e1-859e-d7d9f4d646ab", 
+            "b18b3a11-ecf1-48bd-a899-61056483e2f5",
+            "97c290a1-b07a-4146-b391-71740d732f66",
+            "7f288e28-286d-4fd0-8582-ab4bf7b0c1e7",
+            "7f76ab68-344b-45f5-b538-9df1812de7d4",
+            "3e197ae0-a75e-461b-9025-0696d4305453",
+            "cf47ab56-0532-4340-b374-1dcde3e2b6ad",
+            "3ed536e7-0793-4fba-9d7e-4422c8c88aea",
+            "9ff33e1a-0074-445a-a6e1-a69c353b4f2e"
+        ],
+        "work_description": "As a freelance Full Stack Developer, I worked on multiple client projects ranging from websites to mobile apps, focusing on scalable back-end solutions, responsive user interfaces, secure media storage, and clean code practices."
+    },
+    {
+        "role": "Technical Support Intern",
+        "company": "eFishery",
+        "job_type": "Internship",
+        "start_date": "2023-07-31",
+        "end_date": "2024-01-31",
+        "location": "Bandung, Indonesia",
+        "arrangement": "Hybrid",
+        "impact": [
+            "Resolved 30-50% of 5+ monthly bug reports and 10+ monthly human error cases at first-level support, reducing escalation load on the engineering team.",
+            "Reduced escalation time by 20% through accurate root-cause analysis and proper application of internal documentation.",
+            "Developed and deployed a WhatsApp automation bot (Laravel + Node.js + WhatsApp Web JS) that improved field team reporting consistency and communication efficiency.",
+            "Managed defect reporting in ClickUp, conducted monthly SLA reviews with the team, identified recurring issues, and collaborated cross-functionally to drive process improvements."
+        ],
+        "is_featured": true,
+        "tech_stack_ids": [
+            "d24bb688-95a3-4375-97f5-cfb0b08aceba",
+            "9e395fbf-ec34-4f37-ac38-251be676c99f",
+            "97fb5212-d01d-46ee-a1f8-4a487fd5b3ab",
+            "b18b3a11-ecf1-48bd-a899-61056483e2f5",
+            "bf2d73fb-d389-4f9c-a56e-338fbb82ee79",
+            "615074e0-a636-495a-9dce-7762b9e93079",
+            "a5431d55-99eb-4a28-90a9-a41fd5014760"
+        ],
+        "work_description": "Provided first-level support for field bugs, resolving issues using documentation and analysis before escalating to the engineering team."
+    }
+]

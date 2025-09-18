@@ -8,43 +8,49 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/tech_stack"
+	"github.com/holycann/itsrama-portfolio-backend/internal/validator"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/supabase"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/validator"
 	storage_go "github.com/supabase-community/storage-go"
 )
 
 type ExperienceService interface {
-	CreateExperience(ctx context.Context, experienceCreate *ExperienceCreate) (*Experience, error)
-	GetExperienceByID(ctx context.Context, id string) (*Experience, error)
-	UpdateExperience(ctx context.Context, experienceUpdate *ExperienceUpdate) (*Experience, error)
+	CreateExperience(ctx context.Context, experienceCreate *ExperienceCreate) (*ExperienceDTO, error)
+	GetExperienceByID(ctx context.Context, id string) (*ExperienceDTO, error)
+	UpdateExperience(ctx context.Context, experienceUpdate *ExperienceUpdate) (*ExperienceDTO, error)
 	DeleteExperience(ctx context.Context, id string) error
-	ListExperiences(ctx context.Context, opts base.ListOptions) ([]Experience, error)
+	ListExperiences(ctx context.Context, opts base.ListOptions) ([]ExperienceDTO, error)
 	CountExperiences(ctx context.Context, filters []base.FilterOption) (int, error)
-	GetExperiencesByCompany(ctx context.Context, company string) ([]Experience, error)
-	SearchExperiences(ctx context.Context, opts base.ListOptions) ([]Experience, int, error)
-	BulkCreateExperiences(ctx context.Context, experiencesCreate []*ExperienceCreate) ([]Experience, error)
-	BulkUpdateExperiences(ctx context.Context, experiencesUpdate []*ExperienceUpdate) ([]Experience, error)
+	SearchExperiences(ctx context.Context, opts base.ListOptions) ([]ExperienceDTO, int, error)
+	BulkCreateExperiences(ctx context.Context, experiencesCreate []*ExperienceCreate) ([]ExperienceDTO, error)
+	BulkUpdateExperiences(ctx context.Context, experiencesUpdate []*ExperienceUpdate) ([]ExperienceDTO, error)
 	BulkDeleteExperiences(ctx context.Context, ids []string) error
 }
 
 type experienceService struct {
-	experienceRepo ExperienceRepository
-	storage        supabase.SupabaseStorage
+	experienceRepo   ExperienceRepository
+	techStackService tech_stack.TechStackService
+	storage          supabase.SupabaseStorage
 }
 
-func NewExperienceService(experienceRepo ExperienceRepository, storage supabase.SupabaseStorage) ExperienceService {
+func NewExperienceService(experienceRepo ExperienceRepository, techStackService tech_stack.TechStackService, storage supabase.SupabaseStorage) ExperienceService {
 	return &experienceService{
-		experienceRepo: experienceRepo,
-		storage:        storage,
+		experienceRepo:   experienceRepo,
+		techStackService: techStackService,
+		storage:          storage,
 	}
 }
 
-func (s *experienceService) CreateExperience(ctx context.Context, experienceCreate *ExperienceCreate) (*Experience, error) {
+func (s *experienceService) CreateExperience(ctx context.Context, experienceCreate *ExperienceCreate) (*ExperienceDTO, error) {
 	// Validate input
 	if err := validator.ValidateModel(experienceCreate); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,
+			errors.ErrValidation,
+			"Invalid experience creation input",
+			errors.WithContext("experience", experienceCreate),
+		)
 	}
 
 	now := time.Now().UTC()
@@ -110,18 +116,49 @@ func (s *experienceService) CreateExperience(ctx context.Context, experienceCrea
 		}
 	}
 
-	return createdExperience, nil
+	experienceTechStack := make([]ExperienceTechStackDTO, len(experienceCreate.TechStackIds))
+	for _, techStackID := range experienceCreate.TechStackIds {
+		techStackDTO, err := s.techStackService.GetTechStackByID(ctx, techStackID.String())
+		if err != nil {
+			return nil, errors.Wrap(err,
+				errors.ErrDatabase,
+				"Failed to find tech stack",
+			)
+		}
+		experienceTechStack = append(experienceTechStack, ExperienceTechStackDTO{
+			ExperienceID: createdExperience.ID,
+			TechStackID:  techStackID,
+			TechStack:    *techStackDTO,
+		})
+	}
+
+	createdExperienceDTO := createdExperience.ToDTO(experienceTechStack)
+
+	return &createdExperienceDTO, nil
 }
 
-func (s *experienceService) GetExperienceByID(ctx context.Context, id string) (*Experience, error) {
+func (s *experienceService) GetExperienceByID(ctx context.Context, id string) (*ExperienceDTO, error) {
 	if id == "" {
 		return nil, fmt.Errorf("experience ID cannot be empty")
 	}
 
-	return s.experienceRepo.FindByID(ctx, id)
+	experiences, err := s.experienceRepo.FindByField(ctx, "id", id)
+	if err != nil {
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to find experience by ID",
+			errors.WithContext("experience_id", id),
+		)
+	}
+
+	if len(experiences) == 0 {
+		return nil, fmt.Errorf("experience with ID %s not found", id)
+	}
+
+	return &experiences[0], nil
 }
 
-func (s *experienceService) UpdateExperience(ctx context.Context, experienceUpdate *ExperienceUpdate) (*Experience, error) {
+func (s *experienceService) UpdateExperience(ctx context.Context, experienceUpdate *ExperienceUpdate) (*ExperienceDTO, error) {
 	// Validate input
 	if err := validator.ValidateModel(experienceUpdate); err != nil {
 		return nil, errors.New(
@@ -245,7 +282,25 @@ func (s *experienceService) UpdateExperience(ctx context.Context, experienceUpda
 		}
 	}
 
-	return updatedExperience, nil
+	experienceTechStack := make([]ExperienceTechStackDTO, len(existingExperience.ExperienceTechStack))
+	for _, techStack := range existingExperience.ExperienceTechStack {
+		techStackDTO, err := s.techStackService.GetTechStackByID(ctx, techStack.TechStackID.String())
+		if err != nil {
+			return nil, errors.Wrap(err,
+				errors.ErrDatabase,
+				"Failed to find tech stack",
+			)
+		}
+		experienceTechStack = append(experienceTechStack, ExperienceTechStackDTO{
+			ExperienceID: updatedExperience.ID,
+			TechStackID:  techStack.TechStackID,
+			TechStack:    *techStackDTO,
+		})
+	}
+
+	updatedExperienceDTO := updatedExperience.ToDTO(experienceTechStack)
+
+	return &updatedExperienceDTO, nil
 }
 
 func (s *experienceService) DeleteExperience(ctx context.Context, id string) error {
@@ -257,36 +312,98 @@ func (s *experienceService) DeleteExperience(ctx context.Context, id string) err
 		)
 	}
 
-	return s.experienceRepo.Delete(ctx, id)
+	// Retrieve existing experience to get image URL
+	existingExperience, err := s.GetExperienceByID(ctx, id)
+	if err != nil {
+		return errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to retrieve existing experience",
+			errors.WithContext("experience_id", id),
+		)
+	}
+
+	// Delete experience from repository
+	err = s.experienceRepo.Delete(ctx, id)
+	if err != nil {
+		return errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to delete experience",
+			errors.WithContext("experience_id", id),
+		)
+	}
+
+	// Optional: Delete associated tech stack associations
+	err = s.experienceRepo.DeleteExperienceTechStack(ctx, id)
+	if err != nil {
+		// Log the error but don't return it to avoid blocking the deletion
+		fmt.Printf("Failed to delete experience tech stack associations: %v\n", err)
+	}
+
+	// Delete associated images if exists
+	for _, imageUrl := range existingExperience.ImagesUrl {
+		if imageUrl != "" {
+			imagePath := filepath.Join(fmt.Sprintf("itsrama/images/experience/%s/", existingExperience.ID), filepath.Base(imageUrl))
+			_, err = s.storage.Delete(ctx, imagePath)
+			if err != nil {
+				// Log the error but don't return it to avoid blocking the deletion
+				fmt.Printf("Failed to delete experience image: %v\n", err)
+			}
+		}
+	}
+
+	if existingExperience.LogoUrl != "" {
+		imagePath := filepath.Join("itsrama/images/experience/logos/", filepath.Base(existingExperience.LogoUrl))
+		_, err = s.storage.Delete(ctx, imagePath)
+		if err != nil {
+			// Log the error but don't return it to avoid blocking the deletion
+			fmt.Printf("Failed to delete experience logo: %v\n", err)
+		}
+	}
+
+	return nil
 }
 
-func (s *experienceService) ListExperiences(ctx context.Context, opts base.ListOptions) ([]Experience, error) {
-	experience, err := s.experienceRepo.List(ctx, opts)
-	if err != nil {
+func (s *experienceService) ListExperiences(ctx context.Context, opts base.ListOptions) ([]ExperienceDTO, error) {
+	// Validate input options
+	if err := opts.Validate(); err != nil {
 		return nil, errors.Wrap(err,
-			errors.ErrDatabase,
-			"Failed to list experience",
+			errors.ErrValidation,
+			"Invalid list options",
 			errors.WithContext("options", opts),
 		)
 	}
 
-	return experience, nil
+	experiences, err := s.experienceRepo.List(ctx, opts)
+	if err != nil {
+		return nil, errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to list experiences",
+			errors.WithContext("options", opts),
+		)
+	}
+
+	return experiences, nil
 }
 
 func (s *experienceService) CountExperiences(ctx context.Context, filters []base.FilterOption) (int, error) {
 	return s.experienceRepo.Count(ctx, filters)
 }
 
-func (s *experienceService) GetExperiencesByCompany(ctx context.Context, company string) ([]Experience, error) {
-	return s.experienceRepo.FindByCompany(ctx, company)
-}
+func (s *experienceService) SearchExperiences(ctx context.Context, opts base.ListOptions) ([]ExperienceDTO, int, error) {
+	// Validate input options
+	if err := opts.Validate(); err != nil {
+		return nil, 0, errors.Wrap(err,
+			errors.ErrValidation,
+			"Invalid list options",
+			errors.WithContext("options", opts),
+		)
+	}
 
-func (s *experienceService) SearchExperiences(ctx context.Context, opts base.ListOptions) ([]Experience, int, error) {
 	return s.experienceRepo.Search(ctx, opts)
 }
 
-func (s *experienceService) BulkCreateExperiences(ctx context.Context, experiencesCreate []*ExperienceCreate) ([]Experience, error) {
-	experiences := make([]Experience, len(experiencesCreate))
+func (s *experienceService) BulkCreateExperiences(ctx context.Context, experiencesCreate []*ExperienceCreate) ([]ExperienceDTO, error) {
+	experiences := make([]ExperienceDTO, len(experiencesCreate))
 
 	for i, experienceCreate := range experiencesCreate {
 		createdExperience, err := s.CreateExperience(ctx, experienceCreate)
@@ -303,8 +420,8 @@ func (s *experienceService) BulkCreateExperiences(ctx context.Context, experienc
 	return experiences, nil
 }
 
-func (s *experienceService) BulkUpdateExperiences(ctx context.Context, experiencesUpdate []*ExperienceUpdate) ([]Experience, error) {
-	experiences := make([]Experience, len(experiencesUpdate))
+func (s *experienceService) BulkUpdateExperiences(ctx context.Context, experiencesUpdate []*ExperienceUpdate) ([]ExperienceDTO, error) {
+	experiences := make([]ExperienceDTO, len(experiencesUpdate))
 
 	for i, experienceUpdate := range experiencesUpdate {
 

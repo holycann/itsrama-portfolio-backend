@@ -1,0 +1,289 @@
+[
+    {
+        "category": "Mobile App",
+        "description": "Cultour is an innovative mobile application that helps users explore and actively engage with local cultural experiences. The platform is designed to offer an immersive way to discover cultural events, historic or iconic locations, and authentic stories shared by local residents.",
+        "development_status": "MVP",
+        "features": [
+            "Location Based Cultural Events",
+            "AI Curiosity Companion",
+            "Event Based Discussions",
+            "Concise Cultural Narratives & Friendly Design"
+        ],
+        "github_url": "https://github.com/holycann/Cultour",
+        "is_featured": true,
+        "my_role": [
+            "Backend Developer at Hackathon",
+            "Fullstack Developer after Hackathon to MVP Product",
+            "Database Design & Management",
+            "API Development",
+            "User Authentication & Authorization",
+            "Bug Fixing and Testing",
+            "Performance Optimization"
+        ],
+        "progress_percentage": 100,
+        "progress_status": "Completed",
+        "slug": "cultour-mobile-app",
+        "subtitle": "Cultural Tour Mobile Application",
+        "tech_stack_ids": [
+            "69c54f15-bb67-4b8f-a547-8becd29b5a27",
+            "52faed02-6dfb-44f0-9f02-b25632de76ef",
+            "deefe077-dd01-455e-bf03-5ed840a14400",
+            "a1ba2f81-6551-47e6-8063-ff06a59a530c"
+        ],
+        "title": "Cultour Mobile App",
+        "web_url": ""
+    },
+    {
+        "category": "Web Development",
+        "description": "Transformed the client's outdated site into a performant marketing engine with headless CMS, internationalisation, and SEO enhancements that boosted organic traffic by 150%. Designed to convey credibility, professionalism, and trust, the website delivers key information on the company's services, values, and portfolio through a modern and responsive layout.",
+        "development_status": "MVP",
+        "features": [
+            "Responsive Design",
+            "Fast Performance",
+            "SEO Optimized",
+            "Portfolio Management & Gallery"
+        ],
+        "github_url": "",
+        "is_featured": true,
+        "my_role": [
+            "WordPress Developer",
+            "Created Portfolio Page",
+            "Created Detail Portfolio Page",
+            "Added Floating WhatsApp Button",
+            "Implemented Functional Form",
+            "Plugin Integration and Customization",
+            "DevOps Configuration",
+            "Deployment Management",
+            "Server Setup and Optimization",
+            "Performance Monitoring"
+        ],
+        "progress_percentage": 100,
+        "progress_status": "Completed",
+        "slug": "asamedia-company-profile",
+        "subtitle": "Modern Company Profile Website for Asamedia",
+        "tech_stack_ids": [
+            "97c290a1-b07a-4146-b391-71740d732f66"
+        ],
+        "title": "Company Profile Asamedia",
+        "web_url": "https://asamedia.id/"
+    },
+    {
+        "category": "Web Development",
+        "description": "Kawasan Digital is an interactive, modern portfolio website showcasing cutting-edge web design and smooth user experiences. With stunning visuals, 3D components, animated UI elements, and a responsive layout, the project demonstrates advanced front-end techniques and performance optimization for an engaging digital presence.",
+        "development_status": "Beta",
+        "features": [
+            "3D Interactive Cards & Components",
+            "Smooth Scroll Interactions",
+            "Responsive Design",
+            "Animated Sections & UI Elements",
+            "SEO Optimized"
+        ],
+        "github_url": "https://github.com/Kawasan-Digital/Kawasan-Digital",
+        "is_featured": true,
+        "my_role": [
+            "Fullstack Developer",
+            "3D Component Integration",
+            "Responsive Layout Implementation",
+            "Scroll Animation & GSAP Integration",
+            "SEO Enhancement",
+            "Cross-Browser Testing"
+        ],
+        "progress_percentage": 90,
+        "progress_status": "In Progress",
+        "slug": "kawasan-digital-website",
+        "subtitle": "Interactive Portfolio Website for Kawasan Digital",
+        "tech_stack_ids": [
+            "ef173f94-339f-4e3d-9d25-c00f7dd0958c",
+            "b18b3a11-ecf1-48bd-a899-61056483e2f5",
+            "7f76ab68-344b-45f5-b538-9df1812de7d4"
+        ],
+        "title": "Company Profile Kawasan Digital",
+        "web_url": "https://www.kawasan.digital/"
+    },
+    {
+        "category": "Web Development",
+        "description": "IngatDok is a web-based AI application that helps users securely and efficiently manage their important documents. It leverages OCR and NLP to automatically extract key details like expiration dates, numbers, and names, then sends smart reminders based on urgency. Designed for Indonesian legal documents (SIM, STNK, KTP, Passport, contracts), it reduces the risk of fines, lost deposits, or travel disruptions.",
+        "development_status": "Beta",
+        "features": [
+            "AI-Powered OCR & NLP",
+            "Smart Reminder System",
+            "Multi Document Support",
+            "Secure Storage",
+            "User Friendly Interface"
+        ],
+        "github_url": "https://github.com/holycann/Ingat-Dok",
+        "is_featured": false,
+        "my_role": [
+            "Solo Fullstack Developer",
+            "AI OCR & NLP Implementation",
+            "Document Parsing & Validation",
+            "Reminder Scheduler Development",
+            "Secure File Storage Setup",
+            "Frontend UI/UX Design",
+            "Database Schema Design",
+            "Integration Testing",
+            "Performance Optimization"
+        ],
+        "progress_percentage": 50,
+        "progress_status": "On Hold",
+        "slug": "ingatdok-web-app",
+        "subtitle": "AI Web Application for Document Management",
+        "tech_stack_ids": [
+            "69c54f15-bb67-4b8f-a547-8becd29b5a27",
+            "ef173f94-339f-4e3d-9d25-c00f7dd0958c",
+            "deefe077-dd01-455e-bf03-5ed840a14400",
+            "7f76ab68-344b-45f5-b538-9df1812de7d4",
+            "a1ba2f81-6551-47e6-8063-ff06a59a530c"
+        ],
+        "title": "IngatDok Web App",
+        "web_url": "https://ingatdok.kawasan.digital/"
+    },
+    {
+        "category": "Web Development",
+        "description": "SSO Kawasan Digital is a Single Sign On (SSO) platform built with Next.js and TypeScript, providing secure, seamless, and user-friendly authentication for Kawasan Digital applications. The platform supports responsive design, password validation, toast notifications, and an intuitive UI/UX, with plans for social login and dark/light mode support.",
+        "development_status": "MVP",
+        "features": [
+            "Secure User Authentication with Supabase",
+            "Responsive and Modern UI/UX",
+            "Password Validation & Toast Notifications",
+            "Smooth Animations with GSAP"
+        ],
+        "github_url": "https://github.com/holycann/sso-kawasan-digital",
+        "is_featured": true,
+        "my_role": [
+            "Solo Fullstack Developer",
+            "Authentication Flow Design & Implementation",
+            "Supabase Integration",
+            "Frontend UI/UX Development",
+            "Password & Form Validation",
+            "Toast Notification Integration",
+            "GSAP Animation Integration",
+            "Testing & Debugging",
+            "Deployment & CI/CD Setup"
+        ],
+        "progress_percentage": 100,
+        "progress_status": "Completed",
+        "slug": "sso-kawasan-digital",
+        "subtitle": "Single Sign On Platform for Kawasan Digital",
+        "tech_stack_ids": [
+            "ef173f94-339f-4e3d-9d25-c00f7dd0958c",
+            "7f76ab68-344b-45f5-b538-9df1812de7d4",
+            "deefe077-dd01-455e-bf03-5ed840a14400",
+            "a1ba2f81-6551-47e6-8063-ff06a59a530c"
+        ],
+        "title": "SSO Kawasan Digital",
+        "web_url": "https://sso.kawasan.digital/"
+    },
+    {
+        "category": "Web Development",
+        "description": "GoWAG is an advanced web dashboard designed to streamline WhatsApp Business communication and management. Built with modern web technologies, it enables businesses to automate messaging workflows, track analytics, manage multiple user roles, and integrate with various messaging platforms, all through a secure, intuitive interface.",
+        "development_status": "Beta",
+        "features": [
+            "Intelligent Messaging",
+            "Advanced Analytics",
+            "Robust Security",
+            "Seamless Integrations",
+            "User Roles & Subscription Tiers"
+        ],
+        "github_url": "https://github.com/holycann/GoWAG-App",
+        "is_featured": false,
+        "my_role": [
+            "Solo Fullstack Developer",
+            "Backend API Development & Integration",
+            "Frontend Dashboard Design",
+            "Analytics & Data Visualization",
+            "User Roles & Permissions Management",
+            "Subscription Tiers Implementation",
+            "Security & Authentication Implementation",
+            "Testing & Debugging",
+            "Performance Optimization"
+        ],
+        "progress_percentage": 60,
+        "progress_status": "On Hold",
+        "slug": "gowag-app",
+        "subtitle": "WhatsApp API Gateway Dashboard",
+        "tech_stack_ids": [
+            "ef173f94-339f-4e3d-9d25-c00f7dd0958c",
+            "deefe077-dd01-455e-bf03-5ed840a14400",
+            "7f76ab68-344b-45f5-b538-9df1812de7d4",
+            "7f288e28-286d-4fd0-8582-ab4bf7b0c1e7"
+        ],
+        "title": "GoWAG App",
+        "web_url": "https://wag.holyycan.com/"
+    },
+    {
+        "category": "Web Development",
+        "description": "BubblePi Store is a modern, responsive frontend for a premium accounts marketplace, built with React and Vite. The platform offers an intuitive shopping experience with a product catalog, shopping cart, user authentication, and an admin dashboard, all wrapped in a cheerful, modern UI with light/dark mode support and smooth animations.",
+        "development_status": "Beta",
+        "features": [
+            "Responsive design",
+            "Modern UI/UX with light/dark theme toggle",
+            "Product catalog with filters",
+            "Shopping cart and checkout",
+            "Admin dashboard",
+            "SEO optimized"
+        ],
+        "github_url": "https://github.com/holycann/Bubblepi-Store",
+        "is_featured": false,
+        "my_role": [
+            "Solo Fullstack Developer",
+            "Frontend UI/UX Development",
+            "React Components Development",
+            "Product Catalog & Filters Implementation",
+            "Shopping Cart & Checkout Functionality",
+            "Admin Dashboard Development",
+            "SEO Optimization",
+            "Light/Dark Mode Implementation",
+            "Smooth Animations Integration",
+            "Testing & Debugging",
+            "Performance Optimization"
+        ],
+        "progress_percentage": 65,
+        "progress_status": "On Hold",
+        "slug": "bubblepi-store",
+        "subtitle": "Premium Accounts Marketplace Frontend",
+        "tech_stack_ids": [
+            "52faed02-6dfb-44f0-9f02-b25632de76ef",
+            "b18b3a11-ecf1-48bd-a899-61056483e2f5",
+            "7f76ab68-344b-45f5-b538-9df1812de7d4"
+        ],
+        "title": "BubblePi Store",
+        "web_url": "https://bubblepi-store.vercel.app/"
+    },
+    {
+        "category": "Web Development",
+        "description": "Modern web application designed to streamline parking space management through real-time visualization, reservations, and secure user access. Built with React 18 and Tailwind CSS, it delivers a responsive, intuitive UI backed by live WebSocket updates and JWT-based authentication. The app focuses on user convenience and efficient space allocation for smart city environments.",
+        "development_status": "Beta",
+        "features": [
+            "Real-time Parking Space Visualization",
+            "Secure User Authentication",
+            "Reservation and schedule management",
+            "Interactive toast notifications",
+            "Tech Stack"
+        ],
+        "github_url": "https://github.com/holycann/SmartParkingSystem",
+        "is_featured": false,
+        "my_role": [
+            "Solo Fullstack Developer",
+            "Frontend UI/UX Development",
+            "React Components Development",
+            "WebSocket Real-Time Updates Implementation",
+            "JWT Authentication Integration",
+            "Reservation & Schedule Management",
+            "Interactive Toast Notifications",
+            "Database Design & Integration",
+            "Testing & Debugging",
+            "Performance Optimization"
+        ],
+        "progress_percentage": 40,
+        "progress_status": "On Hold",
+        "slug": "smart-parking-system",
+        "subtitle": "Smart Parking Management Web App",
+        "tech_stack_ids": [
+            "52faed02-6dfb-44f0-9f02-b25632de76ef",
+            "7f76ab68-344b-45f5-b538-9df1812de7d4"
+        ],
+        "title": "Smart Parking System",
+        "web_url": "https://autoparkin.holyycan.com/"
+    }
+]

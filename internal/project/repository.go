@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/holycann/itsrama-portfolio-backend/pkg/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/base"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/supabase"
 	postgrest "github.com/supabase-community/postgrest-go"
 )
 
 type ProjectRepository interface {
-	base.BaseRepository[Project, Project]
-	FindByCategory(ctx context.Context, category string) ([]Project, error)
+	base.BaseRepository[Project, ProjectDTO]
 	CreateProjectTechStack(ctx context.Context, project *ProjectTechStack) (*ProjectTechStack, error)
 	DeleteProjectTechStack(ctx context.Context, projectID string) error
 }
@@ -53,20 +52,6 @@ func (r *projectRepository) CreateProjectTechStack(ctx context.Context, project 
 	return project, nil
 }
 
-func (r *projectRepository) FindByID(ctx context.Context, id string) (*Project, error) {
-	var project Project
-	_, err := r.supabaseClient.GetClient().
-		From(r.table).
-		Select("*", "", false).
-		Eq("id", id).
-		Single().
-		ExecuteTo(&project)
-	if err != nil {
-		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to fetch project")
-	}
-	return &project, nil
-}
-
 func (r *projectRepository) Update(ctx context.Context, project *Project) (*Project, error) {
 	_, _, err := r.supabaseClient.GetClient().
 		From(r.table).
@@ -103,11 +88,11 @@ func (r *projectRepository) DeleteProjectTechStack(ctx context.Context, projectI
 	return nil
 }
 
-func (r *projectRepository) List(ctx context.Context, opts base.ListOptions) ([]Project, error) {
-	var projects []Project
+func (r *projectRepository) List(ctx context.Context, opts base.ListOptions) ([]ProjectDTO, error) {
+	var projects []ProjectDTO
 	query := r.supabaseClient.GetClient().
 		From(r.table).
-		Select("*", "", false)
+		Select("*, project_tech_stack(tech_stack_id, tech_stack(id, name))", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
@@ -123,7 +108,11 @@ func (r *projectRepository) List(ctx context.Context, opts base.ListOptions) ([]
 	if opts.Search != "" {
 		query = query.Or(
 			fmt.Sprintf("title.ilike.%%%s%%", opts.Search),
+			"",
+		)
+		query = query.Or(
 			fmt.Sprintf("category.ilike.%%%s%%", opts.Search),
+			"",
 		)
 	}
 
@@ -183,11 +172,11 @@ func (r *projectRepository) Exists(ctx context.Context, id string) (bool, error)
 	return count > 0, nil
 }
 
-func (r *projectRepository) FindByField(ctx context.Context, field string, value interface{}) ([]Project, error) {
-	var projects []Project
+func (r *projectRepository) FindByField(ctx context.Context, field string, value interface{}) ([]ProjectDTO, error) {
+	var projects []ProjectDTO
 	_, err := r.supabaseClient.GetClient().
 		From(r.table).
-		Select("*", "", false).
+		Select("*, project_tech_stack(tech_stack_id, tech_stack(id, name))", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
 		ExecuteTo(&projects)
 	if err != nil {
@@ -196,24 +185,11 @@ func (r *projectRepository) FindByField(ctx context.Context, field string, value
 	return projects, nil
 }
 
-func (r *projectRepository) FindByCategory(ctx context.Context, category string) ([]Project, error) {
-	var projects []Project
-	_, err := r.supabaseClient.GetClient().
-		From(r.table).
-		Select("*", "", false).
-		Eq("category", category).
-		ExecuteTo(&projects)
-	if err != nil {
-		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find projects by category")
-	}
-	return projects, nil
-}
-
-func (r *projectRepository) Search(ctx context.Context, opts base.ListOptions) ([]Project, int, error) {
-	var projects []Project
+func (r *projectRepository) Search(ctx context.Context, opts base.ListOptions) ([]ProjectDTO, int, error) {
+	var projects []ProjectDTO
 	query := r.supabaseClient.GetClient().
 		From(r.table).
-		Select("*", "", false)
+		Select("*, project_tech_stack(tech_stack_id, tech_stack(id, name))", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
@@ -229,7 +205,11 @@ func (r *projectRepository) Search(ctx context.Context, opts base.ListOptions) (
 	if opts.Search != "" {
 		query = query.Or(
 			fmt.Sprintf("title.ilike.%%%s%%", opts.Search),
+			"",
+		)
+		query = query.Or(
 			fmt.Sprintf("category.ilike.%%%s%%", opts.Search),
+			"",
 		)
 	}
 

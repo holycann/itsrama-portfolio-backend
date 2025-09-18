@@ -8,9 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 
+	"github.com/holycann/itsrama-portfolio-backend/internal/response"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/logger"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/response"
 )
 
 // Middleware handles JWT token authentication and validation
@@ -86,12 +86,16 @@ func (m *Middleware) VerifyJWT() gin.HandlerFunc {
 
 // handleAuthError handles authentication errors with standardized response
 func (m *Middleware) handleAuthError(c *gin.Context, message string, opts ...func(*errors.CustomError)) {
-	errors.New(
+	err := errors.New(
 		errors.ErrAuthentication,
 		message,
 		nil,
 		opts...,
 	)
+	if err != nil {
+		// Log the authentication error
+		m.logger.Error("Authentication error", err)
+	}
 	response.Unauthorized(c, "auth_error", message, "")
 	c.Abort()
 }

@@ -17,6 +17,7 @@ CREATE TABLE itsrama.experience (
     work_description TEXT,
     impact TEXT[],
     images_url JSONB[],
+    is_featured BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );

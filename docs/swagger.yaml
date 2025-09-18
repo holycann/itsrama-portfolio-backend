@@ -1,0 +1,1767 @@
+basePath: /api/v1
+definitions:
+  experience.Experience:
+    description: Detailed information about a professional work experience
+    properties:
+      arrangement:
+        example: Remote
+        type: string
+      company:
+        example: Tech Innovations Inc.
+        type: string
+      created_at:
+        type: string
+      end_date:
+        example: "2023-06-30"
+        type: string
+      id:
+        description: |-
+          Identification
+          @Description Unique identifier for the experience
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      images_url:
+        example:
+        - https://example.com/project1.png
+        items:
+          type: string
+        type: array
+      impact:
+        example:
+        - Increased system performance by 40%
+        items:
+          type: string
+        type: array
+      is_featured:
+        description: |-
+          Metadata
+          @Description Additional metadata for the experience
+        example: true
+        type: boolean
+      job_type:
+        example: Full-time
+        type: string
+      location:
+        example: San Francisco, CA
+        type: string
+      logo_url:
+        example: https://example.com/company-logo.png
+        type: string
+      role:
+        description: |-
+          Job Details
+          @Description Job role and company information
+        example: Senior Software Engineer
+        type: string
+      start_date:
+        description: |-
+          Timing and Location
+          @Description Job timing and location details
+        example: "2020-01-15"
+        type: string
+      updated_at:
+        type: string
+      work_description:
+        description: |-
+          Job Description
+          @Description Detailed description of work and achievements
+        example: Led development of scalable web applications
+        type: string
+    required:
+    - company
+    - role
+    - start_date
+    type: object
+  experience.ExperienceCreate:
+    description: Input model for creating a new experience
+    properties:
+      arrangement:
+        description: |-
+          @Description Work arrangement
+          @Enums ["Remote", "Hybrid", "On-site"]
+        example: Remote
+        type: string
+      company:
+        description: |-
+          @Description Company name
+          @Format string
+        example: Tech Innovations Inc.
+        type: string
+      end_date:
+        description: |-
+          @Description End date of the job (optional)
+          @Format date
+        example: "2023-06-30"
+        type: string
+      impact:
+        description: '@Description Key impacts or achievements'
+        example:
+        - Increased system performance by 40%
+        items:
+          type: string
+        type: array
+      is_featured:
+        description: '@Description Flag to mark as featured experience'
+        example: true
+        type: boolean
+      job_type:
+        description: |-
+          @Description Job type
+          @Enums ["Full-time", "Part-time", "Contract", "Freelance"]
+        example: Full-time
+        type: string
+      location:
+        description: |-
+          @Description Job location
+          @Format string
+        example: San Francisco, CA
+        type: string
+      role:
+        description: |-
+          @Description Job role
+          @Format string
+        example: Senior Software Engineer
+        type: string
+      start_date:
+        description: |-
+          @Description Start date of the job
+          @Format date
+        example: "2020-01-15"
+        type: string
+      tech_stack_ids:
+        description: |-
+          @Description IDs of associated tech stacks
+          @Enums ["550e8400-e29b-41d4-a716-446655440000", "650f9500-f39c-52d5-b827-557766550001"]
+        items:
+          type: string
+        type: array
+      work_description:
+        description: |-
+          @Description Work description
+          @Format string
+        example: Led development of scalable web applications
+        type: string
+    type: object
+  experience.ExperienceUpdate:
+    description: Input model for updating an existing experience
+    properties:
+      arrangement:
+        description: |-
+          @Description Work arrangement
+          @Enums ["Remote", "Hybrid", "On-site"]
+        example: Remote
+        type: string
+      company:
+        description: |-
+          @Description Company name
+          @Format string
+        example: Tech Innovations Inc.
+        type: string
+      end_date:
+        description: |-
+          @Description End date of the job (optional)
+          @Format date
+        example: "2023-06-30"
+        type: string
+      id:
+        description: '@Description Unique identifier of the experience to update'
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      impact:
+        description: '@Description Key impacts or achievements'
+        example:
+        - Increased system performance by 40%
+        items:
+          type: string
+        type: array
+      is_featured:
+        description: '@Description Flag to mark as featured experience'
+        example: true
+        type: boolean
+      job_type:
+        description: |-
+          @Description Job type
+          @Enums ["Full-time", "Part-time", "Contract", "Freelance"]
+        example: Full-time
+        type: string
+      location:
+        description: |-
+          @Description Job location
+          @Format string
+        example: San Francisco, CA
+        type: string
+      role:
+        description: |-
+          @Description Job role
+          @Format string
+        example: Senior Software Engineer
+        type: string
+      start_date:
+        description: |-
+          @Description Start date of the job
+          @Format date
+        example: "2020-01-15"
+        type: string
+      tech_stack_ids:
+        description: |-
+          @Description IDs of associated tech stacks
+          @Enums ["550e8400-e29b-41d4-a716-446655440000", "650f9500-f39c-52d5-b827-557766550001"]
+        items:
+          type: string
+        type: array
+      work_description:
+        description: |-
+          @Description Work description
+          @Format string
+        example: Led development of scalable web applications
+        type: string
+    type: object
+  health.CPUHealth:
+    properties:
+      cores:
+        type: integer
+      loadAverage:
+        type: number
+    type: object
+  health.DatabaseHealth:
+    properties:
+      connected:
+        type: boolean
+      error:
+        type: string
+    type: object
+  health.HealthStatus:
+    properties:
+      cpu:
+        $ref: '#/definitions/health.CPUHealth'
+      database:
+        $ref: '#/definitions/health.DatabaseHealth'
+      memory:
+        $ref: '#/definitions/health.MemoryHealth'
+      status:
+        type: string
+      system:
+        $ref: '#/definitions/health.SystemInfo'
+      timestamp:
+        type: string
+    type: object
+  health.MemoryHealth:
+    properties:
+      free:
+        type: integer
+      total:
+        type: integer
+      used:
+        type: integer
+      usedPercent:
+        type: number
+    type: object
+  health.SystemInfo:
+    properties:
+      goVersion:
+        type: string
+      numCPU:
+        type: integer
+      numGoroutine:
+        type: integer
+    type: object
+  project.DevelopmentStatus:
+    description: Development status of a project
+    enum:
+    - Alpha
+    - Beta
+    - MVP
+    type: string
+    x-enum-varnames:
+    - Alpha
+    - Beta
+    - MVP
+  project.ProgressStatus:
+    description: Current progress status of a project
+    enum:
+    - In Progress
+    - In Revision
+    - On Hold
+    - Completed
+    type: string
+    x-enum-varnames:
+    - InProgress
+    - InRevision
+    - OnHold
+    - Completed
+  project.Project:
+    description: Detailed information about a project
+    properties:
+      category:
+        allOf:
+        - $ref: '#/definitions/project.ProjectCategory'
+        example: Web Development
+      created_at:
+        description: Metadata
+        type: string
+      description:
+        example: A responsive website to display my professional projects and skills
+        type: string
+      development_status:
+        allOf:
+        - $ref: '#/definitions/project.DevelopmentStatus'
+        description: Status
+        example: Beta
+      features:
+        example:
+        - Responsive Design
+        - Dark Mode
+        items:
+          type: string
+        type: array
+      github_url:
+        description: URLs
+        example: https://github.com/username/project
+        type: string
+      id:
+        description: Identification
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      images:
+        description: Project Content
+        items:
+          $ref: '#/definitions/project.ProjectImage'
+        type: array
+      is_featured:
+        example: true
+        type: boolean
+      my_role:
+        example:
+        - Full-stack Developer
+        - UI/UX Designer
+        items:
+          type: string
+        type: array
+      progress_percentage:
+        example: 75
+        type: integer
+      progress_status:
+        allOf:
+        - $ref: '#/definitions/project.ProgressStatus'
+        example: In Progress
+      slug:
+        example: portfolio-website
+        type: string
+      subtitle:
+        example: Personal portfolio showcasing projects
+        type: string
+      title:
+        description: Project Details
+        example: Portfolio Website
+        type: string
+      updated_at:
+        type: string
+      web_url:
+        example: https://myportfolio.com
+        type: string
+    required:
+    - description
+    - slug
+    - title
+    type: object
+  project.ProjectCategory:
+    description: Category of the project
+    enum:
+    - Web Development
+    - API Development
+    - Bot Development
+    - Mobile App
+    - Desktop App
+    - UI/UX Design
+    - Other
+    type: string
+    x-enum-varnames:
+    - WebDevelopment
+    - ApiDevelopment
+    - BotDevelopment
+    - MobileApp
+    - DesktopApp
+    - UIUX
+    - Other
+  project.ProjectCreate:
+    description: Input model for creating a new project
+    properties:
+      category:
+        allOf:
+        - $ref: '#/definitions/project.ProjectCategory'
+        example: Web Development
+      description:
+        example: A responsive website to display my professional projects and skills
+        type: string
+      development_status:
+        allOf:
+        - $ref: '#/definitions/project.DevelopmentStatus'
+        example: Beta
+      features:
+        example:
+        - Responsive Design
+        - Dark Mode
+        items:
+          type: string
+        type: array
+      github_url:
+        example: https://github.com/username/project
+        type: string
+      is_featured:
+        example: true
+        type: boolean
+      my_role:
+        example:
+        - Full-stack Developer
+        - UI/UX Designer
+        items:
+          type: string
+        type: array
+      progress_percentage:
+        example: 75
+        type: integer
+      progress_status:
+        allOf:
+        - $ref: '#/definitions/project.ProgressStatus'
+        example: In Progress
+      slug:
+        example: portfolio-website
+        type: string
+      subtitle:
+        example: Personal portfolio showcasing projects
+        type: string
+      tech_stack_ids:
+        example:
+        - '["550e8400-e29b-41d4-a716-446655440000"]'
+        items:
+          type: string
+        type: array
+      title:
+        example: Portfolio Website
+        type: string
+      web_url:
+        example: https://myportfolio.com
+        type: string
+    required:
+    - description
+    - slug
+    - tech_stack_ids
+    - title
+    type: object
+  project.ProjectImage:
+    description: Image details for a project
+    properties:
+      alt:
+        example: Project screenshot
+        type: string
+      is_thumbnail:
+        example: false
+        type: boolean
+      src:
+        example: https://example.com/image.jpg
+        type: string
+    type: object
+  project.ProjectUpdate:
+    description: Input model for updating an existing project
+    properties:
+      category:
+        allOf:
+        - $ref: '#/definitions/project.ProjectCategory'
+        example: Web Development
+      description:
+        example: An improved responsive website to display my professional projects
+          and skills
+        type: string
+      development_status:
+        allOf:
+        - $ref: '#/definitions/project.DevelopmentStatus'
+        example: Beta
+      features:
+        example:
+        - Responsive Design
+        - Dark Mode
+        - Performance Optimization
+        items:
+          type: string
+        type: array
+      github_url:
+        example: https://github.com/username/updated-project
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_featured:
+        example: true
+        type: boolean
+      my_role:
+        example:
+        - Full-stack Developer
+        - DevOps Engineer
+        items:
+          type: string
+        type: array
+      progress_percentage:
+        example: 100
+        type: integer
+      progress_status:
+        allOf:
+        - $ref: '#/definitions/project.ProgressStatus'
+        example: Completed
+      slug:
+        example: portfolio-website
+        type: string
+      subtitle:
+        example: Updated personal portfolio showcasing projects
+        type: string
+      tech_stack_ids:
+        example:
+        - '["550e8400-e29b-41d4-a716-446655440000"]'
+        items:
+          type: string
+        type: array
+      title:
+        example: Updated Portfolio Website
+        type: string
+      web_url:
+        example: https://updated-myportfolio.com
+        type: string
+    required:
+    - id
+    - slug
+    - tech_stack_ids
+    type: object
+  response.APIResponse:
+    properties:
+      data:
+        description: Actual response data
+      error:
+        allOf:
+        - $ref: '#/definitions/response.ErrorDetails'
+        description: Detailed error information (only populated for error responses)
+      message:
+        description: Human-readable message
+        type: string
+      metadata:
+        additionalProperties: true
+        description: Additional metadata
+        type: object
+      pagination:
+        allOf:
+        - $ref: '#/definitions/response.Pagination'
+        description: Pagination information (optional)
+      request_id:
+        description: Unique request identifier for tracing
+        type: string
+      success:
+        description: Status of the response (success/error)
+        type: boolean
+      timestamp:
+        description: Timestamp of the response
+        type: string
+    type: object
+  response.ErrorDetails:
+    properties:
+      code:
+        description: Machine-readable error code
+        type: string
+      details:
+        description: Detailed error description
+        type: string
+      recoverable:
+        description: Indicates if the error is potentially recoverable
+        type: boolean
+      trace:
+        description: Trace information for debugging
+        items:
+          type: string
+        type: array
+    type: object
+  response.Pagination:
+    properties:
+      has_next_page:
+        type: boolean
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  tech_stack.TechStack:
+    description: Technology stack information with details about skills and technologies
+    properties:
+      category:
+        allOf:
+        - $ref: '#/definitions/tech_stack.TechStackCategory'
+        example: Backend
+      created_at:
+        type: string
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      image_url:
+        example: https://example.com/go-logo.png
+        type: string
+      is_core_skill:
+        example: true
+        type: boolean
+      name:
+        example: Go
+        type: string
+      role:
+        example: Backend Development
+        type: string
+      updated_at:
+        type: string
+      version:
+        example: "1.20"
+        type: string
+    required:
+    - name
+    type: object
+  tech_stack.TechStackCategory:
+    enum:
+    - Backend
+    - Frontend
+    - Frameworks
+    - Version Control
+    - Database
+    - DevOps
+    - Tools
+    - CMS & Platforms
+    type: string
+    x-enum-varnames:
+    - CategoryBackend
+    - CategoryFrontend
+    - CategoryFrameworks
+    - CategoryVersionControl
+    - CategoryDatabase
+    - CategoryDevOps
+    - CategoryTools
+    - CategoryCMSPlatforms
+  tech_stack.TechStackCreate:
+    properties:
+      category:
+        allOf:
+        - $ref: '#/definitions/tech_stack.TechStackCategory'
+        example: Backend
+      is_core_skill:
+        example: true
+        type: boolean
+      name:
+        example: Python
+        type: string
+      role:
+        example: Data Science
+        type: string
+      version:
+        example: "3.9"
+        type: string
+    required:
+    - name
+    type: object
+  tech_stack.TechStackUpdate:
+    properties:
+      category:
+        allOf:
+        - $ref: '#/definitions/tech_stack.TechStackCategory'
+        example: Backend
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      is_core_skill:
+        example: true
+        type: boolean
+      name:
+        example: Rust
+        type: string
+      role:
+        example: Systems Programming
+        type: string
+      version:
+        example: "1.65"
+        type: string
+    required:
+    - id
+    type: object
+info:
+  contact:
+    email: muhamad.ramadhan.dev@gmail.com
+    name: Muhamad Ramadhan
+    url: https://itsrama.kawasan.digital
+  description: Comprehensive backend API for Itsrama Portfolio
+  title: Itsrama Portfolio Backend API
+  version: 1.0.0
+paths:
+  /experiences:
+    get:
+      description: Retrieve a paginated list of experiences with optional filtering
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Filter by company name
+        in: query
+        name: company
+        type: string
+      - description: Filter by featured status
+        in: query
+        name: is_featured
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Experiences retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/experience.Experience'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: List experiences
+      tags:
+      - Experiences
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create a new experience with logo and images
+      parameters:
+      - description: Logo Image
+        in: formData
+        name: logo_image
+        type: file
+      - description: Experience Images
+        in: formData
+        name: images
+        type: file
+      - description: Experience Details in JSON format (See ExperienceCreate Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Experience created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/experience.Experience'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/experience.ExperienceCreate'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Create a new experience
+      tags:
+      - Experiences
+  /experiences/{id}:
+    delete:
+      description: Delete an experience by its unique identifier
+      parameters:
+      - description: Experience ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Experience deleted successfully
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "404":
+          description: Experience not found
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Delete an experience
+      tags:
+      - Experiences
+    get:
+      description: Retrieve a specific experience using its unique identifier
+      parameters:
+      - description: Experience ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Experience retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/experience.Experience'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "404":
+          description: Experience not found
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Get an experience by ID
+      tags:
+      - Experiences
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update an existing experience with new details and optional files
+      parameters:
+      - description: Experience ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Logo Image
+        in: formData
+        name: logo_image
+        type: file
+      - description: Experience Images
+        in: formData
+        name: images
+        type: file
+      - description: Experience Details in JSON format (See ExperienceUpdate Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Experience updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/experience.Experience'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/experience.ExperienceUpdate'
+              type: object
+        "404":
+          description: Experience not found
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Update an experience
+      tags:
+      - Experiences
+  /experiences/bulk:
+    delete:
+      consumes:
+      - application/json
+      description: Delete multiple experiences in a single request
+      parameters:
+      - description: Experience IDs to delete
+        in: body
+        name: ids
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Experiences deleted successfully
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Bulk delete experiences
+      tags:
+      - Experiences
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create multiple experiences in a single request
+      parameters:
+      - collectionFormat: csv
+        description: Logo Image
+        in: formData
+        items:
+          type: file
+        name: logo_image
+        type: array
+      - collectionFormat: csv
+        description: Experience Images
+        in: formData
+        items:
+          type: file
+        name: images
+        type: array
+      - description: Experience Details in JSON array format (See ExperienceCreate
+          Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Experiences created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/experience.Experience'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/experience.ExperienceCreate'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Bulk create experiences
+      tags:
+      - Experiences
+    put:
+      consumes:
+      - multipart/form-data
+      description: Bulk update experiences with logo and images
+      parameters:
+      - description: Logo Image
+        in: formData
+        name: logo_image
+        type: file
+      - description: Experience Images
+        in: formData
+        name: images
+        type: file
+      - description: Experience Details in JSON array format (See ExperienceUpdate
+          Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Experiences updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/experience.Experience'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/experience.ExperienceUpdate'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      tags:
+      - Experiences
+  /experiences/search:
+    get:
+      description: Perform a full-text search on experiences with pagination
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Experiences search completed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/experience.Experience'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Search experiences
+      tags:
+      - Experiences
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Performs a health check on the service and its dependencies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy
+          schema:
+            $ref: '#/definitions/health.HealthStatus'
+        "206":
+          description: Service is degraded
+          schema:
+            $ref: '#/definitions/health.HealthStatus'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/health.HealthStatus'
+        "503":
+          description: Service is unavailable
+          schema:
+            $ref: '#/definitions/health.HealthStatus'
+      summary: Check Health Status
+      tags:
+      - health
+  /projects:
+    get:
+      description: Retrieve a paginated list of projects with optional filtering
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Filter by project category
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Projects retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/project.Project'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: List projects
+      tags:
+      - Projects
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create a new project with details and optional images
+      parameters:
+      - collectionFormat: csv
+        description: Project Images
+        in: formData
+        items:
+          type: file
+        name: uploaded_images
+        type: array
+      - description: Project Details in JSON format (See ProjectCreate Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Project created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/project.Project'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/project.ProjectCreate'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Create a new project
+      tags:
+      - Projects
+  /projects/{id}:
+    delete:
+      description: Delete a project by its unique identifier
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Project deleted successfully
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Delete a project
+      tags:
+      - Projects
+    get:
+      description: Retrieve a project using its unique identifier
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Project retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/project.Project'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Get a project by ID
+      tags:
+      - Projects
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update an existing project with new details and optional images
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: Project Images
+        in: formData
+        items:
+          type: file
+        name: uploaded_images
+        type: array
+      - description: Project Update Details in JSON format (See ProjectUpdate Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Project updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/project.Project'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/project.ProjectUpdate'
+              type: object
+        "404":
+          description: Project not found
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Update a project
+      tags:
+      - Projects
+  /projects/bulk:
+    delete:
+      consumes:
+      - application/json
+      description: Delete multiple projects in a single request
+      parameters:
+      - description: Project IDs to delete
+        in: body
+        name: ids
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Projects deleted successfully
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Bulk delete projects
+      tags:
+      - Projects
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create multiple projects in a single request
+      parameters:
+      - collectionFormat: csv
+        description: Project Images
+        in: formData
+        items:
+          type: file
+        name: uploaded_images
+        type: array
+      - description: Project Details in JSON array format (See ProjectCreate Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Projects created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/project.Project'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/project.ProjectCreate'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Bulk create projects
+      tags:
+      - Projects
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update multiple projects in a single request
+      parameters:
+      - collectionFormat: csv
+        description: Project Images
+        in: formData
+        items:
+          type: file
+        name: uploaded_images
+        type: array
+      - description: Project Update Details in JSON array format (See ProjectUpdate
+          Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Projects updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/project.Project'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/project.ProjectUpdate'
+                  type: array
+              type: object
+      summary: Bulk update projects
+      tags:
+      - Projects
+  /projects/search:
+    get:
+      description: Perform a full-text search on projects with pagination
+      parameters:
+      - description: Search query
+        in: query
+        name: query
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Projects search completed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/project.Project'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Search projects
+      tags:
+      - Projects
+  /tech-stacks:
+    get:
+      description: Retrieve a paginated list of tech stacks with optional filtering
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tech stacks retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/tech_stack.TechStack'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: List tech stacks
+      tags:
+      - Tech Stacks
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create a new tech stack with image upload
+      parameters:
+      - description: Tech Stack Image
+        in: formData
+        name: image
+        type: file
+      - description: Tech Stack Details in JSON format (See TechStackCreate Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tech stack created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tech_stack.TechStack'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tech_stack.TechStackCreate'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Create a new tech stack
+      tags:
+      - Tech Stacks
+  /tech-stacks/{id}:
+    delete:
+      description: Delete a tech stack by its unique identifier
+      parameters:
+      - description: Tech Stack ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tech stack deleted successfully
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "404":
+          description: Tech stack not found
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Delete a tech stack
+      tags:
+      - Tech Stacks
+    get:
+      description: Retrieve a specific tech stack using its unique identifier
+      parameters:
+      - description: Tech Stack ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tech stack retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tech_stack.TechStack'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "404":
+          description: Tech stack not found
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Get a tech stack by ID
+      tags:
+      - Tech Stacks
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update an existing tech stack with new details and optional image
+      parameters:
+      - description: Tech Stack ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tech Stack Image
+        in: formData
+        name: image
+        type: file
+      - description: Tech Stack Update Details in JSON format (See TechStackUpdate
+          Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tech stack updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tech_stack.TechStack'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/tech_stack.TechStackUpdate'
+              type: object
+        "404":
+          description: Tech stack not found
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Update a tech stack
+      tags:
+      - Tech Stacks
+  /tech-stacks/bulk:
+    delete:
+      consumes:
+      - application/json
+      description: Delete multiple tech stacks in a single request
+      parameters:
+      - description: Tech Stack IDs to delete
+        in: body
+        name: ids
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tech stacks deleted successfully
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.APIResponse'
+      summary: Bulk delete tech stacks
+      tags:
+      - Tech Stacks
+    post:
+      consumes:
+      - multipart/form-data
+      description: Create multiple tech stacks in a single request
+      parameters:
+      - collectionFormat: csv
+        description: Tech Stack Images
+        in: formData
+        items:
+          type: file
+        name: image
+        type: array
+      - description: Tech Stack Details in JSON array format (See TechStackCreate
+          Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tech stacks created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/tech_stack.TechStack'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/tech_stack.TechStackCreate'
+                  type: array
+              type: object
+      summary: Bulk create tech stacks
+      tags:
+      - Tech Stacks
+    put:
+      consumes:
+      - multipart/form-data
+      description: Update multiple tech stacks in a single request
+      parameters:
+      - collectionFormat: csv
+        description: Tech Stack Images
+        in: formData
+        items:
+          type: file
+        name: images
+        type: array
+      - description: Tech Stack Update Details in JSON array format (See TechStackUpdate
+          Model)
+        in: formData
+        name: payload
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tech stacks updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/tech_stack.TechStack'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/tech_stack.TechStackUpdate'
+                  type: array
+              type: object
+      summary: Bulk update tech stacks
+      tags:
+      - Tech Stacks
+security:
+- BearerAuth: []
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

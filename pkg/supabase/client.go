@@ -18,14 +18,14 @@ type SupabaseClient struct {
 
 func NewSupabaseClient(cfg SupabaseClientConfig) (*SupabaseClient, error) {
 	if cfg.ApiSecret == "" || cfg.ProjectID == "" {
-		return nil, fmt.Errorf("Supabase Api Key & Project ID Cannot Be Empty")
+		return nil, fmt.Errorf("supabase API key & project ID cannot be empty")
 	}
 
 	client, err := supabase.NewClient(fmt.Sprintf("https://%s.supabase.co", cfg.ProjectID), cfg.ApiSecret, &supabase.ClientOptions{
 		Schema: cfg.Schema,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Failed To Initialize Supabase Client: %v", err)
+		return nil, fmt.Errorf("failed to initialize Supabase client: %v", err)
 	}
 
 	return &SupabaseClient{

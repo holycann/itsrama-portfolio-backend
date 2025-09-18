@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/response"
+	"github.com/holycann/itsrama-portfolio-backend/internal/response"
 	"github.com/supabase-community/postgrest-go"
 )
 
@@ -104,13 +104,12 @@ func (opts *ListOptions) LimitOffset() (limit, offset int) {
 // BaseRepository defines common CRUD operations for repositories
 type BaseRepository[T any, R any] interface {
 	Create(ctx context.Context, value *T) (*T, error)
-	FindByID(ctx context.Context, id string) (*R, error)
+	FindByField(ctx context.Context, field string, value interface{}) ([]R, error)
 	Update(ctx context.Context, value *T) (*T, error)
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context, opts ListOptions) ([]R, error)
 	Count(ctx context.Context, filters []FilterOption) (int, error)
 	Exists(ctx context.Context, id string) (bool, error)
-	FindByField(ctx context.Context, field string, value interface{}) ([]R, error)
 	Search(ctx context.Context, opts ListOptions) ([]R, int, error)
 }
 

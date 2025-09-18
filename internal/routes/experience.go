@@ -12,61 +12,56 @@ func RegisterExperienceRoutes(
 	experienceHandler *experience.ExperienceHandler,
 	routerMiddleware *middleware.Middleware,
 ) {
-	// Create a route group for experience
-	experience := r.Group("/experience")
+	// Create a route group for experiences
+	experiences := r.Group("/experiences")
 	{
 		// Create a new experience
-		experience.POST("",
+		experiences.POST("",
 			routerMiddleware.VerifyJWT(),
 			experienceHandler.CreateExperience,
 		)
 
-		// List experience
-		experience.GET("",
+		// List experiences
+		experiences.GET("",
 			experienceHandler.ListExperiences,
 		)
 
-		// Get experience by company
-		experience.GET("/company/:company",
-			experienceHandler.GetExperiencesByCompany,
-		)
-
 		// Get a specific experience by ID
-		experience.GET("/:id",
+		experiences.GET("/:id",
 			experienceHandler.GetExperienceByID,
 		)
 
 		// Update an experience
-		experience.PUT("/:id",
+		experiences.PUT("/:id",
 			routerMiddleware.VerifyJWT(),
 			experienceHandler.UpdateExperience,
 		)
 
 		// Delete an experience
-		experience.DELETE("/:id",
+		experiences.DELETE("/:id",
 			routerMiddleware.VerifyJWT(),
 			experienceHandler.DeleteExperience,
 		)
 
-		// Search experience
-		experience.GET("/search",
+		// Search experiences
+		experiences.GET("/search",
 			experienceHandler.SearchExperiences,
 		)
 
-		// Bulk create experience
-		experience.POST("/bulk",
+		// Bulk create experiences
+		experiences.POST("/bulk",
 			routerMiddleware.VerifyJWT(),
 			experienceHandler.BulkCreateExperiences,
 		)
 
-		// Bulk update experience
-		experience.PUT("/bulk",
+		// Bulk update experiences
+		experiences.PUT("/bulk",
 			routerMiddleware.VerifyJWT(),
 			experienceHandler.BulkUpdateExperiences,
 		)
 
-		// Bulk delete experience
-		experience.DELETE("/bulk",
+		// Bulk delete experiences
+		experiences.DELETE("/bulk",
 			routerMiddleware.VerifyJWT(),
 			experienceHandler.BulkDeleteExperiences,
 		)

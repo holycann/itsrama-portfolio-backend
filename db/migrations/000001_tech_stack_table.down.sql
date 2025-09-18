@@ -10,3 +10,6 @@ DROP INDEX IF EXISTS itsrama.idx_tech_stack_name;
 
 -- Drop table
 DROP TABLE IF EXISTS itsrama.tech_stack;
+
+-- Drop type
+DROP TYPE IF EXISTS itsrama.tech_stack_category;

@@ -2,7 +2,7 @@ version: "3.9"
 
 # Shared environment configuration
 x-app-env: &app-env
-  APP_ENV: ${APP_ENV:-production}
+  APP_ENV: ${APP_ENV:-development}
   SERVER_HOST: 0.0.0.0
   SERVER_PORT: 8080
 
@@ -25,7 +25,7 @@ services:
       - "${APP_PORT:-8080}:8080"
     volumes:
       - ./logs:/app/logs
-      - ./.env.production:/app/.env.production
+      - ./.env:/app/.env
     networks:
       - backend
     logging: *default-logging

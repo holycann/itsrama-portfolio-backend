@@ -13,7 +13,7 @@ func RegisterTechStackRoutes(
 	routerMiddleware *middleware.Middleware,
 ) {
 	// Create a route group for tech stacks
-	techStacks := r.Group("/tech-stack")
+	techStacks := r.Group("/tech-stacks")
 	{
 		// Create a new tech stack
 		techStacks.POST("",
@@ -24,11 +24,6 @@ func RegisterTechStackRoutes(
 		// List tech stacks
 		techStacks.GET("",
 			techStackHandler.ListTechStacks,
-		)
-
-		// Get tech stacks by category
-		techStacks.GET("/category/:category",
-			techStackHandler.GetTechStacksByCategory,
 		)
 
 		// Get a specific tech stack by ID

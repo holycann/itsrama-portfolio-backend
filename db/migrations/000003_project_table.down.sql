@@ -5,6 +5,7 @@ DROP TRIGGER IF EXISTS update_project_modtime ON itsrama.project;
 DROP FUNCTION IF EXISTS update_project_modified_column();
 
 -- Drop indexes
+DROP INDEX IF EXISTS itsrama.idx_project_slug;
 DROP INDEX IF EXISTS itsrama.idx_project_title;
 DROP INDEX IF EXISTS itsrama.idx_project_category;
 DROP INDEX IF EXISTS itsrama.idx_project_development_status;
@@ -16,3 +17,4 @@ DROP TABLE IF EXISTS itsrama.project;
 -- Drop enum types
 DROP TYPE IF EXISTS itsrama.development_status;
 DROP TYPE IF EXISTS itsrama.progress_status;
+DROP TYPE IF EXISTS itsrama.project_category;

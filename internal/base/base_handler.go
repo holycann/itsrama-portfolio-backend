@@ -7,10 +7,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/holycann/itsrama-portfolio-backend/internal/response"
+	"github.com/holycann/itsrama-portfolio-backend/internal/validator"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/logger"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/response"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/validator"
 )
 
 // BaseHandler provides common handler functionality

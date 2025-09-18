@@ -17,14 +17,34 @@ import (
 	"github.com/holycann/itsrama-portfolio-backend/internal/health"
 	"github.com/holycann/itsrama-portfolio-backend/internal/middleware"
 	"github.com/holycann/itsrama-portfolio-backend/internal/project"
+	"github.com/holycann/itsrama-portfolio-backend/internal/response"
 	"github.com/holycann/itsrama-portfolio-backend/internal/routes"
 	"github.com/holycann/itsrama-portfolio-backend/internal/tech_stack"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/logger"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/response"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/supabase"
+
+	_ "github.com/holycann/itsrama-portfolio-backend/docs"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// AppDependencies holds all the initialized dependencies
+// @title           Itsrama Portfolio Backend API
+// @version         1.0.0
+// @description     Comprehensive backend API for Itsrama Portfolio
+
+// @contact.name   Muhamad Ramadhan
+// @contact.url    https://itsrama.kawasan.digital
+// @contact.email  muhamad.ramadhan.dev@gmail.com
+
+// @host
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
+// @security BearerAuth
+
 type AppDependencies struct {
 	Config        *configs.Config
 	Logger        *logger.Logger
@@ -175,20 +195,20 @@ func initializeFeatureDependencies(supabaseDefault *supabase.SupabaseClient, sup
 	// Initialize health dependencies
 	healthHandler := health.NewHealthHandler(supabaseDefault.GetClient())
 
+	// Initialize tech stack dependencies
+	techStackRepo := tech_stack.NewTechStackRepository(supabaseDefault)
+	techStackService := tech_stack.NewTechStackService(techStackRepo, supabaseStorage)
+	techStackHandler := tech_stack.NewTechStackHandler(techStackService, appLogger)
+
 	// Initialize experience dependencies
 	experienceRepo := experience.NewExperienceRepository(supabaseDefault, supabaseStorage)
-	experienceService := experience.NewExperienceService(experienceRepo, supabaseStorage)
+	experienceService := experience.NewExperienceService(experienceRepo, techStackService, supabaseStorage)
 	experienceHandler := experience.NewExperienceHandler(experienceService, appLogger)
 
 	// Initialize project dependencies
 	projectRepo := project.NewProjectRepository(supabaseDefault, supabaseStorage)
-	projectService := project.NewProjectService(projectRepo, supabaseStorage)
+	projectService := project.NewProjectService(projectRepo, techStackService, supabaseStorage)
 	projectHandler := project.NewProjectHandler(projectService, appLogger)
-
-	// Initialize tech stack dependencies
-	techStackRepo := tech_stack.NewTechStackRepository(supabaseDefault)
-	techStackService := tech_stack.NewTechStackService(techStackRepo)
-	techStackHandler := tech_stack.NewTechStackHandler(techStackService, appLogger)
 
 	return &FeatureDependencies{
 		// Health Dependencies
@@ -226,9 +246,18 @@ func setupRoutes(deps *AppDependencies, featureDeps *FeatureDependencies) {
 		response.NotFound(c, "route_not_found", "Endpoint not found", c.Request.URL.Path)
 	})
 
+	// Swagger route
+	deps.Router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	// Setup API routes
 	v1Group := deps.Router.Group("/api/v1")
 	{
+		// @Summary API Information
+		// @Description Get comprehensive information about the Itsrama Portfolio Backend API
+		// @Tags System
+		// @Produce json
+		// @Success 200 {object} map[string]string
+		// @Router /api/v1/ [get]
 		v1Group.GET("/", func(c *gin.Context) {
 			apiInfo := map[string]string{
 				"name":          "Itsrama Portfolio Backend API",

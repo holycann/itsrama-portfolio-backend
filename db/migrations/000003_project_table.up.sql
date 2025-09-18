@@ -4,21 +4,24 @@ CREATE SCHEMA IF NOT EXISTS itsrama;
 -- Grant usage and create permissions on schema to service_role
 GRANT USAGE, CREATE ON SCHEMA itsrama TO service_role;
 
--- Enum types for development and progress status
+-- Enum types for development, progress, and project category status
 CREATE TYPE itsrama.development_status AS ENUM ('Alpha', 'Beta', 'MVP');
 CREATE TYPE itsrama.progress_status AS ENUM ('In Progress', 'In Revision', 'On Hold', 'Completed');
+CREATE TYPE itsrama.project_category AS ENUM ('Web Development', 'API Development', 'Bot Development', 'Mobile App', 'Desktop App', 'UI/UX Design', 'Other');
 
 -- Grant permissions on enum types to service_role
 GRANT USAGE ON TYPE itsrama.development_status TO service_role;
 GRANT USAGE ON TYPE itsrama.progress_status TO service_role;
+GRANT USAGE ON TYPE itsrama.project_category TO service_role;
 
 CREATE TABLE itsrama.project (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    slug VARCHAR(255) NOT NULL UNIQUE,
     title VARCHAR(255) NOT NULL,
     subtitle VARCHAR(255),
     description TEXT NOT NULL,
     my_role TEXT[] NOT NULL,
-    category VARCHAR(100),
+    category itsrama.project_category,
     
     github_url TEXT,
     web_url TEXT,
@@ -29,12 +32,13 @@ CREATE TABLE itsrama.project (
     development_status itsrama.development_status,
     progress_status itsrama.progress_status,
     progress_percentage INTEGER CHECK (progress_percentage BETWEEN 0 AND 100),
-    
+    is_featured BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create indexes for faster querying
+CREATE INDEX idx_project_slug ON itsrama.project(slug);
 CREATE INDEX idx_project_title ON itsrama.project(title);
 CREATE INDEX idx_project_category ON itsrama.project(category);
 CREATE INDEX idx_project_development_status ON itsrama.project(development_status);

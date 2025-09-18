@@ -8,41 +8,43 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/tech_stack"
+	"github.com/holycann/itsrama-portfolio-backend/internal/validator"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/supabase"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/validator"
 	storage_go "github.com/supabase-community/storage-go"
 )
 
 type ProjectService interface {
-	CreateProject(ctx context.Context, projectCreate *ProjectCreate) (*Project, error)
-	GetProjectByID(ctx context.Context, id string) (*Project, error)
-	UpdateProject(ctx context.Context, projectUpdate *ProjectUpdate) (*Project, error)
+	CreateProject(ctx context.Context, projectCreate *ProjectCreate) (*ProjectDTO, error)
+	GetProjectByID(ctx context.Context, id string) (*ProjectDTO, error)
+	UpdateProject(ctx context.Context, projectUpdate *ProjectUpdate) (*ProjectDTO, error)
 	DeleteProject(ctx context.Context, id string) error
-	ListProjects(ctx context.Context, opts base.ListOptions) ([]Project, error)
+	ListProjects(ctx context.Context, opts base.ListOptions) ([]ProjectDTO, error)
 	CountProjects(ctx context.Context, filters []base.FilterOption) (int, error)
-	GetProjectsByCategory(ctx context.Context, category string) ([]Project, error)
-	SearchProjects(ctx context.Context, opts base.ListOptions) ([]Project, int, error)
-	BulkCreateProjects(ctx context.Context, projectsCreate []*ProjectCreate) ([]Project, error)
-	BulkUpdateProjects(ctx context.Context, projectsUpdate []*ProjectUpdate) ([]Project, error)
+	SearchProjects(ctx context.Context, opts base.ListOptions) ([]ProjectDTO, int, error)
+	BulkCreateProjects(ctx context.Context, projectsCreate []*ProjectCreate) ([]ProjectDTO, error)
+	BulkUpdateProjects(ctx context.Context, projectsUpdate []*ProjectUpdate) ([]ProjectDTO, error)
 	BulkDeleteProjects(ctx context.Context, ids []string) error
 	uploadProjectImages(ctx context.Context, projectID string, files []*multipart.FileHeader) ([]string, error)
 }
 
 type projectService struct {
-	projectRepo ProjectRepository
-	storage     supabase.SupabaseStorage
+	projectRepo      ProjectRepository
+	techStackService tech_stack.TechStackService
+	storage          supabase.SupabaseStorage
 }
 
-func NewProjectService(projectRepo ProjectRepository, storage supabase.SupabaseStorage) ProjectService {
+func NewProjectService(projectRepo ProjectRepository, techStackService tech_stack.TechStackService, storage supabase.SupabaseStorage) ProjectService {
 	return &projectService{
-		projectRepo: projectRepo,
-		storage:     storage,
+		projectRepo:      projectRepo,
+		techStackService: techStackService,
+		storage:          storage,
 	}
 }
 
-func (s *projectService) CreateProject(ctx context.Context, projectCreate *ProjectCreate) (*Project, error) {
+func (s *projectService) CreateProject(ctx context.Context, projectCreate *ProjectCreate) (*ProjectDTO, error) {
 	// Validate input
 	if err := validator.ValidateModel(projectCreate); err != nil {
 		return nil, err
@@ -74,7 +76,7 @@ func (s *projectService) CreateProject(ctx context.Context, projectCreate *Proje
 			}
 		}
 
-		project.ImagesSrc = imageData
+		project.Images = imageData
 	}
 
 	// Create project in repository
@@ -107,18 +109,46 @@ func (s *projectService) CreateProject(ctx context.Context, projectCreate *Proje
 		}
 	}
 
-	return createdProject, nil
+	projectTechStack := make([]ProjectTechStackDTO, len(projectCreate.TechStackIds))
+	for _, techStackID := range projectCreate.TechStackIds {
+		techStackDTO, err := s.techStackService.GetTechStackByID(ctx, techStackID.String())
+		if err != nil {
+			return nil, errors.Wrap(err,
+				errors.ErrDatabase,
+				"Failed to find tech stack",
+				errors.WithContext("tech_stack_id", techStackID),
+			)
+		}
+		projectTechStack = append(projectTechStack, ProjectTechStackDTO{
+			ProjectID:   createdProject.ID,
+			TechStackID: techStackID,
+			TechStack:   *techStackDTO,
+		})
+	}
+
+	createdProjectDTO := createdProject.ToDTO(projectTechStack)
+
+	return &createdProjectDTO, nil
 }
 
-func (s *projectService) GetProjectByID(ctx context.Context, id string) (*Project, error) {
+func (s *projectService) GetProjectByID(ctx context.Context, id string) (*ProjectDTO, error) {
 	if id == "" {
 		return nil, fmt.Errorf("project ID cannot be empty")
 	}
 
-	return s.projectRepo.FindByID(ctx, id)
+	projects, err := s.projectRepo.FindByField(ctx, "id", id)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(projects) == 0 {
+		return nil, fmt.Errorf("project not found")
+	}
+
+	return &projects[0], nil
 }
 
-func (s *projectService) UpdateProject(ctx context.Context, projectUpdate *ProjectUpdate) (*Project, error) {
+func (s *projectService) UpdateProject(ctx context.Context, projectUpdate *ProjectUpdate) (*ProjectDTO, error) {
 	// Validate input
 	if err := validator.ValidateModel(projectUpdate); err != nil {
 		return nil, errors.New(
@@ -164,9 +194,9 @@ func (s *projectService) UpdateProject(ctx context.Context, projectUpdate *Proje
 			}
 		}
 
-		project.ImagesSrc = imageData
+		project.Images = imageData
 	} else {
-		project.ImagesSrc = existingProject.ImagesSrc
+		project.Images = existingProject.Images
 	}
 
 	// Conditionally update fields
@@ -244,7 +274,26 @@ func (s *projectService) UpdateProject(ctx context.Context, projectUpdate *Proje
 		}
 	}
 
-	return updatedProject, nil
+	projectTechStack := make([]ProjectTechStackDTO, len(projectUpdate.TechStackIds))
+	for _, techStackID := range projectUpdate.TechStackIds {
+		techStackDTO, err := s.techStackService.GetTechStackByID(ctx, techStackID.String())
+		if err != nil {
+			return nil, errors.Wrap(err,
+				errors.ErrDatabase,
+				"Failed to find tech stack",
+				errors.WithContext("tech_stack_id", techStackID),
+			)
+		}
+		projectTechStack = append(projectTechStack, ProjectTechStackDTO{
+			ProjectID:   updatedProject.ID,
+			TechStackID: techStackID,
+			TechStack:   *techStackDTO,
+		})
+	}
+
+	updatedProjectDTO := updatedProject.ToDTO(projectTechStack)
+
+	return &updatedProjectDTO, nil
 }
 
 func (s *projectService) DeleteProject(ctx context.Context, id string) error {
@@ -256,10 +305,58 @@ func (s *projectService) DeleteProject(ctx context.Context, id string) error {
 		)
 	}
 
-	return s.projectRepo.Delete(ctx, id)
+	// Retrieve existing project to get image URL
+	existingProject, err := s.GetProjectByID(ctx, id)
+	if err != nil {
+		return errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to retrieve existing project",
+			errors.WithContext("project_id", id),
+		)
+	}
+
+	// Delete project from repository
+	err = s.projectRepo.Delete(ctx, id)
+	if err != nil {
+		return errors.Wrap(err,
+			errors.ErrDatabase,
+			"Failed to delete project",
+			errors.WithContext("project_id", id),
+		)
+	}
+
+	// Optional: Delete associated tech stack associations
+	err = s.projectRepo.DeleteProjectTechStack(ctx, id)
+	if err != nil {
+		// Log the error but don't return it to avoid blocking the deletion
+		fmt.Printf("Failed to delete project tech stack associations: %v\n", err)
+	}
+
+	// Delete associated images if exists
+	for _, image := range existingProject.Images {
+		if image.Src != "" {
+			imagePath := filepath.Join(fmt.Sprintf("itsrama/images/project/%s/", existingProject.ID), filepath.Base(image.Src))
+			_, err = s.storage.Delete(ctx, imagePath)
+			if err != nil {
+				// Log the error but don't return it to avoid blocking the deletion
+				fmt.Printf("Failed to delete project image: %v\n", err)
+			}
+		}
+	}
+
+	return nil
 }
 
-func (s *projectService) ListProjects(ctx context.Context, opts base.ListOptions) ([]Project, error) {
+func (s *projectService) ListProjects(ctx context.Context, opts base.ListOptions) ([]ProjectDTO, error) {
+	// Validate list options
+	if err := opts.Validate(); err != nil {
+		return nil, errors.Wrap(err,
+			errors.ErrValidation,
+			"Invalid list options",
+			errors.WithContext("options", opts),
+		)
+	}
+
 	projects, err := s.projectRepo.List(ctx, opts)
 	if err != nil {
 		return nil, errors.Wrap(err,
@@ -276,20 +373,21 @@ func (s *projectService) CountProjects(ctx context.Context, filters []base.Filte
 	return s.projectRepo.Count(ctx, filters)
 }
 
-func (s *projectService) GetProjectsByCategory(ctx context.Context, category string) ([]Project, error) {
-	if category == "" {
-		return nil, fmt.Errorf("category cannot be empty")
+func (s *projectService) SearchProjects(ctx context.Context, opts base.ListOptions) ([]ProjectDTO, int, error) {
+	// Validate list options
+	if err := opts.Validate(); err != nil {
+		return nil, 0, errors.Wrap(err,
+			errors.ErrValidation,
+			"Invalid list options",
+			errors.WithContext("options", opts),
+		)
 	}
 
-	return s.projectRepo.FindByCategory(ctx, category)
-}
-
-func (s *projectService) SearchProjects(ctx context.Context, opts base.ListOptions) ([]Project, int, error) {
 	return s.projectRepo.Search(ctx, opts)
 }
 
-func (s *projectService) BulkCreateProjects(ctx context.Context, projectsCreate []*ProjectCreate) ([]Project, error) {
-	projects := make([]Project, len(projectsCreate))
+func (s *projectService) BulkCreateProjects(ctx context.Context, projectsCreate []*ProjectCreate) ([]ProjectDTO, error) {
+	projects := make([]ProjectDTO, len(projectsCreate))
 
 	for i, projectCreate := range projectsCreate {
 		createdProject, err := s.CreateProject(ctx, projectCreate)
@@ -306,8 +404,8 @@ func (s *projectService) BulkCreateProjects(ctx context.Context, projectsCreate 
 	return projects, nil
 }
 
-func (s *projectService) BulkUpdateProjects(ctx context.Context, projectsUpdate []*ProjectUpdate) ([]Project, error) {
-	projects := make([]Project, len(projectsUpdate))
+func (s *projectService) BulkUpdateProjects(ctx context.Context, projectsUpdate []*ProjectUpdate) ([]ProjectDTO, error) {
+	projects := make([]ProjectDTO, len(projectsUpdate))
 
 	for i, projectUpdate := range projectsUpdate {
 		updatedProject, err := s.UpdateProject(ctx, projectUpdate)

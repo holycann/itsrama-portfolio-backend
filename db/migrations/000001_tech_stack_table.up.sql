@@ -4,13 +4,26 @@ CREATE SCHEMA IF NOT EXISTS itsrama;
 -- Grant usage and create permissions on schema to service_role
 GRANT USAGE, CREATE ON SCHEMA itsrama TO service_role;
 
+-- Create enum type for tech stack categories
+CREATE TYPE itsrama.tech_stack_category AS ENUM (
+    'Backend',
+    'Frontend', 
+    'Frameworks',
+    'Version Control',
+    'Database',
+    'DevOps',
+    'Tools',
+    'CMS & Platforms'
+);
+
 CREATE TABLE itsrama.tech_stack (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL UNIQUE,
-    category VARCHAR(100) NULL,
+    category itsrama.tech_stack_category NULL,
     version VARCHAR(50) NULL,
     role VARCHAR(100) NULL,
     is_core_skill BOOLEAN DEFAULT FALSE,
+    image_url VARCHAR(255),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -24,6 +37,7 @@ ALTER TABLE itsrama.tech_stack ENABLE ROW LEVEL SECURITY;
 
 -- Grant all permissions on table to service_role
 GRANT ALL PRIVILEGES ON TABLE itsrama.tech_stack TO service_role;
+GRANT ALL PRIVILEGES ON TYPE itsrama.tech_stack_category TO service_role;
 
 -- Add trigger to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_modified_column()

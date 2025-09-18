@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/holycann/itsrama-portfolio-backend/pkg/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/base"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/supabase"
 	postgrest "github.com/supabase-community/postgrest-go"
 )
 
 type ExperienceRepository interface {
-	base.BaseRepository[Experience, Experience]
-	FindByCompany(ctx context.Context, company string) ([]Experience, error)
+	base.BaseRepository[Experience, ExperienceDTO]
 	CreateExperienceTechStack(ctx context.Context, experienceTechStack *ExperienceTechStack) (*ExperienceTechStack, error)
 	DeleteExperienceTechStack(ctx context.Context, experienceID string) error
 }
@@ -53,20 +52,6 @@ func (r *experienceRepository) CreateExperienceTechStack(ctx context.Context, ex
 	return experienceTechStack, nil
 }
 
-func (r *experienceRepository) FindByID(ctx context.Context, id string) (*Experience, error) {
-	var experience Experience
-	_, err := r.supabaseClient.GetClient().
-		From(r.table).
-		Select("*", "", false).
-		Eq("id", id).
-		Single().
-		ExecuteTo(&experience)
-	if err != nil {
-		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to fetch experience")
-	}
-	return &experience, nil
-}
-
 func (r *experienceRepository) Update(ctx context.Context, experience *Experience) (*Experience, error) {
 	_, _, err := r.supabaseClient.GetClient().
 		From(r.table).
@@ -103,11 +88,11 @@ func (r *experienceRepository) DeleteExperienceTechStack(ctx context.Context, ex
 	return nil
 }
 
-func (r *experienceRepository) List(ctx context.Context, opts base.ListOptions) ([]Experience, error) {
-	var experience []Experience
+func (r *experienceRepository) List(ctx context.Context, opts base.ListOptions) ([]ExperienceDTO, error) {
+	var experience []ExperienceDTO
 	query := r.supabaseClient.GetClient().
 		From(r.table).
-		Select("*", "", false)
+		Select("*, experience_tech_stack(tech_stack_id, tech_stack(id, name))", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
@@ -123,7 +108,11 @@ func (r *experienceRepository) List(ctx context.Context, opts base.ListOptions) 
 	if opts.Search != "" {
 		query = query.Or(
 			fmt.Sprintf("role.ilike.%%%s%%", opts.Search),
+			"",
+		)
+		query = query.Or(
 			fmt.Sprintf("company.ilike.%%%s%%", opts.Search),
+			"",
 		)
 	}
 
@@ -183,11 +172,11 @@ func (r *experienceRepository) Exists(ctx context.Context, id string) (bool, err
 	return count > 0, nil
 }
 
-func (r *experienceRepository) FindByField(ctx context.Context, field string, value interface{}) ([]Experience, error) {
-	var experience []Experience
+func (r *experienceRepository) FindByField(ctx context.Context, field string, value interface{}) ([]ExperienceDTO, error) {
+	var experience []ExperienceDTO
 	_, err := r.supabaseClient.GetClient().
 		From(r.table).
-		Select("*", "", false).
+		Select("*, experience_tech_stack(tech_stack_id, tech_stack(id, name))", "", false).
 		Eq(field, fmt.Sprintf("%v", value)).
 		ExecuteTo(&experience)
 	if err != nil {
@@ -196,24 +185,11 @@ func (r *experienceRepository) FindByField(ctx context.Context, field string, va
 	return experience, nil
 }
 
-func (r *experienceRepository) FindByCompany(ctx context.Context, company string) ([]Experience, error) {
-	var experience []Experience
-	_, err := r.supabaseClient.GetClient().
-		From(r.table).
-		Select("*", "", false).
-		Eq("company", company).
-		ExecuteTo(&experience)
-	if err != nil {
-		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find experience by company")
-	}
-	return experience, nil
-}
-
-func (r *experienceRepository) Search(ctx context.Context, opts base.ListOptions) ([]Experience, int, error) {
-	var experience []Experience
+func (r *experienceRepository) Search(ctx context.Context, opts base.ListOptions) ([]ExperienceDTO, int, error) {
+	var experience []ExperienceDTO
 	query := r.supabaseClient.GetClient().
 		From(r.table).
-		Select("*", "", false)
+		Select("*, experience_tech_stack(tech_stack_id, tech_stack(id, name))", "", false)
 
 	// Apply filters
 	for _, filter := range opts.Filters {
@@ -229,7 +205,11 @@ func (r *experienceRepository) Search(ctx context.Context, opts base.ListOptions
 	if opts.Search != "" {
 		query = query.Or(
 			fmt.Sprintf("role.ilike.%%%s%%", opts.Search),
-			fmt.Sprintf("company.ilike.%%%s%%", opts.Search),
+			"",
+		)
+		query = query.Or(
+			fmt.Sprintf("tech_stack.name.ilike.%%%s%%", opts.Search),
+			"",
 		)
 	}
 

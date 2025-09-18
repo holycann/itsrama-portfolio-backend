@@ -3,6 +3,7 @@ package supabase
 import (
 	"context"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
@@ -58,7 +59,7 @@ func NewSupabaseStorage(cfg StorageConfig) (*SupabaseStorage, error) {
 	// Set default allowed file types if not specified
 	if len(cfg.AllowedFileTypes) == 0 {
 		cfg.AllowedFileTypes = []string{
-			"image/jpeg", "image/png", "application/pdf",
+			"image/jpeg", "image/png", "image/webp", "application/pdf",
 		}
 	}
 
@@ -108,7 +109,14 @@ func (s *SupabaseStorage) Upload(
 	if err != nil {
 		return "", fmt.Errorf("failed to open uploaded file: %w", err)
 	}
-	defer src.Close()
+
+	// Explicitly check and handle Close error
+	defer func() {
+		if closeErr := src.Close(); closeErr != nil {
+			// Log the close error or handle it as needed
+			log.Printf("Failed to close file: %v", closeErr)
+		}
+	}()
 
 	// Prepare file options
 	fileOpts := storage_go.FileOptions{

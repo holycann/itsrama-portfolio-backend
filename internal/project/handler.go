@@ -1,14 +1,15 @@
 package project
 
 import (
-	"encoding/json"
+	"mime/multipart"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/response"
+	"github.com/holycann/itsrama-portfolio-backend/internal/utils"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/logger"
-	"github.com/holycann/itsrama-portfolio-backend/pkg/response"
 )
 
 type ProjectHandler struct {
@@ -24,6 +25,17 @@ func NewProjectHandler(projectService ProjectService, logger *logger.Logger) *Pr
 }
 
 // CreateProject creates a new project
+// @Summary Create a new project
+// @Description Create a new project with details and optional images
+// @Tags Projects
+// @Accept multipart/form-data
+// @Produce json
+// @Param uploaded_images formData []file false "Project Images"
+// @Param payload formData string true "Project Details in JSON format (See ProjectCreate Model)"
+// @Success 200 {object} response.APIResponse{data=Project} "Project created successfully"
+// @Failure 400 {object} response.APIResponse{data=ProjectCreate} "Bad Request"
+// @Failure 500 {object} response.APIResponse "Internal Server Error"
+// @Router /projects [post]
 func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	var projectInput ProjectCreate
 
@@ -38,12 +50,20 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	}
 
 	// Extract and validate form fields
-	if err := h.validateAndExtractProjectInput(c, &projectInput); err != nil {
+	if err := utils.ExtractFormDataPayload(c, &projectInput); err != nil {
 		h.HandleError(c, err)
 		return
 	}
 
-	projectInput.UploadedImages = c.Request.MultipartForm.File["uploaded_images"]
+	uploadedImages, err := utils.ExtractFileHeaders(c, "uploaded_images", 5)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	if len(uploadedImages) > 0 {
+		projectInput.UploadedImages = uploadedImages
+	}
 
 	// Create project via service
 	project, err := h.projectService.CreateProject(c.Request.Context(), &projectInput)
@@ -56,6 +76,15 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 }
 
 // GetProjectByID retrieves a specific project
+// @Summary Get a project by ID
+// @Description Retrieve a project using its unique identifier
+// @Tags Projects
+// @Produce json
+// @Param id path string true "Project ID"
+// @Success 200 {object} response.APIResponse{data=Project} "Project retrieved successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Failure 404 {object} response.APIResponse "Project not found"
+// @Router /projects/{id} [get]
 func (h *ProjectHandler) GetProjectByID(c *gin.Context) {
 	projectID := c.Param("id")
 	if projectID == "" {
@@ -77,6 +106,18 @@ func (h *ProjectHandler) GetProjectByID(c *gin.Context) {
 }
 
 // UpdateProject updates an existing project
+// @Summary Update a project
+// @Description Update an existing project with new details and optional images
+// @Tags Projects
+// @Accept multipart/form-data
+// @Produce json
+// @Param id path string true "Project ID"
+// @Param uploaded_images formData []file false "Project Images"
+// @Param payload formData string true "Project Update Details in JSON format (See ProjectUpdate Model)"
+// @Success 200 {object} response.APIResponse{data=Project} "Project updated successfully"
+// @Failure 400 {object} response.APIResponse{data=ProjectUpdate} "Bad Request"
+// @Failure 404 {object} response.APIResponse "Project not found"
+// @Router /projects/{id} [put]
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	var projectInput ProjectUpdate
 
@@ -106,12 +147,20 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	projectInput.ID = projectID
 
 	// Extract and validate form fields
-	if err := h.validateAndExtractProjectInput(c, &projectInput); err != nil {
+	if err := utils.ExtractFormDataPayload(c, &projectInput); err != nil {
 		h.HandleError(c, err)
 		return
 	}
 
-	projectInput.UploadedImages = c.Request.MultipartForm.File["uploaded_images"]
+	uploadedImages, err := utils.ExtractFileHeaders(c, "uploaded_images", 2)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	if len(uploadedImages) > 0 {
+		projectInput.UploadedImages = uploadedImages
+	}
 
 	// Update project via service
 	project, err := h.projectService.UpdateProject(c.Request.Context(), &projectInput)
@@ -124,6 +173,15 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 }
 
 // DeleteProject deletes an existing project
+// @Summary Delete a project
+// @Description Delete a project by its unique identifier
+// @Tags Projects
+// @Produce json
+// @Param id path string true "Project ID"
+// @Success 200 {object} response.APIResponse "Project deleted successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Failure 404 {object} response.APIResponse "Project not found"
+// @Router /projects/{id} [delete]
 func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 	projectID := c.Param("id")
 	if projectID == "" {
@@ -145,6 +203,16 @@ func (h *ProjectHandler) DeleteProject(c *gin.Context) {
 }
 
 // ListProjects retrieves a paginated list of projects
+// @Summary List projects
+// @Description Retrieve a paginated list of projects with optional filtering
+// @Tags Projects
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page" default(10)
+// @Param category query string false "Filter by project category"
+// @Success 200 {object} response.APIResponse{data=[]Project} "Projects retrieved successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Router /projects [get]
 func (h *ProjectHandler) ListProjects(c *gin.Context) {
 	// Parse pagination and filtering options
 	opts, err := base.ParsePaginationParams(c)
@@ -167,6 +235,16 @@ func (h *ProjectHandler) ListProjects(c *gin.Context) {
 		})
 	}
 
+	// Optional category filter
+	slug := c.Query("slug")
+	if slug != "" {
+		opts.Filters = append(opts.Filters, base.FilterOption{
+			Field:    "slug",
+			Operator: base.OperatorEqual,
+			Value:    slug,
+		})
+	}
+
 	// List projects
 	projects, err := h.projectService.ListProjects(c.Request.Context(), opts)
 	if err != nil {
@@ -186,6 +264,16 @@ func (h *ProjectHandler) ListProjects(c *gin.Context) {
 }
 
 // SearchProjects performs a full-text search on projects
+// @Summary Search projects
+// @Description Perform a full-text search on projects with pagination
+// @Tags Projects
+// @Produce json
+// @Param query query string true "Search query"
+// @Param page query int false "Page number" default(1)
+// @Param per_page query int false "Items per page" default(10)
+// @Success 200 {object} response.APIResponse{data=[]Project} "Projects search completed successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Router /projects/search [get]
 func (h *ProjectHandler) SearchProjects(c *gin.Context) {
 	query := c.Query("query")
 	opts, err := base.ParsePaginationParams(c)
@@ -212,17 +300,50 @@ func (h *ProjectHandler) SearchProjects(c *gin.Context) {
 }
 
 // BulkCreateProjects creates multiple projects in bulk
+// @Summary Bulk create projects
+// @Description Create multiple projects in a single request
+// @Tags Projects
+// @Accept multipart/form-data
+// @Produce json
+// @Param uploaded_images formData []file false "Project Images"
+// @Param payload formData string true "Project Details in JSON array format (See ProjectCreate Model)"
+// @Success 200 {object} response.APIResponse{data=[]Project} "Projects created successfully"
+// @Failure 400 {object} response.APIResponse{data=[]ProjectCreate} "Bad Request"
+// @Failure 500 {object} response.APIResponse "Internal Server Error"
+// @Router /projects/bulk [post]
 func (h *ProjectHandler) BulkCreateProjects(c *gin.Context) {
-	var projectsInput []*ProjectCreate
-
-	// Bind input
-	if err := c.ShouldBindJSON(&projectsInput); err != nil {
+	// Parse multipart form data
+	if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
 		h.HandleError(c, errors.New(
-			errors.ErrValidation,
-			"Invalid input",
+			errors.ErrBadRequest,
+			"Failed to parse multipart form",
 			err,
 		))
 		return
+	}
+
+	var projectsInput []*ProjectCreate
+
+	// Extract and validate form fields
+	if err := utils.ExtractFormDataPayload(c, &projectsInput); err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Get logo files
+	uploadedImages, err := utils.ExtractFileHeaders(c, "uploaded_images", 5)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Match logo and images to projects if available
+	if len(uploadedImages) > 0 {
+		for i := range projectsInput {
+			if i < len(uploadedImages) {
+				projectsInput[i].UploadedImages = []*multipart.FileHeader{uploadedImages[i]}
+			}
+		}
 	}
 
 	// Bulk create projects
@@ -236,17 +357,49 @@ func (h *ProjectHandler) BulkCreateProjects(c *gin.Context) {
 }
 
 // BulkUpdateProjects updates multiple projects in bulk
+// @Summary Bulk update projects
+// @Description Update multiple projects in a single request
+// @Tags Projects
+// @Accept multipart/form-data
+// @Produce json
+// @Param uploaded_images formData []file false "Project Images"
+// @Param payload formData string true "Project Update Details in JSON array format (See ProjectUpdate Model)"
+// @Success 200 {object} response.APIResponse{data=[]Project} "Projects updated successfully"
+// @Failure 400 {object} response.APIResponse{data=[]ProjectUpdate} "Bad Request"
+// @Router /projects/bulk [put]
 func (h *ProjectHandler) BulkUpdateProjects(c *gin.Context) {
-	var projectsInput []*ProjectUpdate
-
-	// Bind input
-	if err := c.ShouldBindJSON(&projectsInput); err != nil {
+	// Parse multipart form data
+	if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
 		h.HandleError(c, errors.New(
-			errors.ErrValidation,
-			"Invalid input",
+			errors.ErrBadRequest,
+			"Failed to parse multipart form",
 			err,
 		))
 		return
+	}
+
+	var projectsInput []*ProjectUpdate
+
+	// Extract and validate form fields
+	if err := utils.ExtractFormDataPayload(c, &projectsInput); err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Get uploaded images
+	uploadedImages, err := utils.ExtractFileHeaders(c, "uploaded_images", 5)
+	if err != nil {
+		h.HandleError(c, err)
+		return
+	}
+
+	// Match images to projects if available
+	if len(uploadedImages) > 0 {
+		for i := range projectsInput {
+			if i < len(uploadedImages) {
+				projectsInput[i].UploadedImages = []*multipart.FileHeader{uploadedImages[i]}
+			}
+		}
 	}
 
 	// Bulk update projects
@@ -260,6 +413,15 @@ func (h *ProjectHandler) BulkUpdateProjects(c *gin.Context) {
 }
 
 // BulkDeleteProjects deletes multiple projects in bulk
+// @Summary Bulk delete projects
+// @Description Delete multiple projects in a single request
+// @Tags Projects
+// @Accept json
+// @Produce json
+// @Param ids body []string true "Project IDs to delete"
+// @Success 200 {object} response.APIResponse "Projects deleted successfully"
+// @Failure 400 {object} response.APIResponse "Bad Request"
+// @Router /projects/bulk [delete]
 func (h *ProjectHandler) BulkDeleteProjects(c *gin.Context) {
 	var idsInput []string
 
@@ -281,49 +443,4 @@ func (h *ProjectHandler) BulkDeleteProjects(c *gin.Context) {
 	}
 
 	h.HandleSuccess(c, nil, "Projects deleted successfully")
-}
-
-// GetProjectsByCategory retrieves projects by category
-func (h *ProjectHandler) GetProjectsByCategory(c *gin.Context) {
-	category := c.Param("category")
-	if category == "" {
-		h.HandleError(c, errors.New(
-			errors.ErrValidation,
-			"Category is required",
-			nil,
-		))
-		return
-	}
-
-	projects, err := h.projectService.GetProjectsByCategory(c.Request.Context(), category)
-	if err != nil {
-		h.HandleError(c, err)
-		return
-	}
-
-	h.HandleSuccess(c, projects, "Projects retrieved successfully")
-}
-
-// validateAndExtractProjectInput handles validation and extraction of project input fields
-func (h *ProjectHandler) validateAndExtractProjectInput(c *gin.Context, projectInput interface{}) error {
-	// Extract JSON payload
-	jsonPayload := c.PostForm("payload")
-	if jsonPayload == "" {
-		return errors.New(
-			errors.ErrValidation,
-			"Project payload is required",
-			nil,
-		)
-	}
-
-	// Unmarshal JSON payload
-	if err := json.Unmarshal([]byte(jsonPayload), projectInput); err != nil {
-		return errors.New(
-			errors.ErrValidation,
-			"Invalid project payload format",
-			err,
-		)
-	}
-
-	return nil
 }

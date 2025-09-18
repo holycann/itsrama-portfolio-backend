@@ -19,14 +19,34 @@
                 ],
                 "url": {
                     "raw": "{{BASE_URL}}/project?page=1&per_page=10&sort_by=created_at&sort_order=desc&category=web",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project"],
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project"
+                    ],
                     "query": [
-                        {"key": "page", "value": "1"},
-                        {"key": "per_page", "value": "10"},
-                        {"key": "sort_by", "value": "created_at"},
-                        {"key": "sort_order", "value": "desc"},
-                        {"key": "category", "value": "web", "disabled": true}
+                        {
+                            "key": "page",
+                            "value": "1"
+                        },
+                        {
+                            "key": "per_page",
+                            "value": "10"
+                        },
+                        {
+                            "key": "sort_by",
+                            "value": "created_at"
+                        },
+                        {
+                            "key": "sort_order",
+                            "value": "desc"
+                        },
+                        {
+                            "key": "category",
+                            "value": "web",
+                            "disabled": true
+                        }
                     ]
                 }
             },
@@ -37,7 +57,10 @@
             "request": {
                 "method": "POST",
                 "header": [
-                    {"key": "Content-Type", "value": "multipart/form-data"},
+                    {
+                        "key": "Content-Type",
+                        "value": "multipart/form-data"
+                    },
                     {
                         "key": "Authorization",
                         "value": "Bearer {{BEARER_TOKEN}}",
@@ -49,7 +72,7 @@
                     "formdata": [
                         {
                             "key": "payload",
-                            "value": "{\n    \"title\": \"Portfolio Website\",\n    \"subtitle\": \"Personal Portfolio Platform\",\n    \"description\": \"Personal portfolio showcasing projects and experiences\",\n    \"my_role\": \"Full Stack Developer\",\n    \"category\": \"Web Development\",\n    \"github_url\": \"https://github.com/username/portfolio\",\n    \"web_url\": \"https://portfolio.example.com\",\n    \"tech_stack_ids\": [\"{{TECH_STACK_ID_1}}\"],\n    \"features\": [\"Responsive Design\"],\n    \"development_status\": \"Beta\",\n    \"progress_status\": \"In Progress\",\n    \"progress_percentage\": 75\n}",
+                            "value": "{\n    \"title\": \"GoWAG\",\n    \"subtitle\": \"WhatsApp Business Automation Platform\",\n    \"description\": \"Fullstack web dashboard built to simplify and scale WhatsApp Business operations.\",\n    \"my_role\": [\"Full Stack Developer\"],\n    \"category\": \"SaaS\",\n    \"github_url\": null,\n    \"web_url\": null,\n    \"tech_stack_ids\": [{{TECH_STACK_IDS}}],\n    \"features\": [\n        \"Bulk messaging, auto-replies, templates, and scheduling\",\n        \"Real-time analytics on delivery and engagement\",\n        \"Role-Based Access Control (Admin, Moderator, User, Guest)\",\n        \"Webhook & API key management\",\n        \"Subscription tiers with feature segmentation\"\n    ],\n    \"development_status\": \"Alpha\",\n    \"progress_status\": \"In Progress\",\n    \"progress_percentage\": 65,\n    \"is_featured\": false\n}",
                             "contentType": "application/json",
                             "type": "text"
                         },
@@ -62,8 +85,12 @@
                 },
                 "url": {
                     "raw": "{{BASE_URL}}/project",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project"]
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project"
+                    ]
                 }
             },
             "response": []
@@ -81,8 +108,13 @@
                 ],
                 "url": {
                     "raw": "{{BASE_URL}}/project/{{PROJECT_ID}}",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project", "{{PROJECT_ID}}"]
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project",
+                        "{{PROJECT_ID}}"
+                    ]
                 }
             },
             "response": []
@@ -92,7 +124,10 @@
             "request": {
                 "method": "PUT",
                 "header": [
-                    {"key": "Content-Type", "value": "multipart/form-data"},
+                    {
+                        "key": "Content-Type",
+                        "value": "multipart/form-data"
+                    },
                     {
                         "key": "Authorization",
                         "value": "Bearer {{BEARER_TOKEN}}",
@@ -117,8 +152,13 @@
                 },
                 "url": {
                     "raw": "{{BASE_URL}}/project/{{PROJECT_ID}}",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project", "{{PROJECT_ID}}"]
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project",
+                        "{{PROJECT_ID}}"
+                    ]
                 }
             },
             "response": []
@@ -136,8 +176,13 @@
                 ],
                 "url": {
                     "raw": "{{BASE_URL}}/project/{{PROJECT_ID}}",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project", "{{PROJECT_ID}}"]
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project",
+                        "{{PROJECT_ID}}"
+                    ]
                 }
             },
             "response": []
@@ -155,8 +200,14 @@
                 ],
                 "url": {
                     "raw": "{{BASE_URL}}/project/category/web",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project", "category", "web"]
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project",
+                        "category",
+                        "web"
+                    ]
                 }
             },
             "response": []
@@ -174,12 +225,26 @@
                 ],
                 "url": {
                     "raw": "{{BASE_URL}}/project/search?query=portfolio&page=1&per_page=10",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project", "search"],
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project",
+                        "search"
+                    ],
                     "query": [
-                        {"key": "query", "value": "portfolio"},
-                        {"key": "page", "value": "1"},
-                        {"key": "per_page", "value": "10"}
+                        {
+                            "key": "query",
+                            "value": "portfolio"
+                        },
+                        {
+                            "key": "page",
+                            "value": "1"
+                        },
+                        {
+                            "key": "per_page",
+                            "value": "10"
+                        }
                     ]
                 }
             },
@@ -190,7 +255,10 @@
             "request": {
                 "method": "POST",
                 "header": [
-                    {"key": "Content-Type", "value": "multipart/form-data"},
+                    {
+                        "key": "Content-Type",
+                        "value": "multipart/form-data"
+                    },
                     {
                         "key": "Authorization",
                         "value": "Bearer {{BEARER_TOKEN}}",
@@ -202,7 +270,7 @@
                     "formdata": [
                         {
                             "key": "payload",
-                            "value": "[\n    {\n        \"title\": \"Portfolio Website\",\n        \"description\": \"Personal portfolio platform\",\n        \"category\": \"Web Development\",\n        \"my_role\": \"Full Stack Developer\",\n        \"development_status\": \"Beta\",\n        \"progress_status\": \"In Progress\",\n        \"progress_percentage\": 75,\n        \"tech_stack_ids\": [\"{{TECH_STACK_ID_1}}\"],\n        \"features\": [\"Responsive Design\"]\n    },\n    {\n        \"title\": \"Task Management App\",\n        \"description\": \"Productivity tracking application\",\n        \"category\": \"Mobile Development\",\n        \"my_role\": \"Mobile Developer\",\n        \"development_status\": \"Alpha\",\n        \"progress_status\": \"In Progress\",\n        \"progress_percentage\": 40,\n        \"tech_stack_ids\": [\"{{TECH_STACK_ID_2}}\"],\n        \"features\": [\"Task Tracking\"]\n    }\n]",
+                            "value": "[\n    {\n        \"title\": \"GoWAG\",\n        \"description\": \"Fullstack web dashboard built to simplify and scale WhatsApp Business operations.\",\n        \"category\": \"SaaS\",\n        \"my_role\": \"Full Stack Developer\",\n        \"development_status\": \"Alpha\",\n        \"progress_status\": \"In Progress\",\n        \"progress_percentage\": 65,\n        \"tech_stack_ids\": [\"Next.js\", \"TypeScript\", \"TailwindCSS\", \"Firebase\", \"RadixUI\", \"ShadcnUI\", \"SocketIO\", \"PostgreSQL\", \"Vercel\", \"FramerMotion\", \"Zod\", \"ChartJS\"],\n        \"features\": [\n            \"Bulk messaging, auto-replies, templates, and scheduling\",\n            \"Real-time analytics on delivery and engagement\",\n            \"Role-Based Access Control (Admin, Moderator, User, Guest)\",\n            \"Webhook & API key management\",\n            \"Subscription tiers with feature segmentation\"\n        ],\n        \"is_featured\": true\n    },\n    {\n        \"title\": \"BubblePi Store\",\n        \"description\": \"Stylish and responsive frontend for a premium accounts selling platform.\",\n        \"category\": \"Marketplace\",\n        \"my_role\": \"Frontend Developer\",\n        \"development_status\": \"Alpha\",\n        \"progress_status\": \"On Hold\",\n        \"progress_percentage\": 40,\n        \"tech_stack_ids\": [\"React\", \"Vite\", \"TailwindCSS\", \"ShadcnUI\", \"Zod\", \"ReactHookForm\", \"FramerMotion\", \"DaisyUI\"],\n        \"features\": [\n            \"Fully responsive layout with cheerful, modern UI\",\n            \"Dark mode toggle\",\n            \"Product browsing & filtering by category\",\n            \"Shopping cart and checkout flow\"\n        ],\n        \"is_featured\": true\n    },\n    {\n        \"title\": \"ASA Media\",\n        \"description\": \"Official digital presence for a leading Indonesian consulting firm specializing in sustainability and annual report services.\",\n        \"category\": \"Portfolio\",\n        \"my_role\": \"Web Developer\",\n        \"development_status\": \"Delivered\",\n        \"progress_status\": \"Completed\",\n        \"progress_percentage\": 100,\n        \"tech_stack_ids\": [\"WordPress\", \"Elementor\", \"Astra\", \"UIKit\"],\n        \"features\": [\n            \"Responsive Design\",\n            \"Smooth Navigation\",\n            \"Portfolio Showcase\",\n            \"Contact Form Integration\"\n        ],\n        \"is_featured\": true\n    },\n    {\n        \"title\": \"Kawasan Digital\",\n        \"description\": \"Cutting-edge interactive portfolio website designed to showcase creative work.\",\n        \"category\": \"Company Profile\",\n        \"my_role\": \"Frontend Developer\",\n        \"development_status\": \"MVP\",\n        \"progress_status\": \"In Progress\",\n        \"progress_percentage\": 55,\n        \"tech_stack_ids\": [\"React\", \"Next.js\", \"TailwindCSS\", \"FramerMotion\"],\n        \"features\": [\n            \"3D Card Interactions with React Three Fiber\",\n            \"Animated UI & Bento Grid Layout\",\n            \"Responsive Design\"\n        ],\n        \"is_featured\": true\n    },\n    {\n        \"title\": \"Smart Parking System\",\n        \"description\": \"Modern web application designed to streamline parking space management through real-time visualization, reservations, and secure user access.\",\n        \"category\": \"SaaS\",\n        \"my_role\": \"Full Stack Developer\",\n        \"development_status\": \"Beta\",\n        \"progress_status\": \"On Hold\",\n        \"progress_percentage\": 45,\n        \"tech_stack_ids\": [\"React\", \"TailwindCSS\", \"SocketIO\", \"JWT\", \"HeadlessUI\", \"MaterialUI\"],\n        \"features\": [\n            \"Real-time Parking Space Visualization\",\n            \"Secure User Authentication\",\n            \"Reservation and schedule management\",\n            \"Interactive toast notifications\"\n        ],\n        \"is_featured\": true\n    }\n]",
                             "contentType": "application/json",
                             "type": "text"
                         },
@@ -215,8 +283,13 @@
                 },
                 "url": {
                     "raw": "{{BASE_URL}}/project/bulk",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project", "bulk"]
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project",
+                        "bulk"
+                    ]
                 }
             },
             "response": []
@@ -226,7 +299,10 @@
             "request": {
                 "method": "PUT",
                 "header": [
-                    {"key": "Content-Type", "value": "multipart/form-data"},
+                    {
+                        "key": "Content-Type",
+                        "value": "multipart/form-data"
+                    },
                     {
                         "key": "Authorization",
                         "value": "Bearer {{BEARER_TOKEN}}",
@@ -251,8 +327,13 @@
                 },
                 "url": {
                     "raw": "{{BASE_URL}}/project/bulk",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project", "bulk"]
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project",
+                        "bulk"
+                    ]
                 }
             },
             "response": []
@@ -262,7 +343,10 @@
             "request": {
                 "method": "DELETE",
                 "header": [
-                    {"key": "Content-Type", "value": "application/json"},
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
                     {
                         "key": "Authorization",
                         "value": "Bearer {{BEARER_TOKEN}}",
@@ -275,11 +359,16 @@
                 },
                 "url": {
                     "raw": "{{BASE_URL}}/project/bulk",
-                    "host": ["{{BASE_URL}}"],
-                    "path": ["project", "bulk"]
+                    "host": [
+                        "{{BASE_URL}}"
+                    ],
+                    "path": [
+                        "project",
+                        "bulk"
+                    ]
                 }
             },
             "response": []
         }
     ]
-} 
+}

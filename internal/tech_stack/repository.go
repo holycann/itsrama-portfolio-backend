@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/holycann/itsrama-portfolio-backend/pkg/base"
+	"github.com/holycann/itsrama-portfolio-backend/internal/base"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/errors"
 	"github.com/holycann/itsrama-portfolio-backend/pkg/supabase"
 	postgrest "github.com/supabase-community/postgrest-go"
@@ -12,7 +12,6 @@ import (
 
 type TechStackRepository interface {
 	base.BaseRepository[TechStack, TechStack]
-	FindByCategory(ctx context.Context, category string) ([]TechStack, error)
 }
 
 type techStackRepository struct {
@@ -36,20 +35,6 @@ func (r *techStackRepository) Create(ctx context.Context, techStack *TechStack) 
 		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to create tech stack")
 	}
 	return techStack, nil
-}
-
-func (r *techStackRepository) FindByID(ctx context.Context, id string) (*TechStack, error) {
-	var techStack TechStack
-	_, err := r.supabaseClient.GetClient().
-		From(r.table).
-		Select("*", "", false).
-		Eq("id", id).
-		Single().
-		ExecuteTo(&techStack)
-	if err != nil {
-		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to fetch tech stack")
-	}
-	return &techStack, nil
 }
 
 func (r *techStackRepository) Update(ctx context.Context, techStack *TechStack) (*TechStack, error) {
@@ -165,19 +150,6 @@ func (r *techStackRepository) FindByField(ctx context.Context, field string, val
 		ExecuteTo(&techStacks)
 	if err != nil {
 		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find tech stacks by field")
-	}
-	return techStacks, nil
-}
-
-func (r *techStackRepository) FindByCategory(ctx context.Context, category string) ([]TechStack, error) {
-	var techStacks []TechStack
-	_, err := r.supabaseClient.GetClient().
-		From(r.table).
-		Select("*", "", false).
-		Eq("category", category).
-		ExecuteTo(&techStacks)
-	if err != nil {
-		return nil, errors.Wrap(err, errors.ErrDatabase, "failed to find tech stacks by category")
 	}
 	return techStacks, nil
 }

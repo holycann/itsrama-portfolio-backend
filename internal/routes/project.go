@@ -13,7 +13,7 @@ func RegisterProjectRoutes(
 	routerMiddleware *middleware.Middleware,
 ) {
 	// Create a route group for projects
-	projects := r.Group("/project")
+	projects := r.Group("/projects")
 	{
 		// Create a new project
 		projects.POST("",
@@ -24,11 +24,6 @@ func RegisterProjectRoutes(
 		// List projects
 		projects.GET("",
 			projectHandler.ListProjects,
-		)
-
-		// Get projects by category
-		projects.GET("/category/:category",
-			projectHandler.GetProjectsByCategory,
 		)
 
 		// Get a specific project by ID

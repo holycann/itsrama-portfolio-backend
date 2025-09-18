@@ -72,6 +72,20 @@ func ValidateModel[T any](model T) error {
 	return nil
 }
 
+// ValidateString checks string fields
+func ValidateString(value, fieldName string, minLength, maxLength int) error {
+	if value == "" {
+		return fmt.Errorf("%s is required", fieldName)
+	}
+	if minLength > 0 && len(value) < minLength {
+		return fmt.Errorf("%s must be at least %d characters long", fieldName, minLength)
+	}
+	if maxLength > 0 && len(value) > maxLength {
+		return fmt.Errorf("%s must be no more than %d characters long", fieldName, maxLength)
+	}
+	return nil
+}
+
 // IsValueChanged checks if the new value is different from the existing one
 func IsValueChanged[T any](existing, new *T, ignoredFields ...string) bool {
 	if existing == nil || new == nil {
@@ -376,20 +390,6 @@ func parseFloatValue(val string) (float64, error) {
 func ValidateUUID(id uuid.UUID, fieldName string) error {
 	if isUUIDNil(id) {
 		return fmt.Errorf("%s is required and cannot be nil", fieldName)
-	}
-	return nil
-}
-
-// ValidateString checks string fields
-func ValidateString(value, fieldName string, minLength, maxLength int) error {
-	if value == "" {
-		return fmt.Errorf("%s is required", fieldName)
-	}
-	if minLength > 0 && len(value) < minLength {
-		return fmt.Errorf("%s must be at least %d characters long", fieldName, minLength)
-	}
-	if maxLength > 0 && len(value) > maxLength {
-		return fmt.Errorf("%s must be no more than %d characters long", fieldName, maxLength)
 	}
 	return nil
 }
